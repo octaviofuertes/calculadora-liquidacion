@@ -1,0 +1,4 @@
+node_modules/
+backend-esueldos-calculadoras/.env
+backend-esueldos-calculadoras/uploads/
+npm-debug.log*

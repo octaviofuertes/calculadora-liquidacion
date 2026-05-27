@@ -1,0 +1,303 @@
+{
+  "schemaVersion": "esueldos-convenio-universal-v1",
+  "id": "convenio-slug",
+  "name": "Nombre del convenio - CCT / Acta",
+  "shortName": "Nombre corto",
+  "source": "CCT, acta, resolucion y escala usada",
+  "type": "monthly",
+  "calculationMode": "generic-v1",
+  "generatedByLeia": true,
+  "metadata": {
+    "country": "AR",
+    "jurisdiction": "Nacional / Provincia / Municipio",
+    "activity": "Actividad alcanzada",
+    "union": "Sindicato / federacion",
+    "employerChamber": "Camara empresaria",
+    "cct": "CCT 000/00",
+    "homologation": {
+      "resolution": "",
+      "date": "",
+      "authority": "Secretaria de Trabajo"
+    },
+    "version": "2026-05",
+    "status": "draft",
+    "createdBy": "leIA",
+    "reviewedBy": "",
+    "reviewedAt": ""
+  },
+  "legalFramework": {
+    "primarySources": [
+      {
+        "type": "cct",
+        "title": "Convenio colectivo",
+        "fileName": "",
+        "effectiveFrom": "",
+        "effectiveTo": "",
+        "url": ""
+      },
+      {
+        "type": "salaryScale",
+        "title": "Escala salarial",
+        "fileName": "",
+        "effectiveFrom": "",
+        "effectiveTo": "",
+        "url": ""
+      }
+    ],
+    "defaultLaws": ["LCT", "SIPA", "Ley de Obras Sociales", "ART"],
+    "articleMap": {}
+  },
+  "scope": {
+    "workersIncluded": [],
+    "workersExcluded": [],
+    "territory": [],
+    "establishments": [],
+    "notes": []
+  },
+  "periods": [
+    {
+      "id": "2026-05",
+      "label": "Mayo 2026",
+      "effectiveFrom": "2026-05-01",
+      "effectiveTo": "2026-05-31",
+      "sourceFileName": ""
+    }
+  ],
+  "zones": [
+    {
+      "id": "general",
+      "label": "General",
+      "coef": 1,
+      "description": ""
+    }
+  ],
+  "categories": [
+    {
+      "id": "categoria-a",
+      "label": "Categoria A",
+      "group": "Personal general",
+      "description": "",
+      "monthly": 0,
+      "day": null,
+      "hourly": null,
+      "monthlyByPeriod": {
+        "2026-05": 0
+      },
+      "dayByPeriod": {},
+      "hourlyByPeriod": {},
+      "nonRem": {
+        "2026-05": 0
+      },
+      "normalWeeklyHours": 48,
+      "normalDailyHours": 8,
+      "legalReferences": [],
+      "notes": []
+    }
+  ],
+  "additionals": {
+    "adicional-escala-ejemplo": {
+      "label": "Adicional de escala ejemplo",
+      "monthly": 0,
+      "amountByPeriod": {
+        "2026-05": 0
+      },
+      "nonRem": {
+        "2026-05": 0
+      },
+      "legalReferences": [],
+      "notes": []
+    }
+  },
+  "rules": {
+    "salaryType": "monthly",
+    "monthDivisor": 30,
+    "dayDivisor": 30,
+    "hourDivisor": 200,
+    "weeklyHours": 48,
+    "vacationDivisor": 25,
+    "rounding": {
+      "mode": "round",
+      "decimals": 2
+    },
+    "proportionality": {
+      "monthlyByDays": true,
+      "monthlyByHours": true,
+      "partTimeUsesFullOsBase": true
+    }
+  },
+  "liquidationModel": {
+    "version": "generic-v1",
+    "rules": {
+      "salaryType": "monthly",
+      "monthDivisor": 30,
+      "hourDivisor": 200,
+      "weeklyHours": 48,
+      "seniority": {
+        "enabled": true,
+        "mode": "percentPerYear",
+        "percentPerYear": 1,
+        "capYears": 0,
+        "base": "basic",
+        "table": [],
+        "legalReferences": []
+      },
+      "presentism": {
+        "enabled": false,
+        "percent": 0,
+        "base": "basic",
+        "requiresNoUnjustifiedAbsence": true,
+        "legalReferences": []
+      },
+      "nonRemunerativeScale": {
+        "enabled": true,
+        "seniorityPercentPerYear": 0,
+        "presentismPercent": 0,
+        "presentismRequiresNoUnjustifiedAbsence": true,
+        "subjectToHealthInsurance": true,
+        "subjectToUnion": false,
+        "legalReferences": []
+      },
+      "overtime": {
+        "enabled": true,
+        "divisor": 200,
+        "rate50": 1.5,
+        "rate100": 2,
+        "legalReferences": []
+      }
+    },
+    "concepts": [
+      {
+        "id": "concepto-variable",
+        "label": "Concepto variable",
+        "group": "Adicionales",
+        "inputType": "number",
+        "rowType": "remunerative",
+        "calculation": "percentOfBase",
+        "percent": 10,
+        "amount": null,
+        "amountByPeriod": {},
+        "unitAmount": null,
+        "unitAmountByPeriod": {},
+        "base": "basic",
+        "defaultValue": 0,
+        "subjectToSocialSecurity": true,
+        "subjectToHealthInsurance": true,
+        "subjectToART": true,
+        "taxableIncome": true,
+        "requiresHumanValidation": false,
+        "conditions": [],
+        "proration": {
+          "byWorkedDays": true,
+          "byHours": true,
+          "byAbsences": true
+        },
+        "legalReferences": [],
+        "detail": "Articulo / acta / criterio",
+        "audit": {
+          "mustCheck": [],
+          "risk": "low"
+        },
+        "ui": {
+          "order": 1,
+          "help": ""
+        },
+        "notes": []
+      }
+    ],
+    "deductions": [
+      {
+        "id": "aporte-convencional",
+        "label": "Aporte convencional",
+        "percent": 0,
+        "amount": null,
+        "amountByPeriod": {},
+        "base": "remunerative",
+        "appliesWhen": "always",
+        "requiresHumanValidation": false,
+        "legalReferences": [],
+        "detail": ""
+      }
+    ],
+    "employerContributions": [
+      {
+        "id": "contribucion-convencional",
+        "label": "Contribucion convencional",
+        "percent": 0,
+        "amount": null,
+        "amountByPeriod": {},
+        "base": "remunerative",
+        "appliesWhen": "always",
+        "requiresHumanValidation": false,
+        "legalReferences": [],
+        "detail": ""
+      }
+    ]
+  },
+  "payrollBases": {
+    "basic": "Basico proporcional de categoria",
+    "seniorityBase": "Basico mas conceptos que integran antiguedad",
+    "remunerative": "Total remunerativo",
+    "nonRemunerative": "Total no remunerativo",
+    "gross": "Remunerativo + no remunerativo",
+    "categoryMonthly": "Basico mensual de escala",
+    "categoryDay": "Jornal de escala",
+    "categoryHourly": "Valor hora de escala"
+  },
+  "employeeRequirements": {
+    "requiredFields": ["name", "cuil", "entryDate", "category", "period"],
+    "optionalFields": ["weeklyHours", "affiliate", "workplace", "task", "title", "zone"],
+    "legajoFlags": []
+  },
+  "validation": {
+    "blocking": [
+      "Debe existir al menos una categoria con importe.",
+      "Debe existir al menos un periodo vigente.",
+      "No aprobar si la escala no coincide con el mes liquidado."
+    ],
+    "warnings": [
+      "Conceptos con requiresHumanValidation deben tener respaldo de legajo.",
+      "Los no remunerativos deben controlarse contra acta vigente."
+    ],
+    "autoChecks": [
+      "sumRowsEqualsTotals",
+      "activeScaleForPeriod",
+      "requiredEmployeeData",
+      "negativeNet",
+      "duplicatedConcepts"
+    ]
+  },
+  "auditChecklist": [
+    "Controlar CCT y escala salarial vigente.",
+    "Validar categoria, zona y jornada contra legajo.",
+    "Validar adicionales activados contra requisitos legales.",
+    "Controlar bases de aportes y no remunerativos.",
+    "Controlar deducciones y contribuciones propias del convenio.",
+    "Guardar evidencia de auditoria humana antes de aprobar."
+  ],
+  "automationHints": {
+    "preferredEngine": "generic-v1",
+    "aiExtractionPriority": ["salaryScale", "categories", "periods", "nonRemunerative", "concepts", "deductions", "audit"],
+    "humanReviewRequiredWhen": [
+      "confidence < 90",
+      "warnings.length > 0",
+      "concept.requiresHumanValidation = true",
+      "missing legalReferences"
+    ]
+  },
+  "ui": {
+    "icon": "file-text",
+    "color": "#2f6fe8",
+    "groupOrder": ["Base", "Adicionales", "Horas extra", "Deducciones", "Auditoria"]
+  },
+  "extraction": {
+    "confidence": 0,
+    "model": "",
+    "modelsTried": [],
+    "readStrategy": "pdf-text+ai",
+    "sourceFiles": [],
+    "extractedAt": ""
+  },
+  "confidence": 0,
+  "warnings": [],
+  "notes": []
+}

@@ -1,0 +1,757 @@
+/* leIA visual layer loaded after the main stylesheet. */
+
+.leia-widget {
+  pointer-events: none !important;
+}
+
+.leia-launcher,
+.leia-panel,
+.leia-close,
+.leia-form button {
+  pointer-events: auto !important;
+}
+
+.leia-launcher {
+  cursor: pointer !important;
+}
+
+.leia-panel[hidden] {
+  display: none !important;
+}
+
+@media screen and (min-width: 1181px) {
+  .leia-widget {
+    position: fixed !important;
+    top: auto !important;
+    right: 6px !important;
+    bottom: 10px !important;
+    z-index: 80 !important;
+    display: block !important;
+  }
+
+  .leia-launcher {
+    position: relative !important;
+    display: grid !important;
+    width: 108px !important;
+    min-width: 108px !important;
+    height: 108px !important;
+    min-height: 108px !important;
+    padding: 0 !important;
+    place-items: center !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    transform: none !important;
+  }
+
+  .leia-launcher::before {
+    content: none !important;
+    position: absolute !important;
+    inset: 9px 10px auto auto !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-top: 2px solid rgba(65, 185, 255, 0.42) !important;
+    border-right: 2px solid rgba(65, 185, 255, 0.26) !important;
+    border-radius: 50% !important;
+    animation: leiaOrbitSweep 5.8s ease-in-out infinite !important;
+  }
+
+  .leia-launcher:hover {
+    transform: translateY(-5px) scale(1.03) !important;
+    box-shadow: none !important;
+  }
+
+  .leia-launcher::after {
+    content: "Soy leIA, en que puedo ayudarte" !important;
+    position: absolute !important;
+    inset: auto !important;
+    left: auto !important;
+    right: 106px !important;
+    top: 18px !important;
+    bottom: auto !important;
+    z-index: 8 !important;
+    display: block !important;
+    width: 232px !important;
+    height: auto !important;
+    padding: 9px 13px !important;
+    border: 1px solid rgba(135, 205, 255, 0.82) !important;
+    border-radius: 999px 999px 6px 999px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    color: #2f73ff !important;
+    font-size: 12px !important;
+    font-weight: 950 !important;
+    line-height: 1.15 !important;
+    box-shadow: 0 10px 22px rgba(36, 116, 232, 0.16) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateX(10px) translateY(4px) scale(0.94) !important;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease !important;
+    animation: none !important;
+  }
+
+  .leia-launcher:hover::after {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(0) translateY(0) scale(1) !important;
+  }
+
+  .leia-launcher > * {
+    opacity: 1 !important;
+  }
+
+  .leia-launcher-avatar {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 2 !important;
+    display: block !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+    animation: leiaBodyFloat 3.6s ease-in-out infinite !important;
+  }
+
+  .leia-launcher-avatar::before {
+    content: none !important;
+    position: absolute !important;
+    left: 30px !important;
+    right: auto !important;
+    top: 54px !important;
+    z-index: 7 !important;
+    width: 44px !important;
+    height: 38px !important;
+    border-top: 3px solid rgba(59, 190, 255, 0.86) !important;
+    border-left: 3px solid rgba(59, 190, 255, 0.58) !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow:
+      -7px -5px 0 -4px rgba(59, 190, 255, 0.45),
+      -14px -10px 0 -8px rgba(59, 190, 255, 0.28) !important;
+    opacity: 1 !important;
+    transform: rotate(-24deg) translateY(0) scale(1) !important;
+    transform-origin: 100% 100% !important;
+    animation: leiaHandWave 4.4s ease-in-out infinite !important;
+  }
+
+  .leia-launcher-avatar::after {
+    content: none !important;
+    position: absolute !important;
+    left: -218px !important;
+    right: auto !important;
+    top: 18px !important;
+    z-index: 6 !important;
+    width: 214px !important;
+    padding: 8px 12px !important;
+    border: 1px solid rgba(135, 205, 255, 0.82) !important;
+    border-radius: 999px 999px 6px 999px !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #2f73ff !important;
+    font-size: 12px !important;
+    font-weight: 950 !important;
+    box-shadow: 0 10px 22px rgba(36, 116, 232, 0.16) !important;
+    opacity: 1 !important;
+    transform: translateY(0) scale(1) !important;
+    animation: leiaGreetingBubble 4.4s ease-in-out infinite !important;
+  }
+
+  .leia-launcher-img {
+    display: block !important;
+    width: 128px !important;
+    height: auto !important;
+    margin-left: -10px !important;
+    margin-top: -8px !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    filter: drop-shadow(0 16px 18px rgba(37, 107, 180, 0.16)) !important;
+    transform-origin: center bottom !important;
+    animation: leiaCharacterSway 3.6s ease-in-out infinite !important;
+    transition: transform 0.22s ease, filter 0.22s ease !important;
+  }
+
+  .leia-launcher:hover .leia-launcher-img {
+    animation-duration: 1.5s !important;
+    filter: drop-shadow(0 20px 22px rgba(37, 107, 180, 0.24)) !important;
+  }
+
+  .leia-launcher:hover .leia-launcher-avatar::after,
+  .leia-launcher:hover .leia-launcher-avatar::before {
+    opacity: 0 !important;
+    animation-duration: 1.05s !important;
+  }
+
+  .leia-launcher:hover .leia-launcher-avatar::before {
+    animation-name: leiaHandWaveHover !important;
+  }
+
+  .leia-launcher-glow {
+    position: absolute !important;
+    left: 24px !important;
+    right: 24px !important;
+    bottom: 12px !important;
+    z-index: 1 !important;
+    height: 34px !important;
+    border-radius: 50% !important;
+    background: radial-gradient(ellipse, rgba(67, 189, 251, 0.46), transparent 70%) !important;
+    filter: blur(10px) !important;
+    animation: leiaGlowPulse 2.8s ease-in-out infinite !important;
+  }
+
+  .leia-launch-text,
+  .leia-launch-prompt {
+    display: none !important;
+  }
+
+  .leia-widget.open .leia-launcher {
+    display: none !important;
+  }
+
+  .leia-panel {
+    position: fixed !important;
+    top: auto !important;
+    right: 6px !important;
+    bottom: 10px !important;
+    display: flex !important;
+    width: 360px !important;
+    height: min(520px, calc(100vh - 92px)) !important;
+    max-height: calc(100vh - 92px) !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border: 1px solid #b7d6ff !important;
+    border-radius: 18px !important;
+    background: #ffffff !important;
+    box-shadow: 0 26px 64px rgba(7, 23, 74, 0.24) !important;
+    backdrop-filter: blur(18px) !important;
+    animation: leiaPanelIn 0.18s ease !important;
+  }
+}
+
+@keyframes leiaBodyFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -7px;
+  }
+}
+
+@keyframes leiaCharacterSway {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  18% {
+    transform: rotate(-1.8deg) scale(1.012);
+  }
+  36% {
+    transform: rotate(1.3deg) scale(1.018);
+  }
+  58% {
+    transform: rotate(-0.8deg) scale(1.008);
+  }
+}
+
+@keyframes leiaGreetingBubble {
+  0%,
+  12%,
+  76%,
+  100% {
+    opacity: 0.72;
+    transform: translateY(3px) scale(0.94);
+  }
+  22%,
+  54% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  32% {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+
+@keyframes leiaHandWave {
+  0%,
+  12%,
+  76%,
+  100% {
+    opacity: 0.78;
+    transform: rotate(-28deg) translateY(3px) scale(0.82);
+  }
+  18% {
+    opacity: 1;
+    transform: rotate(-10deg) translateY(0) scale(1);
+  }
+  27% {
+    opacity: 1;
+    transform: rotate(-34deg) translateY(-4px) scale(1.12);
+  }
+  36% {
+    opacity: 1;
+    transform: rotate(-8deg) translateY(-2px) scale(1.06);
+  }
+  45% {
+    opacity: 1;
+    transform: rotate(-32deg) translateY(-4px) scale(1.12);
+  }
+  58% {
+    opacity: 0.92;
+    transform: rotate(-16deg) translateY(0) scale(0.98);
+  }
+}
+
+@keyframes leiaHandWaveHover {
+  0%,
+  100% {
+    opacity: 1;
+    transform: rotate(-14deg) translateY(0) scale(1);
+  }
+  25% {
+    opacity: 1;
+    transform: rotate(-36deg) translateY(-5px) scale(1.14);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(-8deg) translateY(-2px) scale(1.06);
+  }
+  75% {
+    opacity: 1;
+    transform: rotate(-34deg) translateY(-5px) scale(1.14);
+  }
+}
+
+@keyframes leiaOrbitSweep {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.62;
+  }
+  50% {
+    transform: rotate(18deg) scale(1.08);
+    opacity: 0.95;
+  }
+}
+
+@keyframes leiaGlowPulse {
+  0%,
+  100% {
+    opacity: 0.56;
+    transform: scaleX(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scaleX(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leia-launcher,
+  .leia-launcher::before,
+  .leia-launcher-avatar,
+  .leia-launcher-avatar::before,
+  .leia-launcher-avatar::after,
+  .leia-launcher-img,
+  .leia-launcher-glow {
+    animation: none !important;
+  }
+}
+
+.leia-panel-head {
+  flex: 0 0 76px !important;
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr) 34px !important;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 11px 12px !important;
+  border-bottom: 0 !important;
+  background: linear-gradient(135deg, #1f62d7 0%, #2f73ff 58%, #664cf4 100%) !important;
+  color: #ffffff !important;
+}
+
+.leia-avatar-img-container {
+  position: relative !important;
+  width: 54px !important;
+  height: 54px !important;
+  overflow: hidden !important;
+  border: 2px solid rgba(255, 255, 255, 0.72) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 12px 28px rgba(0, 31, 105, 0.22) !important;
+}
+
+.leia-avatar-img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center 24% !important;
+}
+
+.leia-avatar-glow {
+  position: absolute !important;
+  inset: -16px !important;
+  z-index: -1 !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(83, 207, 255, 0.45), transparent 68%) !important;
+}
+
+.leia-panel-head strong {
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.leia-panel-head span {
+  display: block !important;
+  max-width: 210px !important;
+  margin-top: 4px !important;
+  overflow: hidden !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.leia-close {
+  display: grid !important;
+  width: 34px !important;
+  height: 34px !important;
+  place-items: center !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+
+.leia-messages {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  padding: 16px !important;
+  overflow: auto !important;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(67, 189, 251, 0.16), transparent 120px),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%) !important;
+}
+
+.leia-message {
+  width: fit-content !important;
+  max-width: 88% !important;
+  min-height: 0 !important;
+  padding: 12px 16px !important;
+  border-radius: 16px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  text-align: left !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+  margin: 4px 8px 4px 4px !important; /* Margen para asegurar que nunca se corte en los bordes */
+}
+
+.leia-message p {
+  margin: 0 0 8px 0 !important;
+}
+.leia-message p:last-child {
+  margin-bottom: 0 !important;
+}
+.leia-message ul,
+.leia-message ol {
+  margin: 0 0 8px 0 !important;
+  padding-left: 20px !important;
+}
+.leia-message li {
+  margin-bottom: 4px !important;
+}
+.leia-message strong {
+  font-weight: 700 !important;
+}
+
+.leia-message.is-leia {
+  align-self: flex-start !important;
+  border: 1px solid #d0e1f9 !important;
+  background: #f0f6ff !important; /* Fondo celeste suave para distinguir del panel blanco */
+  color: #172033 !important;
+  box-shadow: 0 4px 12px rgba(28, 55, 107, 0.05) !important;
+}
+
+.leia-message.is-user {
+  align-self: flex-end !important;
+  background: linear-gradient(135deg, #2f73ff, #674cf4) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(47, 115, 255, 0.18) !important;
+}
+
+.leia-form {
+  flex: 0 0 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 88px !important;
+  gap: 8px !important;
+  padding: 12px !important;
+  border-top: 1px solid #e4edf9 !important;
+  background: #ffffff !important;
+}
+
+.leia-form input {
+  min-width: 0 !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  border: 1px solid #bfd5f5 !important;
+  border-radius: 12px !important;
+  color: #18223a !important;
+  font-size: 13px !important;
+  outline: none !important;
+}
+
+.leia-form button {
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #2f73ff, #674cf4) !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+@media screen and (max-width: 1180px) {
+  .leia-widget.open .leia-launcher {
+    display: none !important;
+  }
+
+  .leia-panel {
+    position: fixed !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 84px) !important;
+  }
+}
+
+/* Final leIA chat hardening: keep the open chat usable at every viewport. */
+.leia-widget.open {
+  pointer-events: none !important;
+}
+
+.leia-widget.open .leia-panel {
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+}
+
+.leia-widget.open .leia-messages {
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+}
+
+.leia-widget.open .leia-message {
+  box-sizing: border-box !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  white-space: normal !important;
+}
+
+.leia-widget.open .leia-message p,
+.leia-widget.open .leia-message li {
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.leia-widget.open .leia-form {
+  box-sizing: border-box !important;
+}
+
+.leia-widget.open .leia-form input {
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  text-overflow: ellipsis !important;
+}
+
+.leia-widget.open .leia-form button {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+@media screen and (min-width: 1181px) {
+  .leia-widget.open .leia-panel {
+    width: 392px !important;
+    height: min(560px, calc(100vh - 96px)) !important;
+  }
+
+  .leia-widget.open .leia-message {
+    max-width: min(88%, 310px) !important;
+  }
+}
+
+@media screen and (max-width: 1180px) {
+  .leia-widget.open {
+    position: fixed !important;
+    inset: auto 8px 8px 8px !important;
+    z-index: 100 !important;
+    display: block !important;
+  }
+
+  .leia-widget.open .leia-panel {
+    position: fixed !important;
+    inset: auto 8px 8px 8px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: min(560px, calc(100dvh - 16px)) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 16px !important;
+  }
+
+  .leia-widget.open .leia-panel-head {
+    grid-template-columns: 48px minmax(0, 1fr) 32px !important;
+    min-width: 0 !important;
+    height: auto !important;
+    flex-basis: 68px !important;
+    padding: 9px 10px !important;
+  }
+
+  .leia-widget.open .leia-avatar-img-container {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 15px !important;
+  }
+
+  .leia-widget.open .leia-panel-head strong {
+    font-size: 18px !important;
+  }
+
+  .leia-widget.open .leia-panel-head span {
+    max-width: 100% !important;
+    font-size: 11px !important;
+  }
+
+  .leia-widget.open .leia-close {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .leia-widget.open .leia-messages {
+    padding: 12px !important;
+    gap: 9px !important;
+  }
+
+  .leia-widget.open .leia-message {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
+  }
+
+  .leia-widget.open .leia-message.is-user {
+    max-width: 82% !important;
+  }
+
+  .leia-widget.open .leia-form {
+    grid-template-columns: minmax(0, 1fr) 72px !important;
+    gap: 7px !important;
+    padding: 9px !important;
+  }
+
+  .leia-widget.open .leia-form input {
+    min-height: 38px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+
+  .leia-widget.open .leia-form input::placeholder {
+    color: transparent !important;
+  }
+
+  .leia-widget.open .leia-form button {
+    min-height: 38px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .leia-widget.open {
+    inset: auto 4px 4px 4px !important;
+  }
+
+  .leia-widget.open .leia-panel {
+    inset: auto 4px 4px 4px !important;
+    height: min(540px, calc(100dvh - 8px)) !important;
+    max-height: calc(100dvh - 8px) !important;
+    border-radius: 14px !important;
+  }
+
+  .leia-widget.open .leia-messages {
+    padding: 10px !important;
+  }
+
+  .leia-widget.open .leia-form {
+    grid-template-columns: minmax(0, 1fr) 64px !important;
+    padding: 8px !important;
+  }
+}
+
+/* Absolute final fix: message bubbles must grow with their text. */
+.leia-widget.open .leia-message,
+.leia-panel .leia-message {
+  display: flow-root !important;
+  height: auto !important;
+  min-height: unset !important;
+  max-height: none !important;
+  overflow: visible !important;
+  contain: none !important;
+  padding-bottom: 14px !important;
+  line-height: 1.48 !important;
+}
+
+.leia-widget.open .leia-message > *,
+.leia-panel .leia-message > * {
+  display: block !important;
+  position: static !important;
+  float: none !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 0 8px 0 !important;
+  line-height: inherit !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.leia-widget.open .leia-message > *:last-child,
+.leia-panel .leia-message > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+.leia-widget.open .leia-message ul,
+.leia-widget.open .leia-message ol,
+.leia-panel .leia-message ul,
+.leia-panel .leia-message ol {
+  padding-left: 18px !important;
+}
+
+.leia-widget.open .leia-message li,
+.leia-panel .leia-message li {
+  display: list-item !important;
+}

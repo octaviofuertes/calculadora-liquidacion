@@ -1,0 +1,10 @@
+{
+  "name": "frontend-esueldos-calculadoras",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend estatico para eSueldos multiconvenio.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}

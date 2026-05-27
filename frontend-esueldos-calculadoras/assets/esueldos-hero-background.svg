@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 900" preserveAspectRatio="xMidYMin slice">
+  <rect width="1920" height="900" fill="#ffffff"/>
+
+  <g opacity="0.92" fill="none" stroke="#acd7f5" stroke-width="72">
+    <ellipse cx="360" cy="258" rx="530" ry="545"/>
+    <ellipse cx="970" cy="425" rx="470" ry="455"/>
+    <ellipse cx="1380" cy="124" rx="300" ry="315"/>
+  </g>
+
+  <g fill="#2862f3">
+    <path d="M0 0H1545C1628 66 1662 164 1632 250C1594 360 1492 386 1418 374C1426 462 1406 553 1345 625C1250 738 1076 760 931 702C845 667 770 604 714 526C650 599 562 651 460 682C255 744 58 661 0 536Z"/>
+    <ellipse cx="450" cy="112" rx="820" ry="390"/>
+    <ellipse cx="350" cy="312" rx="610" ry="455"/>
+    <ellipse cx="920" cy="230" rx="650" ry="475"/>
+    <ellipse cx="1190" cy="178" rx="360" ry="245"/>
+    <ellipse cx="850" cy="525" rx="470" ry="330"/>
+    <ellipse cx="1040" cy="645" rx="450" ry="270"/>
+  </g>
+
+  <g fill="#548af7" opacity="0.82">
+    <ellipse cx="1120" cy="646" rx="340" ry="250"/>
+    <ellipse cx="920" cy="790" rx="145" ry="92"/>
+  </g>
+
+  <g fill="#ffffff" opacity="0.16">
+    <circle cx="1272" cy="186" r="8"/>
+    <circle cx="1312" cy="245" r="8"/>
+    <circle cx="1272" cy="306" r="8"/>
+    <circle cx="1312" cy="306" r="8"/>
+    <circle cx="1272" cy="366" r="8"/>
+    <circle cx="1312" cy="426" r="8"/>
+    <circle cx="1272" cy="486" r="8"/>
+    <circle cx="1312" cy="546" r="8"/>
+    <circle cx="1272" cy="546" r="8"/>
+    <circle cx="1312" cy="604" r="8"/>
+  </g>
+
+  <g fill="#ffffff" opacity="0.14" font-family="Inter, Arial, sans-serif" font-size="45" font-weight="900">
+    <text x="318" y="665">+</text>
+    <text x="374" y="665">+</text>
+    <text x="430" y="665">+</text>
+    <text x="486" y="665">+</text>
+  </g>
+</svg>
