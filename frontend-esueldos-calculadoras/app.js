@@ -1662,6 +1662,101 @@
     </section>`;
   }
 
+  function renderCategoryGuide(conv, result = null) {
+    if (!conv?.categories?.length) return "";
+    if (conv.id === "uocra") return renderUocraCategoryGuide(conv);
+    if (conv.id === "farmacia") return renderFarmaciaCategoryGuide(conv);
+    if (conv.id === "camioneros") return renderCamionerosCategoryGuide(conv);
+    return renderGenericCategoryGuide(conv, result);
+  }
+
+  function renderUocraCategoryGuide(conv) {
+    const periods = conv.periods || [];
+    const zones = conv.zones?.length ? conv.zones : [{ id: "A", label: "Zona A" }];
+    const tables = zones.map((zone) => renderSummaryTable(`Cuadro de categorias - ${zone.label}`, [
+      "Categoria",
+      "Jornada",
+      ...periods.map((item) => item.label),
+      "SNR abril"
+    ], (conv.categories || []).map((cat) => [
+      cat.label,
+      cat.monthly ? "Mensual" : "Jornal diario",
+      ...periods.map((item) => {
+        const value = Number(conv.scales?.[item.id]?.[zone.id]?.[cat.id] || 0);
+        return cat.monthly ? `${fmt(value)} mensual` : fmt(value);
+      }),
+      fmt(Number(conv.nonRem?.abr26?.[zone.id]?.[cat.id] || 0))
+    ])));
+    return `<div class="category-guide">${tables.join("")}</div>`;
+  }
+
+  function renderFarmaciaCategoryGuide(conv) {
+    const rules = conv.rules || {};
+    const periods = conv.periods || [];
+    return `<div class="category-guide">${renderSummaryTable("Cuadro de categorias y jornada", [
+      "Categoria",
+      "Jornada",
+      "Basico mensual",
+      ...periods.map((item) => `No rem. ${item.label}`)
+    ], (conv.categories || []).map((cat) => [
+      cat.label,
+      `${rules.weeklyHours || 45} hs semanales`,
+      fmt(Number(cat.monthly || 0)),
+      ...periods.map((item) => fmt(Number(cat.nonRem?.[item.id] || 0)))
+    ]))}</div>`;
+  }
+
+  function renderCamionerosCategoryGuide(conv) {
+    const zones = conv.zones?.length ? conv.zones : [{ id: "base", label: "General", coef: 1 }];
+    const tables = zones.map((zone) => {
+      const coef = Number(zone.coef || 1);
+      return renderSummaryTable(`Cuadro de categorias - ${zone.label}`, [
+        "Categoria",
+        "Jornada",
+        "Basico mensual",
+        "Jornal ref. 24 dias"
+      ], (conv.categories || []).map((cat) => {
+        const monthly = Number(cat.monthly || 0) * coef;
+        return [
+          cat.label,
+          "Mensual / jornada convencional",
+          fmt(monthly),
+          fmt(monthly / 24)
+        ];
+      }));
+    });
+    return `<div class="category-guide">${tables.join("")}</div>`;
+  }
+
+  function renderGenericCategoryGuide(conv, result = null) {
+    const { period, zone } = currentSummaryContext(conv, result);
+    const zones = conv.zones?.length ? conv.zones : [zone || { id: "general", label: "General" }];
+    const rules = conv.rules || conv.liquidationModel?.rules || {};
+    const tables = zones.map((tableZone) => renderSummaryTable(`Cuadro de categorias - ${tableZone.label || "General"}`, [
+      "Categoria",
+      "Jornada",
+      "Mensual",
+      "Jornal",
+      "Hora",
+      "No rem. periodo"
+    ], (conv.categories || []).map((cat) => {
+      const row = scaleCategoryRow(conv, cat, tableZone);
+      const monthly = firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]);
+      const day = firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]);
+      const hourly = firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]);
+      const jornada = cat.normalWeeklyHours || rules.weeklyHours || cat.weeklyHours;
+      return [
+        cat.label,
+        jornada ? `${jornada} hs semanales` : summaryValue(cat.salaryType || conv.type || "Segun convenio"),
+        monthly ? fmt(monthly) : "-",
+        day ? fmt(day) : "-",
+        hourly ? fmt(hourly) : "-",
+        periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
+      ];
+    })));
+    return `<div class="category-guide">${tables.join("")}</div>`;
+  }
+
   function renderConventionSummary(result = null) {
     const conv = result?.conv || getConvention();
     const meta = conventionCardMeta(conv);
@@ -1698,15 +1793,34 @@
         { label: "Periodos", value: conv.periods?.length || 0 },
         { label: "Origen", value: dataOrigin === "mongodb" ? "MongoDB" : "Local" }
       ])}
+      ${renderCategoryGuide(conv, result)}
       ${body}
     </div>`;
   }
 
-  function renderUocraSummary(conv, result = null) {
-    const { period, zone, category } = currentSummaryContext(conv, result);
-    const value = selectedScaleAmount(conv, category, zone, period);
-    const snr = firstFinite(scaleCategoryRow(conv, category, zone)?.nonRemunerative, conv.nonRem?.[period]?.[zone?.id]?.[category?.id]) || 0;
-    const isMonthly = !!category?.monthly;
+  function renderUocraGuideScaleTable(conv, period, options = {}) {
+    const zoneId = options.zoneId || "A";
+    const periodLabel = conv.periods?.find((item) => item.id === period)?.label || monthLabel(period);
+    const headers = options.withSplitSnr
+      ? ["Categoria", "Jornal/dia", "Valor/hora", "Quincena 88hs", "SNR mensual", "SNR 1ra Q.", "SNR 2da Q."]
+      : ["Categoria", "Jornal/dia", "Valor/hora", "Quincena 88hs", "SNR mensual"];
+    const rows = (conv.categories || []).map((cat) => {
+      const scale = Number(conv.scales?.[period]?.[zoneId]?.[cat.id] || 0);
+      const snr = Number(conv.nonRem?.[period]?.[zoneId]?.[cat.id] || 0);
+      const hour = cat.monthly ? "-" : fmt(scale / 8);
+      const fortnight = cat.monthly ? "-" : fmt((scale / 8) * 88);
+      const base = cat.monthly ? `${fmt(scale)} mensual` : fmt(scale);
+      const row = [cat.label, base, hour, fortnight, fmt(snr)];
+      if (options.withSplitSnr) {
+        row.push(fmt(snr / 2), fmt(period === "mar26" ? snr : snr / 2));
+      }
+      return row;
+    });
+
+    return renderSummaryTable(`Zona ${zoneId} - ${periodLabel}`, headers, rows);
+  }
+
+  function renderUocraLegacySummary(conv) {
     return `
       <section class="summary-section summary-highlight">
         <h3>Lectura contable</h3>
@@ -1738,6 +1852,49 @@
         "Revisar si aplica vestimenta, altura u otros adicionales de tarea.",
         "Comparar SNR contra la escala aprobada del mes antes de cerrar."
       ])}
+    `;
+  }
+
+  function renderUocraSummary(conv) {
+    return `
+      <section class="summary-section summary-highlight uocra-guide-head">
+        <div>
+          <h3>Escalas salariales - Acuerdo 31/03/2026</h3>
+          <p>Jornales diarios. Valor hora = jornal / 8. Sereno: salario mensual. Vigencia hasta 31/05/2026.</p>
+        </div>
+        <span class="uocra-guide-badge">Vigente</span>
+      </section>
+      ${renderUocraGuideScaleTable(conv, "abr26", { zoneId: "A", withSplitSnr: true })}
+      ${renderUocraGuideScaleTable(conv, "mar26", { zoneId: "A" })}
+      ${renderUocraGuideScaleTable(conv, "may26", { zoneId: "A" })}
+      <div class="uocra-guide-grid">
+        ${renderSummaryTable("Aportes empleado", ["Concepto", "%", "Base"], [
+          ["Jubilacion SIPA", "11%", "Base SS"],
+          ["PAMI", "3%", "Base SS"],
+          ["Obra social OSMICON", "3%", "Rem + SNR"],
+          ["Cuota sindical UOCRA", "2,50%", "Remunerativo"],
+          ["Aporte solidario (abr-may 26)", "2,00%", "Remunerativo"],
+          ["Aporte UOCRA SS", "1,80%", "Remunerativo"],
+          ["ISTIC", "0,50%", "Remunerativo"]
+        ])}
+        ${renderSummaryTable("Contribuciones empleador", ["Concepto", "%", "Base"], [
+          ["Jubilacion empleador", "10,77%", "Base SS"],
+          ["PAMI empleador", "1,58%", "Base SS"],
+          ["Obra social empleador", "6%", "Rem + SNR"],
+          ["Asignaciones familiares", "4,70%", "Base SS"],
+          ["Fondo Nac. Empleo", "0,95%", "Base SS"],
+          ["Contribucion UOCRA", "2,30%", "Remunerativo"],
+          ["ISTIC empleador", "0,50%", "Remunerativo"],
+          ["Contrib. empresarial (abr-may)", "$6.000", "Por trabajador"],
+          ["ART variable", "2,50%", "Remunerativo"],
+          ["ART cuota fija", "$1.450", "Por mes"],
+          ["SCVO", "$424,62", "Por mes"]
+        ])}
+      </div>
+      <section class="summary-section summary-highlight">
+        <h3>Base SS</h3>
+        <p>Base SS = Remunerativo - $7.003,68 (Ley 27.430). Cuota sindical absorbe aporte solidario para afiliados.</p>
+      </section>
     `;
   }
 
