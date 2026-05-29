@@ -3484,6 +3484,57 @@
     }
   }
 
+  async function deleteConventionDraftsByStatus(status) {
+    const allowedStatuses = {
+      APROBADO: "aprobados",
+      RECHAZADO: "rechazados"
+    };
+    const label = allowedStatuses[status];
+    if (!label) return;
+
+    const drafts = conventionBuilderState.drafts.filter((draft) => draft.status === status);
+    if (!drafts.length) {
+      setConventionBuilderStatus(`No hay borradores ${label} para eliminar.`, "bad");
+      return;
+    }
+
+    const question = `Eliminar ${drafts.length} borrador${drafts.length === 1 ? "" : "es"} ${label} de la auditoria humana? Esta accion no se puede deshacer.`;
+    if (!confirm(question)) return;
+
+    const approvedButton = $("deleteApprovedDraftsBtn");
+    const rejectedButton = $("deleteRejectedDraftsBtn");
+    [approvedButton, rejectedButton].forEach((button) => {
+      if (button) button.disabled = true;
+    });
+    setConventionBuilderStatus(`Eliminando ${drafts.length} borrador${drafts.length === 1 ? "" : "es"} ${label}...`, "");
+
+    const results = await Promise.allSettled(
+      drafts.map((draft) => fetchJson(`/api/convention-drafts/${encodeURIComponent(draft.id)}`, { method: "DELETE" }))
+    );
+    const deletedIds = new Set(
+      results
+        .map((result, index) => result.status === "fulfilled" ? drafts[index].id : null)
+        .filter(Boolean)
+    );
+
+    if (conventionBuilderState.selected && deletedIds.has(conventionBuilderState.selected.id)) {
+      conventionBuilderState.selected = null;
+      renderConventionJsonEditor(null);
+    }
+
+    await loadConventionDrafts();
+    [approvedButton, rejectedButton].forEach((button) => {
+      if (button) button.disabled = false;
+    });
+
+    const failed = results.filter((result) => result.status === "rejected");
+    if (failed.length) {
+      setConventionBuilderStatus(`Se eliminaron ${deletedIds.size} y fallaron ${failed.length}. Revisar conexion/backend.`, "bad");
+      return;
+    }
+    setConventionBuilderStatus(`Se eliminaron ${deletedIds.size} borrador${deletedIds.size === 1 ? "" : "es"} ${label}.`, "ok");
+  }
+
   function updateConventionSelectsAfterCatalogReload(preferredId = "") {
     const selectedId = preferredId || str("convention", "camioneros");
     const conventionSelect = $("convention");
@@ -3542,6 +3593,8 @@
   function setupConventionBuilder() {
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
+    $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("APROBADO"));
+    $("deleteRejectedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("RECHAZADO"));
     $("conventionDraftList")?.addEventListener("click", (event) => {
       const deleteButton = event.target.closest("[data-delete-convention-draft-id]");
       if (deleteButton) {
