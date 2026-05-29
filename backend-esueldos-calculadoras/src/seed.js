@@ -1,24 +1,42 @@
 require("dotenv").config();
 
 const { getDb, closeDb } = require("./db");
-const { loadCatalogFromFrontend, normalizeCatalog } = require("./catalog-loader");
+const { loadCatalogFromBackend, loadCatalogFromFrontend, normalizeCatalog } = require("./catalog-loader");
+const { versionConstants, withConventionMetadata } = require("./domain/normative-versioning");
+
+function loadSeedCatalog() {
+  try {
+    return normalizeCatalog(loadCatalogFromBackend());
+  } catch (error) {
+    if (process.env.ALLOW_FRONTEND_CATALOG_FALLBACK === "true") {
+      return normalizeCatalog(loadCatalogFromFrontend());
+    }
+    throw error;
+  }
+}
 
 async function seedCatalog(db = null) {
   const ownsConnection = !db;
   const database = db || await getDb();
-  const catalog = normalizeCatalog(loadCatalogFromFrontend());
+  const catalog = loadSeedCatalog();
   const now = new Date();
 
   await database.collection("constants").replaceOne(
     { _id: "global" },
-    { _id: "global", ...catalog.constants, updatedAt: now },
+    {
+      _id: "global",
+      ...catalog.constants,
+      normativeVersions: versionConstants(catalog.constants),
+      updatedAt: now
+    },
     { upsert: true }
   );
 
   for (const [index, convention] of catalog.conventions.entries()) {
+    const versionedConvention = withConventionMetadata(convention);
     await database.collection("conventions").replaceOne(
       { _id: convention.id },
-      { _id: convention.id, order: index + 1, ...convention, updatedAt: now },
+      { _id: convention.id, order: index + 1, ...versionedConvention, updatedAt: now },
       { upsert: true }
     );
   }

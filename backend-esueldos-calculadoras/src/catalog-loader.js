@@ -2,6 +2,28 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function loadCatalogFromBackend() {
+  const catalogRoot = path.resolve(__dirname, "catalog");
+  const conventionsDir = path.join(catalogRoot, "conventions");
+  const conventions = {};
+  const constants = readJson(path.join(catalogRoot, "constants.json"));
+  const legalReferences = readJson(path.join(catalogRoot, "legal-references.json"));
+
+  fs.readdirSync(conventionsDir)
+    .filter((fileName) => fileName.endsWith(".json"))
+    .sort()
+    .forEach((fileName) => {
+      const convention = readJson(path.join(conventionsDir, fileName));
+      conventions[convention.id] = convention;
+    });
+
+  return { constants, conventions, legalReferences };
+}
+
 function loadCatalogFromFrontend() {
   const dataPath = path.resolve(__dirname, "../../frontend-esueldos-calculadoras/data.js");
   const source = fs.readFileSync(dataPath, "utf8");
@@ -26,6 +48,7 @@ function normalizeCatalog(catalog) {
 }
 
 module.exports = {
+  loadCatalogFromBackend,
   loadCatalogFromFrontend,
   normalizeCatalog
 };

@@ -1,7 +1,6 @@
 require("dotenv").config();
 
 const express = require("express");
-const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
@@ -11,6 +10,12 @@ const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
 const { extractConventionFromPdfs, tryBuildLocalConventionFallback, normalizeConvention, GeminiConventionError } = require("./convention-ai");
+const { configureSecurity } = require("./middleware/security");
+const { escapeRegex } = require("./middleware/validate");
+const { calculatePayroll } = require("./domain/payroll-engine");
+const { authMiddleware, requireAuth, requireAuthWhenEnabled, requireRole } = require("./middleware/auth");
+const { authenticateUser, createUser, ensureUserIndexes } = require("./services/auth-service");
+const { calculationInputSchema, employeeWriteSchema, liquidationResultSchema, loginSchema, savedLiquidationSchema, userCreateSchema, userUpdateSchema, parseOrThrow } = require("./domain/schemas");
 
 const app = express();
 const port = Number(process.env.PORT || 4100);
@@ -19,6 +24,8 @@ const frontendDir = path.resolve(backendRoot, process.env.FRONTEND_DIR || "../fr
 const uploadRoot = path.join(backendRoot, "uploads");
 const scaleUploadDir = path.join(uploadRoot, "scales");
 const conventionUploadDir = path.join(uploadRoot, "conventions");
+const scaleUploadMaxBytes = Number(process.env.UPLOAD_SCALE_MAX_MB || 20) * 1024 * 1024;
+const conventionUploadMaxBytes = Number(process.env.UPLOAD_CONVENTION_MAX_MB || 25) * 1024 * 1024;
 
 function safeFileName(name) {
   return String(name || "escala.pdf")
@@ -39,7 +46,7 @@ const scaleUpload = multer({
       cb(null, `${Date.now()}-${safeFileName(file.originalname)}`);
     }
   }),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: scaleUploadMaxBytes },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf" || /\.pdf$/i.test(file.originalname)) {
       cb(null, true);
@@ -59,7 +66,7 @@ const conventionUpload = multer({
       cb(null, `${Date.now()}-${safeFileName(file.originalname)}`);
     }
   }),
-  limits: { fileSize: 25 * 1024 * 1024, files: 2 },
+  limits: { fileSize: conventionUploadMaxBytes, files: 2 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf" || /\.pdf$/i.test(file.originalname)) {
       cb(null, true);
@@ -69,8 +76,9 @@ const conventionUpload = multer({
   }
 });
 
-app.use(cors());
+configureSecurity(app);
 app.use(express.json({ limit: "2mb" }));
+app.use(authMiddleware(() => db));
 app.use("/uploads", express.static(uploadRoot));
 
 let db;
@@ -123,6 +131,11 @@ async function ensureScaleIndexes() {
   await db.collection("conventionDrafts").createIndex({ "parsedConvention.id": 1 });
   await db.collection("liquidationAudits").createIndex({ createdAt: -1 });
   await db.collection("liquidationAudits").createIndex({ conventionId: 1, period: 1, createdAt: -1 });
+  await db.collection("employees").createIndex({ legajo: 1 }, { unique: true });
+  await db.collection("employees").createIndex({ name: "text" });
+  await db.collection("employees").createIndex({ conventionId: 1, name: 1 });
+  await db.collection("liquidations").createIndex({ convention: 1, period: 1, createdAt: -1 });
+  await ensureUserIndexes(db);
 }
 
 function periodIdToMonth(periodId) {
@@ -495,6 +508,99 @@ app.get("/api/health", async (req, res) => {
   } catch (error) {
     res.status(503).json({ ok: false, mongo: false, error: error.message });
   }
+});
+
+app.post("/api/auth/bootstrap-admin", async (req, res, next) => {
+  try {
+    const count = await db.collection("users").countDocuments();
+    if (count > 0) {
+      res.status(409).json({ error: "Ya existen usuarios. Crea nuevos usuarios con un admin autenticado." });
+      return;
+    }
+    const payload = parseOrThrow(userCreateSchema.extend({ role: userCreateSchema.shape.role.default("admin") }), {
+      ...req.body,
+      role: "admin"
+    }, "Usuario admin invalido");
+    const user = await createUser(db, payload);
+    const login = await authenticateUser(db, { email: payload.email, password: payload.password });
+    res.status(201).json({ user: login.user || { id: user._id.toString(), email: user.email, name: user.name, role: user.role }, token: login.token });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/auth/status", async (req, res, next) => {
+  try {
+    const usersCount = await db.collection("users").countDocuments();
+    res.json({
+      hasUsers: usersCount > 0,
+      authRequired: process.env.AUTH_REQUIRED === "true"
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/login", async (req, res, next) => {
+  try {
+    const payload = parseOrThrow(loginSchema, req.body, "Credenciales invalidas");
+    res.json(await authenticateUser(db, payload));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/auth/me", requireAuth, async (req, res) => {
+  res.json({ user: req.user });
+});
+
+app.get("/api/users", requireRole("admin"), async (req, res, next) => {
+  try {
+    const docs = await db.collection("users").find({}, {
+      projection: { passwordHash: 0 }
+    }).sort({ createdAt: -1 }).limit(200).toArray();
+    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/users", requireRole("admin"), async (req, res, next) => {
+  try {
+    const payload = parseOrThrow(userCreateSchema, req.body, "Usuario invalido");
+    const user = await createUser(db, payload);
+    res.status(201).json({ id: user._id.toString(), email: user.email, name: user.name, role: user.role, active: user.active });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/users/:id", requireRole("admin"), async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ error: "ID invalido" });
+      return;
+    }
+    const payload = parseOrThrow(userUpdateSchema, req.body, "Usuario invalido");
+    const result = await db.collection("users").findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { ...payload, updatedAt: new Date() } },
+      { returnDocument: "after", projection: { passwordHash: 0 } }
+    );
+    if (!result) {
+      res.status(404).json({ error: "Usuario no encontrado" });
+      return;
+    }
+    const { _id, ...doc } = result;
+    res.json({ id: _id.toString(), ...doc });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use("/api", (req, res, next) => {
+  if (req.method === "GET" || req.path.startsWith("/auth/")) return next();
+  return requireAuthWhenEnabled(req, res, next);
 });
 
 app.get("/api/catalog", async (req, res, next) => {
@@ -1268,13 +1374,26 @@ app.get("/api/liquidations/:id", async (req, res, next) => {
   }
 });
 
+app.post("/api/liquidations/calculate", async (req, res, next) => {
+  try {
+    const payload = parseOrThrow(calculationInputSchema, req.body, "Datos de liquidacion invalidos");
+    const catalog = await getCatalogPayload();
+    const activeDoc = await findActiveScale(payload.conventionId, payload.period);
+    const result = calculatePayroll({
+      catalog,
+      payload,
+      activeScale: serializeScale(activeDoc)
+    });
+    const checkedResult = parseOrThrow(liquidationResultSchema, result, "Resultado de liquidacion invalido");
+    res.json(checkedResult);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/liquidations", async (req, res, next) => {
   try {
-    const payload = req.body || {};
-    if (!payload.convention || !payload.period || !payload.totals) {
-      res.status(400).json({ error: "Faltan convention, period o totals" });
-      return;
-    }
+    const payload = parseOrThrow(savedLiquidationSchema, req.body, "Liquidacion invalida");
 
     const now = new Date();
     const doc = {
@@ -1309,12 +1428,11 @@ app.delete("/api/liquidations/:id", async (req, res, next) => {
 
 app.get("/api/employees/next-legajo", async (req, res, next) => {
   try {
-    const docs = await db.collection("employees").find({}).toArray();
-    let max = 0;
-    docs.forEach(emp => {
+    const docs = await db.collection("employees").find({}, { projection: { legajo: 1 } }).toArray();
+    const max = docs.reduce((current, emp) => {
       const num = parseInt(emp.legajo, 10);
-      if (!isNaN(num) && num > max) max = num;
-    });
+      return !Number.isNaN(num) && num > current ? num : current;
+    }, 0);
     const nextLegajo = String(max + 1).padStart(3, "0");
     res.json({ nextLegajo });
   } catch (error) {
@@ -1330,9 +1448,8 @@ app.get("/api/employees/search", async (req, res, next) => {
       return;
     }
 
-    const filter = {
-      name: { $regex: q, $options: "i" }
-    };
+    const safeQuery = escapeRegex(String(q).slice(0, 80));
+    const filter = { name: { $regex: safeQuery, $options: "i" } };
     if (conventionId && conventionId !== "null" && conventionId !== "undefined") {
       filter.conventionId = conventionId;
     }
@@ -1369,11 +1486,7 @@ app.get("/api/employees/:legajo", async (req, res, next) => {
 
 app.post("/api/employees", async (req, res, next) => {
   try {
-    const payload = req.body || {};
-    if (!payload.legajo || !payload.name) {
-      res.status(400).json({ error: "Faltan legajo o nombre" });
-      return;
-    }
+    const payload = parseOrThrow(employeeWriteSchema, req.body, "Empleado invalido");
 
     const existing = await db.collection("employees").findOne({ legajo: payload.legajo });
     if (existing) {
@@ -1401,7 +1514,7 @@ app.put("/api/employees/:id", async (req, res, next) => {
       res.status(400).json({ error: "ID invalido" });
       return;
     }
-    const payload = req.body || {};
+    const payload = parseOrThrow(employeeWriteSchema.partial().passthrough(), req.body, "Empleado invalido");
     const { id, _id, ...updateData } = payload;
 
     const result = await db.collection("employees").findOneAndUpdate(
@@ -1477,7 +1590,10 @@ app.use((error, req, res, next) => {
     });
     return;
   }
-  res.status(error.status || 500).json({ error: error.message || "Error interno" });
+  res.status(error.status || 500).json({
+    error: error.message || "Error interno",
+    ...(error.details ? { details: error.details } : {})
+  });
 });
 
 async function start() {
@@ -1496,8 +1612,20 @@ process.on("SIGINT", async () => {
   process.exit(0);
 });
 
-start().catch(async (error) => {
-  console.error("No se pudo iniciar el backend:", error.message);
-  await closeDb();
-  process.exit(1);
-});
+function setDbForTest(testDb) {
+  db = testDb;
+}
+
+if (require.main === module) {
+  start().catch(async (error) => {
+    console.error("No se pudo iniciar el backend:", error.message);
+    await closeDb();
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  app,
+  setDbForTest,
+  start
+};
