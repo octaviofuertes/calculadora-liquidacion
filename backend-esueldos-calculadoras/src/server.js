@@ -1346,6 +1346,40 @@ app.get("/api/conventions/:id", async (req, res, next) => {
   }
 });
 
+app.delete("/api/conventions/:id", async (req, res, next) => {
+  try {
+    const conventionId = String(req.params.id || "").trim();
+    if (!conventionId) {
+      res.status(400).json({ error: "Falta id de convenio" });
+      return;
+    }
+
+    const convention = await db.collection("conventions").findOne({ id: conventionId });
+    if (!convention) {
+      res.status(404).json({ error: "Convenio no encontrado" });
+      return;
+    }
+
+    const totalConventions = await db.collection("conventions").countDocuments();
+    if (totalConventions <= 1) {
+      res.status(409).json({ error: "No se puede borrar el ultimo convenio disponible." });
+      return;
+    }
+
+    const conventionResult = await db.collection("conventions").deleteOne({ id: conventionId });
+    const scalesResult = await db.collection("salaryScales").deleteMany({ conventionId });
+
+    res.json({
+      ok: true,
+      deletedConventionId: conventionId,
+      deletedScales: scalesResult.deletedCount || 0,
+      deletedCount: conventionResult.deletedCount || 0
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/liquidations", async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit || 50), 200);
