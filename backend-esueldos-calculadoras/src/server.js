@@ -901,6 +901,29 @@ app.post("/api/convention-drafts/:id/reject", async (req, res, next) => {
   }
 });
 
+app.delete("/api/convention-drafts/:id", async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ error: "ID invalido" });
+      return;
+    }
+    const id = new ObjectId(req.params.id);
+    const draft = await db.collection("conventionDrafts").findOne({ _id: id });
+    if (!draft) {
+      res.status(404).json({ error: "Borrador no encontrado" });
+      return;
+    }
+    if (!["APROBADO", "RECHAZADO"].includes(draft.status)) {
+      res.status(409).json({ error: "Solo se pueden eliminar borradores aprobados o rechazados." });
+      return;
+    }
+    await db.collection("conventionDrafts").deleteOne({ _id: id });
+    res.json({ ok: true, id: req.params.id, status: draft.status });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/scales", async (req, res, next) => {
   try {
     const filter = {};

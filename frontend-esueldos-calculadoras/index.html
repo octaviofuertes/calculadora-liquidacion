@@ -284,6 +284,14 @@
               <div>
                 <h3>Auditor&iacute;a humana del JSON</h3>
                 <p>Edit&aacute; el JSON si hace falta. Al aprobar, aparece autom&aacute;ticamente en Sueldos.</p>
+                <div class="convention-bulk-actions" aria-label="Acciones masivas de auditoria">
+                  <button class="convention-bulk-delete is-approved" id="deleteApprovedDraftsBtn" type="button">
+                    Eliminar todos los aprobados
+                  </button>
+                  <button class="convention-bulk-delete is-rejected" id="deleteRejectedDraftsBtn" type="button">
+                    Eliminar todos los rechazados
+                  </button>
+                </div>
               </div>
             </div>
             <div id="conventionDraftList" class="scale-audit-list convention-draft-list"></div>
