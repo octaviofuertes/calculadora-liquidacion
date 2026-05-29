@@ -3292,13 +3292,25 @@
     list.innerHTML = items.map((draft) => {
       const conv = draft.parsedConvention || {};
       const statusClass = draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : "";
-      return `<button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
-        <span>
-          <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
-          <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
-        </span>
-        <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
-      </button>`;
+      const canDelete = ["APROBADO", "RECHAZADO"].includes(draft.status);
+      return `<div class="convention-draft-row ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}">
+        <button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
+          <span>
+            <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
+            <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
+          </span>
+          <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
+        </button>
+        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4h8v2"></path>
+            <path d="M19 6l-1 14H6L5 6"></path>
+            <path d="M10 11v5"></path>
+            <path d="M14 11v5"></path>
+          </svg>
+        </button>` : ""}
+      </div>`;
     }).join("");
     if (!conventionBuilderState.selected || !items.some((item) => item.id === conventionBuilderState.selected.id)) {
       renderConventionJsonEditor(null);
@@ -3341,7 +3353,16 @@
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar JSON</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${draft.status === "APROBADO" ? "disabled" : ""}>Guardar JSON</button>
       ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
-      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
+      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : `<button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4h8v2"></path>
+          <path d="M19 6l-1 14H6L5 6"></path>
+          <path d="M10 11v5"></path>
+          <path d="M14 11v5"></path>
+        </svg>
+        Eliminar
+      </button>`}
     </div>
     <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
 
@@ -3349,6 +3370,7 @@
     $("saveConventionJsonBtn")?.addEventListener("click", saveConventionDraftJson);
     $("approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
     $("rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
+    $("deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
   }
 
   function parseConventionJsonEditor() {
@@ -3439,6 +3461,29 @@
     }
   }
 
+  async function deleteConventionDraft(id) {
+    const draft = conventionBuilderState.drafts.find((item) => item.id === id)
+      || (conventionBuilderState.selected?.id === id ? conventionBuilderState.selected : null);
+    const status = conventionDraftStatusLabel(draft?.status);
+    if (!draft || !["APROBADO", "RECHAZADO"].includes(draft.status)) {
+      setConventionBuilderStatus("Solo se pueden eliminar borradores aprobados o rechazados.", "bad");
+      return;
+    }
+    const name = draft.parsedConvention?.shortName || draft.parsedConvention?.name || draft.name || "este borrador";
+    if (!confirm(`Eliminar ${name} (${status}) de la auditoria humana? Esta accion no se puede deshacer.`)) return;
+    try {
+      await fetchJson(`/api/convention-drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (conventionBuilderState.selected?.id === id) {
+        conventionBuilderState.selected = null;
+        renderConventionJsonEditor(null);
+      }
+      await loadConventionDrafts();
+      setConventionBuilderStatus(`Borrador ${status.toLowerCase()} eliminado.`, "ok");
+    } catch (error) {
+      setConventionBuilderStatus(error.message, "bad");
+    }
+  }
+
   function updateConventionSelectsAfterCatalogReload(preferredId = "") {
     const selectedId = preferredId || str("convention", "camioneros");
     const conventionSelect = $("convention");
@@ -3498,6 +3543,13 @@
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
     $("conventionDraftList")?.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-delete-convention-draft-id]");
+      if (deleteButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteConventionDraft(deleteButton.dataset.deleteConventionDraftId);
+        return;
+      }
       const button = event.target.closest("[data-convention-draft-id]");
       if (button) selectConventionDraft(button.dataset.conventionDraftId);
     });
