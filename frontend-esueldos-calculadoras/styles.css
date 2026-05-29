@@ -1470,27 +1470,37 @@ p {
 }
 
 .convention-draft-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 8px;
-  align-items: stretch;
+  position: relative;
+  display: block;
+  min-width: 0;
 }
 
 .convention-draft-row .scale-audit-item {
   width: 100%;
+  min-height: 72px;
+  padding-right: 42px;
+  padding-bottom: 42px;
 }
 
 .convention-draft-row:not(:has(.convention-draft-trash)) {
-  grid-template-columns: 1fr;
+  display: block;
 }
 
 .convention-draft-trash {
+  position: absolute;
+  top: auto;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
   display: inline-grid;
-  min-width: 42px;
-  min-height: 42px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
   place-items: center;
   border: 1px solid rgba(225, 29, 72, 0.28);
-  border-radius: 14px;
+  border-radius: 9px;
   background: #fff1f2;
   color: #be123c;
   cursor: pointer;
@@ -1501,8 +1511,8 @@ p {
 }
 
 .convention-draft-trash svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -1520,10 +1530,13 @@ p {
 }
 
 .convention-draft-trash.is-inline {
+  position: static;
   display: inline-flex;
   gap: 8px;
+  width: auto;
   min-height: 42px;
   padding: 0 14px;
+  border-radius: 14px;
 }
 
 .scale-editor {
