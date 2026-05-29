@@ -308,6 +308,16 @@
               <span></span>
             </div>
             <span class="use-btn"><span>Usar este convenio</span><span aria-hidden="true">&gt;</span></span>
+            <button class="convention-delete-btn" type="button" data-delete-convention-id="${escapeHtml(conv.id)}" aria-label="Borrar convenio ${escapeHtml(meta.title)}">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+                <path d="M6 7l1 14h10l1-14" />
+                <path d="M9 7V4h6v3" />
+              </svg>
+              <span>Borrar</span>
+            </button>
           </div>
         </article>`;
       })
@@ -315,6 +325,13 @@
 
     // Usar delegación de eventos para evitar re-registro en cada updateConvention()
     container.onclick = (e) => {
+      const deleteButton = e.target.closest("[data-delete-convention-id]");
+      if (deleteButton) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteConvention(deleteButton.dataset.deleteConventionId);
+        return;
+      }
       const card = e.target.closest(".convention-card");
       if (card) {
         e.preventDefault();
@@ -322,6 +339,7 @@
       }
     };
     container.onkeydown = (e) => {
+      if (e.target.closest("[data-delete-convention-id]")) return;
       if (e.key === "Enter" || e.key === " ") {
         const card = e.target.closest(".convention-card");
         if (card) {
@@ -330,6 +348,30 @@
         }
       }
     };
+  }
+
+  async function deleteConvention(id) {
+    const conv = DATA.conventions[id];
+    if (!conv) return;
+    const name = conv.shortName || conv.name || id;
+    const confirmed = window.confirm(`¿Seguro que queres borrar el convenio "${name}"?\n\nSe eliminara del listado y tambien se borraran sus escalas cargadas. Esta accion no borra empleados ni liquidaciones historicas.`);
+    if (!confirmed) return;
+    const finalConfirmed = window.confirm(`Confirmacion final:\n\n¿Borrar definitivamente "${name}" y sus escalas asociadas?`);
+    if (!finalConfirmed) return;
+
+    try {
+      await fetchJson(`/api/conventions/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await loadCatalog();
+      const currentId = str("convention");
+      const fallbackId = DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions)[0];
+      updateConventionSelectsAfterCatalogReload(currentId === id ? fallbackId : currentId);
+      renderConventionCards();
+      syncScaleConvention();
+      await refreshActiveScaleContext();
+      if ($("scaleConvention")) await loadScaleDashboard();
+    } catch (error) {
+      window.alert(`No se pudo borrar el convenio: ${error.message}`);
+    }
   }
 
   function chooseConvention(id) {
