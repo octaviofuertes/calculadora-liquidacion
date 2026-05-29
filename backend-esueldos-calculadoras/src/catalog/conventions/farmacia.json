@@ -1,0 +1,147 @@
+{
+  "id": "farmacia",
+  "name": "Farmacia Mendoza - CCT 429/2005",
+  "shortName": "Farmacia Mendoza",
+  "source": "CON-CCT-429-2005-A y Escala Abril 2026",
+  "type": "monthly",
+  "periods": [
+    {
+      "id": "abr26",
+      "label": "Abril 2026"
+    },
+    {
+      "id": "may26",
+      "label": "Mayo 2026"
+    },
+    {
+      "id": "jun26",
+      "label": "Junio 2026"
+    }
+  ],
+  "zones": [
+    {
+      "id": "mendoza",
+      "label": "Ambito Mendoza",
+      "coef": 1
+    }
+  ],
+  "categories": [
+    {
+      "id": "inicialA",
+      "label": "Categoria inicial A",
+      "monthly": 1235927.54,
+      "nonRem": {
+        "abr26": 18538.91,
+        "may26": 43257.46,
+        "jun26": 67976.01
+      }
+    },
+    {
+      "id": "inicialB",
+      "label": "Categoria inicial B",
+      "monthly": 1235927.54,
+      "nonRem": {
+        "abr26": 18538.91,
+        "may26": 43257.46,
+        "jun26": 67976.01
+      }
+    },
+    {
+      "id": "cajeroPerfAdmin",
+      "label": "Cajero, perfumeria y administrativo",
+      "monthly": 1295795.44,
+      "nonRem": {
+        "abr26": 19436.93,
+        "may26": 45352.84,
+        "jun26": 71268.75
+      }
+    },
+    {
+      "id": "empleadoFarmacia",
+      "label": "Empleado de farmacia",
+      "monthly": 1377859.74,
+      "nonRem": {
+        "abr26": 20667.9,
+        "may26": 48225.09,
+        "jun26": 75782.29
+      }
+    },
+    {
+      "id": "empleadoEspFarmacia",
+      "label": "Empleado especializado de farmacia",
+      "monthly": 1685798.71,
+      "nonRem": {
+        "abr26": 25286.98,
+        "may26": 59002.95,
+        "jun26": 92718.93
+      }
+    },
+    {
+      "id": "farmaceutico",
+      "label": "Farmaceutico",
+      "monthly": 1880921.45,
+      "nonRem": {
+        "abr26": 28213.82,
+        "may26": 65832.25,
+        "jun26": 103450.68
+      }
+    }
+  ],
+  "additionals": {
+    "tituloFarmaceutico": {
+      "label": "Adicional titulo farmaceutico",
+      "monthly": 556167.39,
+      "nonRem": {
+        "abr26": 8342.51,
+        "may26": 19465.86,
+        "jun26": 30589.21
+      }
+    },
+    "adscripcion": {
+      "label": "Adicional adscripcion",
+      "monthly": 383137.54,
+      "nonRem": {
+        "abr26": 5747.06,
+        "may26": 13409.81,
+        "jun26": 21072.56
+      }
+    },
+    "bloqueo": {
+      "label": "Adicional bloqueo direccion tecnica",
+      "monthly": 988742.04,
+      "nonRem": {
+        "abr26": 14831.13,
+        "may26": 34605.97,
+        "jun26": 54380.81
+      }
+    }
+  },
+  "rules": {
+    "weeklyHours": 45,
+    "insalubreWeeklyHours": 33,
+    "insalubrePaidWeeklyHours": 45,
+    "dayDivisor": 30,
+    "vacationDivisor": 25,
+    "hourDivisor": 200,
+    "nightPct": 100,
+    "cajeroPct": 10,
+    "tareasAdministrativasPct": 5,
+    "adminTenurePctInitial": 5,
+    "adminTenurePctOver2Years": 10,
+    "perfumeriaPct": 10,
+    "bikePct": 10,
+    "languagePct": 10,
+    "auxTitlePct": 20,
+    "fallaCajaPct": 10,
+    "adefSolidarityPct": 2,
+    "unionPct": 2,
+    "cajaCompensadoraPct": 1,
+    "proEdificioPct": 1,
+    "pharmacyEmployeeDay": "6 de septiembre"
+  },
+  "extraordinaryContribution": {
+    "abr26": 7479.52,
+    "may26": 7626.9,
+    "jun26": 7774.28
+  }
+}

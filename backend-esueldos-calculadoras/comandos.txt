@@ -1,0 +1,182 @@
+COMANDOS BÁSICOS DE GIT PARA RAMAS
+
+1. VER EN QUÉ RAMA ESTOY
+
+git branch
+
+2. VER TODAS LAS RAMAS LOCALES Y REMOTAS
+
+git branch -a
+
+
+3. VER SOLO LAS RAMAS REMOTAS
+
+git branch -r
+
+4. ACTUALIZAR LA INFORMACIÓN DE RAMAS REMOTAS
+
+git fetch
+
+Este comando trae la información actualizada del repositorio remoto, sin modificar tu código local.
+
+5. CAMBIARME A OTRA RAMA LOCAL
+
+git switch nombre-de-la-rama
+
+
+7. VER EL ESTADO DE MIS CAMBIOS
+
+git status
+
+Sirve para ver si hay archivos modificados, agregados o pendientes de commit.
+
+8. AGREGAR CAMBIOS PARA GUARDARLOS EN UN COMMIT
+
+git add .
+
+Agrega todos los archivos modificados.
+
+
+9. CREAR UN COMMIT CON MIS CAMBIOS
+
+git commit -m "mensaje del cambio"
+
+
+10. SUBIR MIS CAMBIOS A MI RAMA REMOTA
+
+git push origin nombre-de-mi-rama
+
+Ejemplo:
+git push origin Franco
+
+Esto sube los cambios de tu rama local Franco a la rama remota Franco.
+
+11. TRAER CAMBIOS ACTUALIZADOS DE UNA RAMA REMOTA
+
+git pull origin nombre-de-la-rama
+
+Ejemplo:
+git pull origin test
+
+Esto trae los cambios de la rama test remota hacia la rama en la que estás parado.
+
+12. PASAR LOS CAMBIOS DE MI RAMA A OTRA RAMA
+
+Primero guardo mis cambios en mi rama:
+
+git status
+git add .
+git commit -m "mensaje del cambio"
+
+Después me cambio a la rama destino:
+
+git switch nombre-rama-destino
+
+Ejemplo:
+git switch test
+
+Luego traigo los cambios de mi rama hacia la rama destino:
+
+git merge nombre-de-mi-rama
+
+Ejemplo:
+git merge Franco
+
+Finalmente subo la rama destino actualizada:
+
+git push origin nombre-rama-destino
+
+Ejemplo:
+git push origin test
+
+13. EJEMPLO COMPLETO: PASAR CAMBIOS DE FRANCO A TEST
+
+Estando en la rama Franco:
+
+git status
+git add .
+git commit -m "Cambios realizados en calculadora"
+
+Cambiar a la rama test:
+
+git switch test
+
+Actualizar test:
+
+git pull origin test
+
+Unir los cambios de Franco en test:
+
+git merge Franco
+
+Subir test actualizado:
+
+git push origin test
+
+14. SI HAY CONFLICTOS EN EL MERGE
+
+Git va a indicar qué archivos tienen conflictos.
+
+Después de corregirlos manualmente:
+
+git add .
+git commit -m "Resuelvo conflictos"
+git push origin nombre-rama-destino
+
+15. VER EL HISTORIAL DE COMMITS
+
+git log --oneline
+
+Muestra los commits de forma resumida.
+
+16. CREAR UNA RAMA NUEVA
+
+git switch -c nombre-nueva-rama
+
+Ejemplo:
+git switch -c nueva-funcionalidad
+
+17. ELIMINAR UNA RAMA LOCAL
+
+git branch -d nombre-de-la-rama
+
+Ejemplo:
+git branch -d test
+
+18. ELIMINAR UNA RAMA REMOTA
+
+git push origin --delete nombre-de-la-rama
+
+Ejemplo:
+git push origin --delete test
+
+RESUMEN RÁPIDO
+
+Ver ramas:
+git branch -a
+
+Cambiar de rama:
+git switch nombre-rama
+
+Actualizar ramas remotas:
+git fetch
+
+Ver estado:
+git status
+
+Agregar cambios:
+git add .
+
+Crear commit:
+git commit -m "mensaje"
+
+Subir cambios:
+git push origin nombre-rama
+
+Traer cambios:
+git pull origin nombre-rama
+
+Pasar cambios de una rama a otra:
+git switch rama-destino
+git merge rama-origen
+git push origin rama-destino

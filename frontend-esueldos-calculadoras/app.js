@@ -60,6 +60,9 @@
   };
 
   function getApiBase() {
+    if (window.eSueldosApiClient?.baseUrl !== undefined) {
+      return window.eSueldosApiClient.baseUrl;
+    }
     if (typeof window.ESUELDOS_API_URL === "string") {
       return window.ESUELDOS_API_URL.replace(/\/$/, "");
     }
@@ -73,7 +76,22 @@
   }
 
   function apiUrl(path) {
+    if (window.eSueldosApiClient?.url) return window.eSueldosApiClient.url(path);
     return `${API_BASE}${path}`;
+  }
+
+  function authHeaders(extra = {}) {
+    const headers = { ...extra };
+    const token = window.eSueldosAuth?.getStoredToken?.();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+
+  function authFetch(path, options = {}) {
+    return fetch(apiUrl(path), {
+      ...options,
+      headers: authHeaders(options.headers || {})
+    });
   }
 
   async function fetchCatalog() {
@@ -1504,7 +1522,285 @@
     };
   }
 
-  function calculate() {
+  function buildBackendCalculationPayload() {
+    const conv = getConvention();
+    const inputs = {};
+    document.querySelectorAll("#payrollForm input, #payrollForm select").forEach((el) => {
+      if (!el.id || ["convention", "period", "category", "zone"].includes(el.id)) return;
+      if (el.type === "checkbox") inputs[el.id] = el.checked;
+      else inputs[el.id] = el.value;
+    });
+    return {
+      conventionId: conv.id,
+      period: getPeriod(conv),
+      categoryId: getCategory(conv).id,
+      zoneId: getZone(conv).id,
+      employee: {
+        legajo: str("employeeLegajo", ""),
+        name: str("employeeName", "Sin nombre") || "Sin nombre",
+        cuil: str("employeeCuil", "-") || "-",
+        entryDate: str("entryDate", "") || "",
+        civilStatus: str("civilStatus", "soltero")
+      },
+      inputs,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  function authUser() {
+    const user = window.eSueldosAuth?.getStoredUser?.() || null;
+    if (!user || !user.email || !user.role || !window.eSueldosAuth?.getStoredToken?.()) return null;
+    return user;
+  }
+
+  function setAuthStatus(message = "", tone = "") {
+    const status = $("authStatus");
+    if (!status) return;
+    status.textContent = message;
+    status.className = `auth-status ${tone}`.trim();
+  }
+
+  function renderAuthState() {
+    const user = authUser();
+    const avatar = $("authAvatarBtn");
+    const sessionBox = $("authSessionBox");
+    const loginForm = $("authLoginForm");
+    const name = $("authSessionName");
+    const role = $("authSessionRole");
+    const adminBox = $("userAdminBox");
+    if (avatar) {
+      avatar.textContent = user?.name
+        ? user.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()
+        : "?";
+      avatar.title = user ? `${user.name} (${user.role})` : "Iniciar sesion";
+    }
+    if (sessionBox && loginForm) {
+      sessionBox.hidden = !user;
+      loginForm.hidden = !!user;
+    }
+    if (name) name.textContent = user?.name || "Usuario";
+    if (role) role.textContent = user?.role || "";
+    if (adminBox) {
+      adminBox.hidden = user?.role !== "admin";
+      if (user?.role === "admin") loadUsers();
+    }
+  }
+
+  async function refreshAuthStatus() {
+    const notice = $("authModeNotice");
+    const bootstrap = $("authBootstrapBtn");
+    const login = $("authLoginBtn");
+    const title = $("authModalTitle");
+    const copy = $("authModalCopy");
+    try {
+      const status = await fetchJson("/api/auth/status");
+      if (status.hasUsers) {
+        if (title) title.textContent = "Iniciar sesion";
+        if (copy) copy.textContent = "Ya hay usuarios creados. Ingresá con un usuario admin, auditor u operador.";
+        if (notice) {
+          notice.className = "auth-mode-notice info";
+          notice.innerHTML = "Ya existe al menos un usuario. Si no recordás la contraseña del admin, hay que resetearla desde MongoDB.";
+        }
+        if (bootstrap) bootstrap.hidden = true;
+        if (login) {
+          login.textContent = "Iniciar sesion";
+          login.hidden = false;
+        }
+      } else {
+        if (title) title.textContent = "Primer acceso";
+        if (copy) copy.textContent = "Todavía no hay usuarios. Creá el primer administrador con email y contraseña.";
+        if (notice) {
+          notice.className = "auth-mode-notice setup";
+          notice.innerHTML = "No hay usuarios en la tabla <strong>users</strong>. Usá este formulario para crear el primer admin.";
+        }
+        if (bootstrap) {
+          bootstrap.hidden = false;
+          bootstrap.textContent = "Crear primer admin";
+        }
+        if (login) {
+          login.textContent = "Crear primer admin";
+          login.hidden = true;
+        }
+      }
+    } catch (error) {
+      if (notice) {
+        notice.className = "auth-mode-notice bad";
+        notice.textContent = "No pude consultar el estado de usuarios. Verificá que el backend esté iniciado.";
+      }
+      if (bootstrap) bootstrap.hidden = true;
+      if (login) login.hidden = false;
+    }
+  }
+
+  function openAuthModal() {
+    renderAuthState();
+    setAuthStatus("");
+    refreshAuthStatus();
+    const modal = $("authModal");
+    if (modal) modal.style.display = "flex";
+  }
+
+  function closeAuthModal() {
+    const modal = $("authModal");
+    if (modal) modal.style.display = "none";
+  }
+
+  async function submitAuth(path, successMessage) {
+    const email = str("authEmail").trim();
+    const password = str("authPassword");
+    if (!email || !password) {
+      setAuthStatus("Completá email y contraseña.", "bad");
+      return;
+    }
+    setAuthStatus("Validando credenciales...");
+    try {
+      const payload = await fetchJson(path, {
+        method: "POST",
+        body: JSON.stringify({ email, password, name: email.split("@")[0] })
+      });
+      window.eSueldosAuth?.storeToken?.(payload.token);
+      window.eSueldosAuth?.storeUser?.(payload.user);
+      renderAuthState();
+      setAuthStatus(successMessage, "ok");
+      window.setTimeout(closeAuthModal, 800);
+    } catch (error) {
+      if (path.includes("bootstrap-admin") && /Ya existen usuarios/i.test(error.message || "")) {
+        await refreshAuthStatus();
+      }
+      setAuthStatus(error.message || "No se pudo iniciar sesion.", "bad");
+    }
+  }
+
+  function renderUsers(users = []) {
+    const target = $("usersList");
+    if (!target) return;
+    if (!users.length) {
+      target.className = "users-list empty-state";
+      target.innerHTML = "Todavia no hay usuarios para mostrar.";
+      return;
+    }
+    target.className = "users-list";
+    target.innerHTML = `<table class="users-table">
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
+      <tbody>${users.map((user) => `<tr>
+        <td>${escapeHtml(user.name || "-")}</td>
+        <td>${escapeHtml(user.email || "-")}</td>
+        <td>${escapeHtml(user.role || "-")}</td>
+        <td>${user.active === false ? "Inactivo" : "Activo"}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+
+  async function loadUsers() {
+    if (authUser()?.role !== "admin") return;
+    try {
+      renderUsers(await fetchJson("/api/users"));
+    } catch (error) {
+      const target = $("usersList");
+      if (target) {
+        target.className = "users-list empty-state";
+        target.innerHTML = escapeHtml(error.message || "No se pudieron cargar usuarios.");
+      }
+    }
+  }
+
+  async function createUser(event) {
+    event.preventDefault();
+    const payload = {
+      name: str("newUserName").trim() || str("newUserEmail").split("@")[0],
+      email: str("newUserEmail").trim(),
+      password: str("newUserPassword"),
+      role: str("newUserRole", "operator")
+    };
+    if (!payload.email || !payload.password) {
+      setAuthStatus("Completá email y contraseña del nuevo usuario.", "bad");
+      return;
+    }
+    try {
+      await fetchJson("/api/users", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      $("createUserForm")?.reset();
+      setAuthStatus("Usuario creado en la tabla users.", "ok");
+      await loadUsers();
+    } catch (error) {
+      setAuthStatus(error.message || "No se pudo crear el usuario.", "bad");
+    }
+  }
+
+  function setupAuthUi() {
+    renderAuthState();
+    $("authAvatarBtn")?.addEventListener("click", openAuthModal);
+    $("authMenuBtn")?.addEventListener("click", openAuthModal);
+    $("closeAuthModal")?.addEventListener("click", closeAuthModal);
+    $("authModal")?.addEventListener("click", (event) => {
+      if (event.target.id === "authModal") closeAuthModal();
+    });
+    $("authLoginForm")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const isFirstAccess = !$("authBootstrapBtn")?.hidden;
+      submitAuth(
+        isFirstAccess ? "/api/auth/bootstrap-admin" : "/api/auth/login",
+        isFirstAccess ? "Primer admin creado." : "Sesion iniciada."
+      );
+    });
+    $("authBootstrapBtn")?.addEventListener("click", () => {
+      submitAuth("/api/auth/bootstrap-admin", "Primer admin creado.");
+    });
+    $("authLogoutBtn")?.addEventListener("click", () => {
+      window.eSueldosAuth?.clearToken?.();
+      window.eSueldosAuth?.storeUser?.(null);
+      renderAuthState();
+      setAuthStatus("Sesion cerrada.", "ok");
+      refreshAuthStatus();
+    });
+    $("refreshUsersBtn")?.addEventListener("click", loadUsers);
+    $("createUserForm")?.addEventListener("submit", createUser);
+  }
+
+  function normalizeBackendResult(payload) {
+    const conv = DATA.conventions[payload.conventionId] || payload.conv || getConvention();
+    return {
+      conv,
+      employee: payload.employee,
+      period: payload.period,
+      category: payload.category || getCategory(conv),
+      zone: payload.zone || getZone(conv),
+      activeScale: payload.activeScale || null,
+      remRows: payload.remunerative || payload.remRows || [],
+      noRemRows: payload.nonRemunerative || payload.noRemRows || [],
+      deductionRows: payload.deductions || payload.deductionRows || [],
+      employerRows: payload.employer || payload.employerRows || [],
+      details: payload.details || [],
+      totals: payload.totals,
+      calculation: payload.calculation || null
+    };
+  }
+
+  async function calculate() {
+    try {
+      const response = await authFetch("/api/liquidations/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildBackendCalculationPayload())
+      });
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        throw new Error(errorPayload.error || `HTTP ${response.status}`);
+      }
+      lastAudit = null;
+      lastResult = normalizeBackendResult(await response.json());
+      renderAll(lastResult);
+      setActionButtonsEnabled(true);
+      return;
+    } catch (error) {
+      console.warn("Calculo backend no disponible; usando motor local.", error);
+      calculateLocal();
+    }
+  }
+
+  function calculateLocal() {
     const conv = getConvention();
     if (!conv) return;
     lastAudit = null;
@@ -2741,7 +3037,7 @@
     const auditTimeout = setTimeout(() => controller.abort(), 18000);
     try {
       await refreshActiveScaleContext();
-      const response = await fetch(apiUrl("/api/leia/audit-liquidation"), {
+      const response = await authFetch("/api/leia/audit-liquidation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -2851,7 +3147,11 @@
   }
 
   async function fetchJson(path, options = {}) {
-    const response = await fetch(apiUrl(path), options);
+    if (window.eSueldosApiClient?.json) return window.eSueldosApiClient.json(path, options);
+    const headers = new Headers(options.headers || {});
+    const token = window.eSueldosAuth?.getStoredToken?.();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
     return payload;
@@ -2938,7 +3238,12 @@
     URL.revokeObjectURL(url);
   }
 
-  function downloadScaleExcel(scale) {
+  function csvCell(value) {
+    const text = String(value ?? "");
+    return /[",\n;]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  }
+
+  function downloadScaleCsv(scale) {
     if (!scale || !scale.parsedScale || !scale.parsedScale.categories) return;
     const data = [];
     data.push(["", "", "", "Exportar Montos Categorias"]);
@@ -2965,36 +3270,17 @@
       ];
       data.push(row);
     });
-    
-    if (typeof XLSX !== "undefined") {
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      
-      // Ajustar anchos de columna para que el Excel quede prolijo
-      ws["!cols"] = [
-        { wch: 10 }, // convenio
-        { wch: 12 }, // idcategoria
-        { wch: 45 }, // denominacion
-        { wch: 25 }, // Asignación Mensual
-        { wch: 25 }, // Asignacion Jornal
-        { wch: 20 }, // Adicional 1
-        { wch: 20 }, // Adicional 2
-        { wch: 20 }, // Adicional 3
-        { wch: 20 }, // Adicional 4
-        { wch: 20 }, // Adicional 5
-        { wch: 20 }, // Adicional 6
-        { wch: 20 }, // Adicional 7
-        { wch: 20 }, // Adicional 8
-        { wch: 20 }, // Adicional 9
-        { wch: 20 }  // Adicional 10
-      ];
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Hoja1");
-      const filename = `Escala_${scale.conventionId || 'escala'}_${scale.period || 'periodo'}.xlsx`;
-      XLSX.writeFile(wb, filename);
-    } else {
-      console.error("XLSX library not loaded");
-    }
+    const csv = data.map((row) => row.map(csvCell).join(";")).join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Escala_${scale.conventionId || "escala"}_${scale.period || "periodo"}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function renderScaleEditor(scale) {
@@ -3017,7 +3303,7 @@
       <button class="icon-btn" id="saveScaleDraftBtn" type="button" hidden>Guardar cambios</button>`
       : `<button class="icon-btn" id="saveScaleDraftBtn" type="button">Guardar edicion</button>`;
     const downloadActions = `<button class="icon-btn" id="downloadJsonBtn" type="button">Descargar JSON</button>
-      <button class="icon-btn" id="downloadExcelBtn" type="button">Descargar Excel</button>`;
+          <button class="icon-btn" id="downloadExcelBtn" type="button">Descargar CSV</button>`;
     const moderationActions = isPending
       ? `<button class="primary-action" id="approveScaleBtn" type="button">Aprobar escala</button>
       <button class="icon-btn danger" id="rejectScaleBtn" type="button">Rechazar</button>`
@@ -3052,7 +3338,7 @@
     $("approveScaleBtn")?.addEventListener("click", approveSelectedScale);
     $("rejectScaleBtn")?.addEventListener("click", rejectSelectedScale);
     $("downloadJsonBtn")?.addEventListener("click", () => downloadScaleJson(scale));
-    $("downloadExcelBtn")?.addEventListener("click", () => downloadScaleExcel(scale));
+    $("downloadExcelBtn")?.addEventListener("click", () => downloadScaleCsv(scale));
   }
 
   function parseScaleEditorJson() {
@@ -3193,7 +3479,7 @@
     if (button) button.disabled = true;
     setScaleStatus("Subiendo PDF y consultando a leIA...", "");
     try {
-      const response = await fetch(apiUrl("/api/scales/upload"), {
+      const response = await authFetch("/api/scales/upload", {
         method: "POST",
         body: formData
       });
@@ -3292,13 +3578,25 @@
     list.innerHTML = items.map((draft) => {
       const conv = draft.parsedConvention || {};
       const statusClass = draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : "";
-      return `<button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
-        <span>
-          <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
-          <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
-        </span>
-        <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
-      </button>`;
+      const canDelete = ["APROBADO", "RECHAZADO"].includes(draft.status);
+      return `<div class="convention-draft-row ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}">
+        <button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
+          <span>
+            <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
+            <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
+          </span>
+          <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
+        </button>
+        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4h8v2"></path>
+            <path d="M19 6l-1 14H6L5 6"></path>
+            <path d="M10 11v5"></path>
+            <path d="M14 11v5"></path>
+          </svg>
+        </button>` : ""}
+      </div>`;
     }).join("");
     if (!conventionBuilderState.selected || !items.some((item) => item.id === conventionBuilderState.selected.id)) {
       renderConventionJsonEditor(null);
@@ -3341,7 +3639,16 @@
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar JSON</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${draft.status === "APROBADO" ? "disabled" : ""}>Guardar JSON</button>
       ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
-      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
+      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : `<button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4h8v2"></path>
+          <path d="M19 6l-1 14H6L5 6"></path>
+          <path d="M10 11v5"></path>
+          <path d="M14 11v5"></path>
+        </svg>
+        Eliminar
+      </button>`}
     </div>
     <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
 
@@ -3349,6 +3656,7 @@
     $("saveConventionJsonBtn")?.addEventListener("click", saveConventionDraftJson);
     $("approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
     $("rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
+    $("deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
   }
 
   function parseConventionJsonEditor() {
@@ -3439,6 +3747,80 @@
     }
   }
 
+  async function deleteConventionDraft(id) {
+    const draft = conventionBuilderState.drafts.find((item) => item.id === id)
+      || (conventionBuilderState.selected?.id === id ? conventionBuilderState.selected : null);
+    const status = conventionDraftStatusLabel(draft?.status);
+    if (!draft || !["APROBADO", "RECHAZADO"].includes(draft.status)) {
+      setConventionBuilderStatus("Solo se pueden eliminar borradores aprobados o rechazados.", "bad");
+      return;
+    }
+    const name = draft.parsedConvention?.shortName || draft.parsedConvention?.name || draft.name || "este borrador";
+    if (!confirm(`Eliminar ${name} (${status}) de la auditoria humana? Esta accion no se puede deshacer.`)) return;
+    try {
+      await fetchJson(`/api/convention-drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (conventionBuilderState.selected?.id === id) {
+        conventionBuilderState.selected = null;
+        renderConventionJsonEditor(null);
+      }
+      await loadConventionDrafts();
+      setConventionBuilderStatus(`Borrador ${status.toLowerCase()} eliminado.`, "ok");
+    } catch (error) {
+      setConventionBuilderStatus(error.message, "bad");
+    }
+  }
+
+  async function deleteConventionDraftsByStatus(status) {
+    const allowedStatuses = {
+      APROBADO: "aprobados",
+      RECHAZADO: "rechazados"
+    };
+    const label = allowedStatuses[status];
+    if (!label) return;
+
+    const drafts = conventionBuilderState.drafts.filter((draft) => draft.status === status);
+    if (!drafts.length) {
+      setConventionBuilderStatus(`No hay borradores ${label} para eliminar.`, "bad");
+      return;
+    }
+
+    const question = `Eliminar ${drafts.length} borrador${drafts.length === 1 ? "" : "es"} ${label} de la auditoria humana? Esta accion no se puede deshacer.`;
+    if (!confirm(question)) return;
+
+    const approvedButton = $("deleteApprovedDraftsBtn");
+    const rejectedButton = $("deleteRejectedDraftsBtn");
+    [approvedButton, rejectedButton].forEach((button) => {
+      if (button) button.disabled = true;
+    });
+    setConventionBuilderStatus(`Eliminando ${drafts.length} borrador${drafts.length === 1 ? "" : "es"} ${label}...`, "");
+
+    const results = await Promise.allSettled(
+      drafts.map((draft) => fetchJson(`/api/convention-drafts/${encodeURIComponent(draft.id)}`, { method: "DELETE" }))
+    );
+    const deletedIds = new Set(
+      results
+        .map((result, index) => result.status === "fulfilled" ? drafts[index].id : null)
+        .filter(Boolean)
+    );
+
+    if (conventionBuilderState.selected && deletedIds.has(conventionBuilderState.selected.id)) {
+      conventionBuilderState.selected = null;
+      renderConventionJsonEditor(null);
+    }
+
+    await loadConventionDrafts();
+    [approvedButton, rejectedButton].forEach((button) => {
+      if (button) button.disabled = false;
+    });
+
+    const failed = results.filter((result) => result.status === "rejected");
+    if (failed.length) {
+      setConventionBuilderStatus(`Se eliminaron ${deletedIds.size} y fallaron ${failed.length}. Revisar conexion/backend.`, "bad");
+      return;
+    }
+    setConventionBuilderStatus(`Se eliminaron ${deletedIds.size} borrador${deletedIds.size === 1 ? "" : "es"} ${label}.`, "ok");
+  }
+
   function updateConventionSelectsAfterCatalogReload(preferredId = "") {
     const selectedId = preferredId || str("convention", "camioneros");
     const conventionSelect = $("convention");
@@ -3475,7 +3857,7 @@
     if (button) button.disabled = true;
     setConventionBuilderStatus("leIA esta estructurando el convenio en JSON ejecutable...", "");
     try {
-      const response = await fetch(apiUrl("/api/convention-drafts/upload"), {
+      const response = await authFetch("/api/convention-drafts/upload", {
         method: "POST",
         body: formData
       });
@@ -3497,7 +3879,16 @@
   function setupConventionBuilder() {
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
+    $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("APROBADO"));
+    $("deleteRejectedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("RECHAZADO"));
     $("conventionDraftList")?.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-delete-convention-draft-id]");
+      if (deleteButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteConventionDraft(deleteButton.dataset.deleteConventionDraftId);
+        return;
+      }
       const button = event.target.closest("[data-convention-draft-id]");
       if (button) selectConventionDraft(button.dataset.conventionDraftId);
     });
@@ -3993,7 +4384,7 @@
     setLeiaLoading(true);
 
     try {
-      const response = await fetch(apiUrl("/api/leia/chat"), {
+      const response = await authFetch("/api/leia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4386,7 +4777,7 @@
       btn.disabled = true;
       setTimeout(async () => {
         await refreshActiveScaleContext();
-        calculate();
+        await calculate();
         btn.textContent = originalText;
         btn.disabled = false;
         goToStep(4);
@@ -4422,6 +4813,7 @@
     if (exportBtn) exportBtn.addEventListener("click", exportJson);
     if (saveBtn) saveBtn.addEventListener("click", saveLiquidation);
     if (auditBtn) auditBtn.addEventListener("click", runLiquidationAudit);
+    setupAuthUi();
     setupScaleDashboard();
     setupConventionBuilder();
     setupLeia();
@@ -4491,7 +4883,7 @@
     };
 
     try {
-      const response = await fetch(apiUrl("/api/liquidations"), {
+      const response = await authFetch("/api/liquidations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -4518,11 +4910,11 @@
   async function fetchEmployees() {
     try {
       const [resEmp, resLiq] = await Promise.all([
-        fetch(apiUrl("/api/employees")),
-        fetch(apiUrl("/api/liquidations?limit=1000"))
+        fetchJson("/api/employees"),
+        fetchJson("/api/liquidations?limit=1000")
       ]);
-      if (resEmp.ok) employees = await resEmp.json();
-      if (resLiq.ok) liquidationsList = await resLiq.json();
+      employees = resEmp;
+      liquidationsList = resLiq;
       renderEmployeeTable();
     } catch (error) {
       console.error("Error fetching employees/liquidations:", error);
@@ -4601,13 +4993,9 @@
   window.deleteLiquidation = async (id) => {
     if (!confirm("¿Eliminar este recibo guardado? Esta accion no se puede deshacer.")) return;
     try {
-      const response = await fetch(apiUrl(`/api/liquidations/${id}`), { method: "DELETE" });
-      if (response.ok) {
-        await fetchEmployees();
-        window.renderLiquidationsList();
-      } else {
-        alert("No se pudo eliminar el recibo.");
-      }
+      await fetchJson(`/api/liquidations/${id}`, { method: "DELETE" });
+      await fetchEmployees();
+      window.renderLiquidationsList();
     } catch (e) {
       alert("Error de red al intentar eliminar.");
     }
@@ -4695,8 +5083,8 @@
   window.deleteEmployee = async (id) => {
     if (!confirm("¿Estás seguro de eliminar este empleado?")) return;
     try {
-      const response = await fetch(apiUrl(`/api/employees/${id}`), { method: "DELETE" });
-      if (response.ok) fetchEmployees();
+      await fetchJson(`/api/employees/${id}`, { method: "DELETE" });
+      fetchEmployees();
     } catch (error) {
       alert("Error al eliminar");
     }
@@ -4732,7 +5120,7 @@
       const method = id ? "PUT" : "POST";
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload)
       });
       if (response.ok) {
@@ -4858,5 +5246,9 @@
     markDirty();
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
 })();

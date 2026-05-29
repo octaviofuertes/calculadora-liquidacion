@@ -1,0 +1,77 @@
+{
+  "detss": 7003.68,
+  "artVariablePct": 2.5,
+  "artFixed": 1450,
+  "scvo": 424.62,
+  "gananciasMniAnual": 3091035,
+  "gananciasDedEspecialAnual": 7539834,
+  "conyugeDedAnual": 1026455,
+  "worker": {
+    "jubilacion": 0.11,
+    "pami": 0.03,
+    "obraSocial": 0.03
+  },
+  "employerBase": {
+    "jubilacion": 0.1077,
+    "pami": 0.0158,
+    "obraSocial": 0.06,
+    "asignaciones": 0.047,
+    "fondoEmpleo": 0.0095
+  },
+  "gananciasScale": [
+    {
+      "from": 0,
+      "to": 419630,
+      "pct": 0.05,
+      "fixed": 0
+    },
+    {
+      "from": 419630,
+      "to": 839260,
+      "pct": 0.09,
+      "fixed": 20982
+    },
+    {
+      "from": 839260,
+      "to": 1258880,
+      "pct": 0.12,
+      "fixed": 58745
+    },
+    {
+      "from": 1258880,
+      "to": 1678510,
+      "pct": 0.15,
+      "fixed": 109098
+    },
+    {
+      "from": 1678510,
+      "to": 2517760,
+      "pct": 0.19,
+      "fixed": 172029
+    },
+    {
+      "from": 2517760,
+      "to": 3357010,
+      "pct": 0.23,
+      "fixed": 331500
+    },
+    {
+      "from": 3357010,
+      "to": 5035515,
+      "pct": 0.27,
+      "fixed": 524495
+    },
+    {
+      "from": 5035515,
+      "to": 6714020,
+      "pct": 0.31,
+      "fixed": 977795
+    },
+    {
+      "from": 6714020,
+      "to": null,
+      "pct": 0.35,
+      "fixed": 1498044
+    }
+  ]
+}
