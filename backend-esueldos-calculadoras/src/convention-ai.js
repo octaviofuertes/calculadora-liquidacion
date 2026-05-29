@@ -152,6 +152,11 @@ function normalizeRows(rows, periodIds = []) {
         monthly: normalizeMoney(row.monthly ?? row.sueldoMensual ?? row.basicoMensual),
         day: normalizeMoney(row.day ?? row.jornal ?? row.valorDia),
         hourly: normalizeMoney(row.hourly ?? row.hora ?? row.valorHora),
+        salaryType: row.salaryType || row.tipoLiquidacion || row.tipoSalario || "",
+        categoryKind: row.categoryKind || row.tipoCategoria || row.regimen || "",
+        salaryBaseCategoryId: row.salaryBaseCategoryId || row.categoriaBaseId || row.baseCategoryId || "",
+        roles: Array.isArray(row.roles || row.puestos || row.funciones) ? (row.roles || row.puestos || row.funciones).filter(Boolean).map(String) : [],
+        aliases: Array.isArray(row.aliases || row.alias) ? (row.aliases || row.alias).filter(Boolean).map(String) : [],
         monthlyByPeriod,
         dayByPeriod,
         hourlyByPeriod,
@@ -170,6 +175,7 @@ function normalizeRows(rows, periodIds = []) {
       || Object.values(row.dayByPeriod).some(Boolean)
       || Object.values(row.hourlyByPeriod).some(Boolean)
       || Object.values(row.nonRem).some(Boolean)
+      || row.commissionPercent
     ));
 }
 
@@ -203,7 +209,7 @@ function normalizeConcepts(concepts) {
         requiresHumanValidation: concept.requiresHumanValidation === true,
         notes: Array.isArray(concept.notes) ? concept.notes.filter(Boolean).map(String) : []
       };
-      ["conditions", "proration", "rounding", "legalReferences", "audit", "ui", "tags"].forEach((key) => {
+      ["conditions", "proration", "rounding", "legalReferences", "audit", "ui", "tags", "blockedBy", "mutuallyExclusiveWith"].forEach((key) => {
         if (concept[key] !== undefined) normalized[key] = concept[key];
       });
       return normalized;
@@ -410,6 +416,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "El JSON debe servir para mensual, jornal, hora, zonas, coeficientes, categorias, escalas por periodo, no remunerativos, antiguedad, presentismo, horas extra, feriados, vacaciones, adicionales, aportes del trabajador, contribuciones del empleador y auditoria humana.",
     "Usa schemaVersion esueldos-convenio-universal-v1 y calculationMode generic-v1. Los periodos deben ser YYYY-MM. Los ids deben ser estables, sin espacios ni acentos.",
     "Toda categoria debe traer monthly, day u hourly, y si la escala trae varios meses usa monthlyByPeriod/dayByPeriod/hourlyByPeriod y nonRem por periodo.",
+    "Si el CCT trae categorias mixtas o regimenes especiales, preserva salaryType por categoria: monthly, daily, hourly o commission. Para cobradores, viajantes u otros sin basico propio, crea la categoria/regimen con commissionPercent, salaryBaseCategoryId si corresponde y requiresHumanValidation si falta un dato operativo.",
     "Todo concepto variable debe ir en liquidationModel.concepts con inputType checkbox/number, rowType remunerative/nonRemunerative/deduction, calculation fixed/percentOfBase/amountPerUnit, base, tratamiento de aportes, condiciones, referencias legales y detalle.",
     "Las deducciones propias del trabajador van en liquidationModel.deductions. Las contribuciones propias del empleador van en liquidationModel.employerContributions. No agregues Jubilacion/PAMI/Obra Social/Ganancias generales porque eSueldos ya las calcula.",
     "Inclui auditChecklist, validation, employeeRequirements y notes para que el liquidador humano pueda auditar el convenio antes de aprobarlo.",

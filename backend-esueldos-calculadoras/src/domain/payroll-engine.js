@@ -252,11 +252,12 @@ function calcGeneric(ctx) {
   const activeCatRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
   const model = ctx.convention.liquidationModel || {};
   const rules = { ...(ctx.convention.rules || {}), ...(model.rules || {}) };
-  const salaryType = rules.salaryType || ctx.category.salaryType || ctx.convention.type || "monthly";
+  const salaryType = activeCatRow?.salaryType || ctx.category.salaryType || rules.salaryType || ctx.convention.type || "monthly";
   const zoneCoef = Number(ctx.zone?.coef || 1) || 1;
   const monthPct = Math.max(0, Math.min(100, inputValue(ctx.inputs, "genMonthPct", 100))) / 100;
   const monthDivisor = Number(rules.monthDivisor || 30) || 30;
   const hourDivisor = Number(rules.overtime?.divisor || rules.hourDivisor || 200) || 200;
+  const hourlyMultiplier = salaryType === "hourly" ? (Number(rules.hourlyWorkUnitsMultiplier || 1) || 1) : 1;
   const workUnits = Math.max(0, inputValue(ctx.inputs, "genWorkUnits", salaryType === "hourly" ? 0 : monthDivisor));
   const absentDays = Math.max(0, inputValue(ctx.inputs, "genAbsentDays", 0));
   const categoryMonthlyRaw = firstFinite(activeCatRow?.monthly, periodAmountValue(activeCatRow, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]), periodAmountValue(ctx.category, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]), ctx.category.monthly);
@@ -265,29 +266,58 @@ function calcGeneric(ctx) {
   const categoryMonthly = (categoryMonthlyRaw || 0) * zoneCoef;
   const categoryDay = (firstFinite(categoryDayRaw, categoryMonthly ? categoryMonthly / monthDivisor : null) || 0) * (activeCatRow?.day || ctx.category.day ? zoneCoef : 1);
   const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || ctx.category.hourly ? zoneCoef : 1);
-  let basic = salaryType === "daily" ? categoryDay * workUnits : salaryType === "hourly" ? categoryHourly * workUnits : categoryMonthly * monthPct;
+  let basic = salaryType === "daily"
+    ? categoryDay * workUnits
+    : salaryType === "hourly"
+      ? categoryHourly * workUnits * hourlyMultiplier
+      : salaryType === "commission"
+        ? 0
+        : categoryMonthly * monthPct;
   addRow(rows.remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} unidades`);
-  addRow(rows.remRows, "Inasistencia injustificada", -(salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays), `${absentDays} dias`);
+  const absenceDiscount = salaryType === "commission" ? 0 : salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays;
+  addRow(rows.remRows, "Inasistencia injustificada", -absenceDiscount, `${absentDays} dias`);
   const seniorityRule = rules.seniority || {};
   let seniority = 0;
   if (inputBool(ctx.inputs, "genSeniority", seniorityRule.enabled !== false)) {
     const yearsForCalc = seniorityRule.capYears ? Math.min(ctx.employee.years, Number(seniorityRule.capYears)) : ctx.employee.years;
-    seniority = basic * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
+    const seniorityBaseValue = (salaryType === "commission" || seniorityRule.base === "categoryMonthly")
+      ? categoryMonthly * monthPct
+      : basic;
+    seniority = seniorityBaseValue * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
     addRow(rows.remRows, "Antiguedad", seniority, `${seniorityRule.percentPerYear || 0}% x ${yearsForCalc} años`);
   }
   const presentismRule = rules.presentism || {};
   if (inputBool(ctx.inputs, "genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0) && (!presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0)) {
-    addRow(rows.remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`);
+    const presentismBaseValue = presentismRule.base === "basic"
+      ? basic
+      : presentismRule.base === "categoryMonthly"
+        ? categoryMonthly * monthPct
+        : basic + seniority;
+    addRow(rows.remRows, "Presentismo", presentismBaseValue * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`);
   }
   const hourValue = (sumRows(rows.remRows) || basic) / hourDivisor;
   addRow(rows.remRows, "Horas extra 50%", hourValue * inputValue(ctx.inputs, "genExtra50", 0) * 1.5, `/${hourDivisor} x 1,5`);
   addRow(rows.remRows, "Horas extra 100%", hourValue * inputValue(ctx.inputs, "genExtra100", 0) * 2, `/${hourDivisor} x 2`);
-  const noRemScaleBase = (firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(ctx.category, period)) || 0) * monthPct * zoneCoef;
+  const noRemScaleUnits = salaryType === "hourly" ? workUnits * hourlyMultiplier : salaryType === "daily" ? workUnits : monthPct;
+  const noRemScaleBase = (firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(activeCatRow, period), periodNonRemValue(ctx.category, period)) || 0) * noRemScaleUnits * zoneCoef;
   (model.concepts || []).forEach((concept) => {
     const key = `gen_${concept.id}`;
+    if (Array.isArray(concept.blockedBy) && concept.blockedBy.some((id) => inputBool(ctx.inputs, `gen_${id}`, false))) return;
     const enabled = concept.inputType === "number" ? inputValue(ctx.inputs, key, 0) : (inputBool(ctx.inputs, key, !!concept.defaultValue) ? 1 : 0);
     if (!enabled) return;
-    const base = concept.base === "remunerative" ? sumRows(rows.remRows) : concept.base === "nonRemunerativeScale" ? noRemScaleBase : concept.base === "seniorityBase" ? basic + seniority : basic;
+    const base = concept.base === "remunerative"
+      ? sumRows(rows.remRows)
+      : (concept.base === "nonRemunerativeScale" || concept.base === "noRemScale")
+        ? noRemScaleBase
+        : concept.base === "seniorityBase"
+          ? basic + seniority
+          : concept.base === "categoryMonthly"
+            ? categoryMonthly
+            : concept.base === "categoryDay"
+              ? categoryDay
+              : concept.base === "categoryHourly"
+                ? categoryHourly
+                : basic;
     const value = concept.calculation === "fixed"
       ? (periodAmountValue(concept, period, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(concept.amount)) * enabled
       : concept.calculation === "amountPerUnit"
@@ -295,7 +325,21 @@ function calcGeneric(ctx) {
         : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
     addRow(concept.rowType === "nonRemunerative" ? rows.noRemRows : concept.rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, concept.detail || concept.group || "Concepto del convenio");
   });
-  if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) addRow(rows.noRemRows, "Suma no remunerativa escala", noRemScaleBase, ctx.activeScale ? "Escala aprobada" : "Escala base");
+  if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {
+    addRow(rows.noRemRows, "Suma no remunerativa escala", noRemScaleBase, ctx.activeScale ? "Escala aprobada" : "Escala base");
+    const noRemRule = rules.nonRemunerativeScale || {};
+    const noRemSeniorityPct = Number(noRemRule.seniorityPercentPerYear || 0) || 0;
+    const noRemPresentismPct = Number(noRemRule.presentismPercent || 0) || 0;
+    const noRemSeniority = inputBool(ctx.inputs, "genSeniority", seniorityRule.enabled !== false)
+      ? noRemScaleBase * ((noRemSeniorityPct * ctx.employee.years) / 100)
+      : 0;
+    addRow(rows.noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${ctx.employee.years} años`);
+    const allowNoRemPresentism = !noRemRule.presentismRequiresNoUnjustifiedAbsence || absentDays === 0;
+    if (inputBool(ctx.inputs, "genPresentism", presentismRule.enabled && noRemPresentismPct > 0) && allowNoRemPresentism) {
+      const noRemPresentismBase = noRemRule.presentismBase === "basic" ? noRemScaleBase : noRemScaleBase + noRemSeniority;
+      addRow(rows.noRemRows, "Presentismo no remunerativo", noRemPresentismBase * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
+    }
+  }
   applyManualRows(ctx, rows);
   const remTotal = sumRows(rows.remRows);
   const noRemTotal = sumRows(rows.noRemRows);

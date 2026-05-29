@@ -845,11 +845,12 @@
     const activeCatRow = scaleCategoryRow(conv, cat, zone);
     const model = conv.liquidationModel || {};
     const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
-    const salaryType = rules.salaryType || conv.type || "monthly";
+    const salaryType = activeCatRow?.salaryType || cat?.salaryType || rules.salaryType || conv.type || "monthly";
     const zoneCoef = Number(zone?.coef || 1) || 1;
     const monthPct = Math.max(0, Math.min(100, num("genMonthPct", 100))) / 100;
     const monthDivisor = Number(rules.monthDivisor || 30) || 30;
     const hourDivisor = Number(rules.overtime?.divisor || rules.hourDivisor || 200) || 200;
+    const hourlyMultiplier = salaryType === "hourly" ? (Number(rules.hourlyWorkUnitsMultiplier || 1) || 1) : 1;
     const workUnits = Math.max(0, num("genWorkUnits", salaryType === "hourly" ? 0 : monthDivisor));
     const absentDays = Math.max(0, num("genAbsentDays", 0));
     const years = yearsFromEntry();
@@ -882,26 +883,35 @@
     const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || cat.hourly ? zoneCoef : 1);
     let basic = 0;
     if (salaryType === "daily") basic = categoryDay * workUnits;
-    else if (salaryType === "hourly") basic = categoryHourly * workUnits;
+    else if (salaryType === "hourly") basic = categoryHourly * workUnits * hourlyMultiplier;
+    else if (salaryType === "commission") basic = 0;
     else basic = categoryMonthly * monthPct;
 
     addRow(remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} ${salaryType === "hourly" ? "horas" : "jornales"}`);
 
-    const absenceDiscount = salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays;
+    const absenceDiscount = salaryType === "commission" ? 0 : salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays;
     addRow(remRows, "Inasistencia injustificada", -absenceDiscount, `${absentDays} dia${absentDays !== 1 ? "s" : ""} / divisor ${monthDivisor}`);
 
     const seniorityRule = rules.seniority || {};
     let seniority = 0;
     if (checked("genSeniority", seniorityRule.enabled !== false)) {
       const yearsForCalc = seniorityRule.capYears ? Math.min(years, Number(seniorityRule.capYears)) : years;
-      seniority = basic * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
+      const seniorityBaseValue = (salaryType === "commission" || seniorityRule.base === "categoryMonthly")
+        ? categoryMonthly * monthPct
+        : basic;
+      seniority = seniorityBaseValue * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
       addRow(remRows, "Antiguedad", seniority, `${Number(seniorityRule.percentPerYear || 0)}% x ${yearsForCalc} años`);
     }
 
     const presentismRule = rules.presentism || {};
     if (checked("genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0)) {
       const allowed = !presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0;
-      if (allowed) addRow(remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`);
+      const presentismBaseValue = presentismRule.base === "basic"
+        ? basic
+        : presentismRule.base === "categoryMonthly"
+          ? categoryMonthly * monthPct
+          : basic + seniority;
+      if (allowed) addRow(remRows, "Presentismo", presentismBaseValue * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`);
       else addRow(details, "Presentismo", 0, "No corresponde por inasistencias injustificadas");
     }
 
@@ -909,12 +919,14 @@
     addRow(remRows, "Horas extra 50%", hourValue * num("genExtra50", 0) * 1.5, `Base habitual / ${hourDivisor} x 1,5`);
     addRow(remRows, "Horas extra 100%", hourValue * num("genExtra100", 0) * 2, `Base habitual / ${hourDivisor} x 2`);
 
-    const noRemScaleRaw = firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(cat, period)) || 0;
-    const noRemScaleBase = noRemScaleRaw * monthPct * zoneCoef;
+    const noRemScaleRaw = firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(activeCatRow, period), periodNonRemValue(cat, period)) || 0;
+    const noRemScaleUnits = salaryType === "hourly" ? workUnits * hourlyMultiplier : salaryType === "daily" ? workUnits : monthPct;
+    const noRemScaleBase = noRemScaleRaw * noRemScaleUnits * zoneCoef;
 
     const conceptRows = Array.isArray(model.concepts) ? model.concepts : [];
     conceptRows.forEach((concept) => {
       const inputId = `gen_${concept.id}`;
+      if (Array.isArray(concept.blockedBy) && concept.blockedBy.some((id) => checked(`gen_${id}`, false))) return;
       const inputValue = concept.inputType === "number" ? Math.max(0, num(inputId, 0)) : (checked(inputId, !!concept.defaultValue) ? 1 : 0);
       if (!inputValue) return;
       const baseValue = genericBaseAmount({
@@ -941,7 +953,8 @@
       if (noRemSeniority) addRow(noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${years} años`);
       const allowNoRemPresentism = !noRemRule.presentismRequiresNoUnjustifiedAbsence || absentDays === 0;
       if (checked("genPresentism", presentismRule.enabled && noRemPresentismPct > 0) && allowNoRemPresentism) {
-        addRow(noRemRows, "Presentismo no remunerativo", (noRemScaleBase + noRemSeniority) * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
+        const noRemPresentismBase = noRemRule.presentismBase === "basic" ? noRemScaleBase : noRemScaleBase + noRemSeniority;
+        addRow(noRemRows, "Presentismo no remunerativo", noRemPresentismBase * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
       }
     }
 
@@ -4230,7 +4243,7 @@
       `- Divisor mensual: ${rules.monthDivisor || rules.dayDivisor || "no especificado"}`,
       `- Divisor hora: ${rules.overtime?.divisor || rules.hourDivisor || "no especificado"}`
     ];
-    if (modelRules.seniority?.enabled !== false) rows.push(`- Antiguedad: ${modelRules.seniority?.percentPerYear || conv.items?.antiguedadPct || "segun convenio"}% por anio cuando corresponde.`);
+    if (modelRules.seniority?.enabled !== false) rows.push(`- Antiguedad: ${modelRules.seniority?.percentPerYear || conv.items?.antiguedadPct || "segun convenio"}% por año cuando corresponde.`);
     if (modelRules.presentism?.enabled || conv.items?.presentismoPct || conv.rules?.presentismoPct) rows.push(`- Presentismo: ${modelRules.presentism?.percent || conv.items?.presentismoPct || conv.rules?.presentismoPct || "segun convenio"}%.`);
     (conv.auditChecklist || []).slice(0, 6).forEach((item) => rows.push(`- Control: ${item}`));
     return rows;
@@ -4426,8 +4439,17 @@
   function renderDynamicFields(conv) {
     if (isGenericConvention(conv)) {
       const model = conv.liquidationModel || {};
-      const rules = model.rules || {};
-      const salaryType = rules.salaryType || conv.type || "monthly";
+      const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
+      const currentCat = getCategory(conv);
+      const salaryType = currentCat?.salaryType || rules.salaryType || conv.type || "monthly";
+      const workUnitsLabel = salaryType === "hourly"
+        ? (rules.hourlyInputLabel || "Horas")
+        : salaryType === "daily"
+          ? "Jornales"
+          : salaryType === "commission"
+            ? "Base/Unidades"
+            : "Unidades";
+      const workUnitsDefault = salaryType === "hourly" || salaryType === "commission" ? 0 : (rules.monthDivisor || 30);
       const grouped = (model.concepts || []).reduce((acc, concept) => {
         const key = concept.group || "Adicionales";
         if (!acc[key]) acc[key] = [];
@@ -4448,7 +4470,7 @@
         <div class="generic-section-title">Base del convenio JSON</div>
         <div class="grid three">
           <label class="field"><span>% del mes</span><input id="genMonthPct" type="number" min="0" max="100" step="0.01" value="100"></label>
-          <label class="field"><span>${salaryType === "hourly" ? "Horas" : salaryType === "daily" ? "Jornales" : "Unidades"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${salaryType === "hourly" ? 0 : (rules.monthDivisor || 30)}"></label>
+          <label class="field"><span>${escapeHtml(workUnitsLabel)}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(workUnitsDefault)}"></label>
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Hs extra 50%</span><input id="genExtra50" type="number" min="0" step="0.01" value="0"></label>
           <label class="field"><span>Hs extra 100%</span><input id="genExtra100" type="number" min="0" step="0.01" value="0"></label>
