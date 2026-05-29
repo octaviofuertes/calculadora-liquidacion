@@ -1,0 +1,316 @@
+{
+  "id": "camioneros",
+  "name": "Camioneros - CCT 40/89",
+  "shortName": "Camioneros",
+  "source": "CCT-40-89 y planilla mayo 2026",
+  "type": "monthly",
+  "periods": [
+    {
+      "id": "may26",
+      "label": "Mayo 2026"
+    }
+  ],
+  "zones": [
+    {
+      "id": "base",
+      "label": "General",
+      "coef": 1
+    },
+    {
+      "id": "surColorado",
+      "label": "Sur Rio Colorado / coef. 1,20",
+      "coef": 1.2
+    },
+    {
+      "id": "surSantaCruz",
+      "label": "Sur Santa Cruz / coef. 1,40",
+      "coef": 1.4
+    }
+  ],
+  "categories": [
+    {
+      "id": "conductor1",
+      "label": "Conductor de primera categoria",
+      "monthly": 1001071.98,
+      "day": 41711.3325
+    },
+    {
+      "id": "conductor2",
+      "label": "Conductor de segunda categoria",
+      "monthly": 983232.49,
+      "day": 40968.020416666666
+    },
+    {
+      "id": "conductor3",
+      "label": "Conductor de tercera categoria - fletes al instante",
+      "monthly": 965374.95,
+      "day": 40223.956249999996
+    },
+    {
+      "id": "grua10",
+      "label": "Conductor de gruas hasta 10 tn / autoelevadores",
+      "monthly": 1018918.96,
+      "day": 42454.956666666665
+    },
+    {
+      "id": "grua20",
+      "label": "Conductor de gruas mas de 10 y hasta 20 tn",
+      "monthly": 1120810.86,
+      "day": 46700.45250000001
+    },
+    {
+      "id": "grua35",
+      "label": "Conductor de gruas mas de 20 y hasta 35 tn",
+      "monthly": 1165643.29,
+      "day": 48568.47041666667
+    },
+    {
+      "id": "grua45",
+      "label": "Conductor de gruas mas de 35 y hasta 45 tn",
+      "monthly": 1212269.02,
+      "day": 50511.20916666667
+    },
+    {
+      "id": "grua55",
+      "label": "Conductor de gruas mas de 45 y hasta 55 tn",
+      "monthly": 1260759.78,
+      "day": 52531.6575
+    },
+    {
+      "id": "grua70",
+      "label": "Conductor de gruas mas de 55 y hasta 70 tn",
+      "monthly": 1323797.77,
+      "day": 55158.24041666667
+    },
+    {
+      "id": "grua90",
+      "label": "Conductor de gruas mas de 70 y hasta 90 tn",
+      "monthly": 1389987.66,
+      "day": 57916.1525
+    },
+    {
+      "id": "grua110",
+      "label": "Conductor de gruas mas de 90 y hasta 110 tn",
+      "monthly": 1459487.04,
+      "day": 60811.96
+    },
+    {
+      "id": "grua140",
+      "label": "Conductor de gruas mas de 110 y hasta 140 tn",
+      "monthly": 1532461.39,
+      "day": 63852.557916666665
+    },
+    {
+      "id": "grua170",
+      "label": "Conductor de gruas mas de 140 y hasta 170 tn",
+      "monthly": 1609084.46,
+      "day": 67045.18583333334
+    },
+    {
+      "id": "grua300",
+      "label": "Conductor de gruas mas de 170 y hasta 300 tn",
+      "monthly": 1689538.68,
+      "day": 70397.44499999999
+    },
+    {
+      "id": "gruaMas300",
+      "label": "Conductor de gruas mas de 300 tn",
+      "monthly": 1824701.77,
+      "day": 76029.24041666667
+    },
+    {
+      "id": "encargado",
+      "label": "Encargado",
+      "monthly": 940866.38,
+      "day": 39202.76583333333
+    },
+    {
+      "id": "recibidor",
+      "label": "Recibidor y/o clasificador de guias",
+      "monthly": 931891.94,
+      "day": 38828.83083333333
+    },
+    {
+      "id": "operarioEsp",
+      "label": "Operarios especializados",
+      "monthly": 923101.01,
+      "day": 38462.542083333334
+    },
+    {
+      "id": "recolector",
+      "label": "Recolectores de residuo y limpieza",
+      "monthly": 923101.01,
+      "day": 38462.542083333334
+    },
+    {
+      "id": "peon",
+      "label": "Peones",
+      "monthly": 914291.07,
+      "day": 38095.46125
+    },
+    {
+      "id": "peonBarrido",
+      "label": "Peones generales de barrido y limpieza",
+      "monthly": 914291.07,
+      "day": 38095.46125
+    },
+    {
+      "id": "operadorServicios",
+      "label": "Operador de servicios",
+      "monthly": 1065180.22,
+      "day": 44382.50916666666
+    },
+    {
+      "id": "distribuidor",
+      "label": "Distribuidor domiciliario",
+      "monthly": 969519.98,
+      "day": 40396.66583333333
+    },
+    {
+      "id": "ayudante18",
+      "label": "Ayudantes mayores de 18 años",
+      "monthly": 896768.85,
+      "day": 37365.36875
+    },
+    {
+      "id": "choferBlindado",
+      "label": "Chofer de camion blindado",
+      "monthly": 1076279.39,
+      "day": 44844.97458333333
+    },
+    {
+      "id": "choferFirma",
+      "label": "Chofer con firma",
+      "monthly": 1155899.2,
+      "day": 48162.46666666667
+    },
+    {
+      "id": "custodia",
+      "label": "Custodia de camion de caudales",
+      "monthly": 933124.69,
+      "day": 38880.19541666666
+    },
+    {
+      "id": "auxOp1",
+      "label": "Auxiliar operativo de primera",
+      "monthly": 1375644.41,
+      "day": 57318.51708333333
+    },
+    {
+      "id": "auxOp2",
+      "label": "Auxiliar operativo de segunda",
+      "monthly": 958260.84,
+      "day": 39927.534999999996
+    },
+    {
+      "id": "oficialPrimera",
+      "label": "Oficial de primera",
+      "monthly": 1114923.7,
+      "day": 46455.15416666667
+    },
+    {
+      "id": "oficialCompleto",
+      "label": "Oficial completo de taller",
+      "monthly": 1057158.76,
+      "day": 44048.28166666667
+    },
+    {
+      "id": "oficial",
+      "label": "Oficial",
+      "monthly": 1005085.13,
+      "day": 41878.54708333333
+    },
+    {
+      "id": "medioOficial",
+      "label": "Medio oficial",
+      "monthly": 949464.23,
+      "day": 39561.00958333333
+    },
+    {
+      "id": "oficialGomero",
+      "label": "Oficial gomero",
+      "monthly": 1005085.13,
+      "day": 41878.54708333333
+    },
+    {
+      "id": "medioOficialGomero",
+      "label": "Medio oficial gomero",
+      "monthly": 949464.23,
+      "day": 39561.00958333333
+    },
+    {
+      "id": "lavador",
+      "label": "Lavadores, engrasadores y ayudantes de taller",
+      "monthly": 949464.23,
+      "day": 39561.00958333333
+    },
+    {
+      "id": "admin1",
+      "label": "Personal administrativo - primera categoria",
+      "monthly": 996199.21,
+      "day": 41508.300416666665
+    },
+    {
+      "id": "admin2",
+      "label": "Personal administrativo - segunda categoria",
+      "monthly": 958260.84,
+      "day": 39927.534999999996
+    },
+    {
+      "id": "admin3",
+      "label": "Personal administrativo - tercera categoria",
+      "monthly": 923101.01,
+      "day": 38462.542083333334
+    },
+    {
+      "id": "admin4",
+      "label": "Personal administrativo - cuarta categoria",
+      "monthly": 905538.31,
+      "day": 37730.76291666667
+    },
+    {
+      "id": "maestranza",
+      "label": "Maestranza y/o serenos",
+      "monthly": 905538.31,
+      "day": 37730.76291666667
+    },
+    {
+      "id": "clearing1",
+      "label": "Auxiliar operativo de primera de clearing y correo privado",
+      "monthly": 998029.39,
+      "day": 41584.557916666665
+    },
+    {
+      "id": "clearing2",
+      "label": "Auxiliar operativo de segunda de clearing y correo privado",
+      "monthly": 949869.3,
+      "day": 39577.887500000004
+    }
+  ],
+  "items": {
+    "comida": 15318,
+    "viaticoEspecial": 7686.55,
+    "pernoctada": 17841.22,
+    "kmExtra": 80.08748,
+    "kmViatico": 80.08748,
+    "permanencia": 54059.44,
+    "simplePresencia": 28336.23,
+    "cruceFrontera": 37228.67,
+    "ingresoIsla": 42450.58,
+    "plusVacacionalDia": 23384.27,
+    "bitrenes": 646892.71,
+    "presentismoPct": 8.33,
+    "choferLargaDistanciaPct": 10,
+    "lacteaPct": 15,
+    "auxilioPct": 10,
+    "blindadoPct": 20,
+    "combustiblesPct": 15,
+    "peligrosasPct": 20,
+    "pozosPetroliferosPct": 40,
+    "pluralidadGrupoIPct": 25,
+    "pluralidadGrupoIIPct": 18,
+    "diariosRevistasPct": 12,
+    "logisticaPct": 18,
+    "camaraFrioPct": 20
+  }
+}
