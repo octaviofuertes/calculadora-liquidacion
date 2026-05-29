@@ -1471,13 +1471,14 @@ p {
 
 .convention-draft-row {
   position: relative;
-  display: block;
+  display: flex;
   min-width: 0;
+  align-items: stretch;
 }
 
 .convention-draft-row .scale-audit-item {
   width: 100%;
-  min-height: 72px;
+  min-height: 88px;
   padding-right: 42px;
   padding-bottom: 42px;
 }
