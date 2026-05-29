@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>e-Sueldos | Liquidador multiconvenio</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon-cloud.svg?v=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -65,8 +66,8 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
           <span>3</span>
         </button>
-        <button class="avatar-btn" type="button" aria-label="Perfil">AD</button>
-        <button class="chevron-btn" type="button" aria-label="Menu de perfil">
+        <button class="avatar-btn" id="authAvatarBtn" type="button" aria-label="Cuenta">?</button>
+        <button class="chevron-btn" id="authMenuBtn" type="button" aria-label="Menu de cuenta">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </button>
       </div>
@@ -574,8 +575,83 @@
     </button>
   </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <div id="authModal" class="modal" style="display:none">
+    <div class="modal-content panel auth-modal-content">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">Acceso</span>
+          <h3 id="authModalTitle">Iniciar sesion</h3>
+          <p id="authModalCopy">Entrá con tu usuario para habilitar acciones protegidas.</p>
+        </div>
+        <button id="closeAuthModal" type="button" class="modal-close-btn" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <form id="authLoginForm">
+        <div id="authModeNotice" class="auth-mode-notice"></div>
+        <div class="grid two">
+          <label class="field">
+            <span>Email</span>
+            <input id="authEmail" type="email" autocomplete="username" required>
+          </label>
+          <label class="field">
+            <span>Contraseña</span>
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="8" required>
+          </label>
+        </div>
+        <div class="auth-actions">
+          <button class="primary-action" id="authLoginBtn" type="submit">Iniciar sesion</button>
+          <button class="icon-btn" id="authBootstrapBtn" type="button">Crear primer admin</button>
+        </div>
+        <div id="authStatus" class="auth-status"></div>
+      </form>
+
+      <div id="authSessionBox" class="auth-session-box" hidden>
+        <strong id="authSessionName">Usuario</strong>
+        <span id="authSessionRole">Rol</span>
+        <button class="icon-btn" id="authLogoutBtn" type="button">Cerrar sesion</button>
+      </div>
+
+      <div id="userAdminBox" class="user-admin-box" hidden>
+        <div class="section-head compact-head">
+          <div>
+            <span class="eyebrow">Usuarios</span>
+            <h3>Tabla de usuarios</h3>
+          </div>
+          <button class="icon-btn" id="refreshUsersBtn" type="button">Actualizar</button>
+        </div>
+        <form id="createUserForm" class="user-create-form">
+          <div class="grid two">
+            <label class="field">
+              <span>Nombre</span>
+              <input id="newUserName" type="text" placeholder="Nombre">
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input id="newUserEmail" type="email" placeholder="usuario@empresa.com">
+            </label>
+            <label class="field">
+              <span>Contraseña</span>
+              <input id="newUserPassword" type="password" minlength="8" placeholder="Minimo 8 caracteres">
+            </label>
+            <label class="field">
+              <span>Rol</span>
+              <select id="newUserRole">
+                <option value="operator">Operador</option>
+                <option value="auditor">Auditor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+          </div>
+          <button class="primary-action" type="submit">Crear usuario</button>
+        </form>
+        <div id="usersList" class="users-list empty-state">Iniciá sesión como admin para ver usuarios.</div>
+      </div>
+    </div>
+  </div>
+
   <script src="data.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="modules/api-client.js?v=1"></script>
+  <script src="modules/auth-client.js?v=1"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

@@ -4333,6 +4333,153 @@ body {
   animation: slideUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.modal-close-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.auth-modal-content {
+  width: min(560px, 100%);
+}
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.auth-actions .primary-action {
+  margin-top: 0;
+}
+
+.auth-status {
+  min-height: 20px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-status.ok {
+  color: var(--green);
+}
+
+.auth-status.bad {
+  color: var(--red);
+}
+
+.auth-mode-notice {
+  margin-bottom: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #f8fbff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.auth-mode-notice.setup {
+  border-color: rgba(5, 150, 105, 0.28);
+  background: #ecfdf5;
+  color: var(--green-dark);
+}
+
+.auth-mode-notice.info {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: #eff6ff;
+  color: var(--blue-dark);
+}
+
+.auth-mode-notice.bad {
+  border-color: rgba(220, 38, 38, 0.22);
+  background: #fef2f2;
+  color: var(--red);
+}
+
+.auth-session-box {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+#authLoginForm[hidden],
+.auth-session-box[hidden],
+.user-admin-box[hidden],
+#authBootstrapBtn[hidden],
+#authLoginBtn[hidden] {
+  display: none !important;
+}
+
+.auth-session-box strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.auth-session-box span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.compact-head {
+  margin-top: 18px;
+  margin-bottom: 12px;
+}
+
+.user-admin-box {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.user-create-form {
+  display: grid;
+  gap: 12px;
+}
+
+.user-create-form .primary-action {
+  width: auto;
+  justify-self: start;
+  margin-top: 0;
+}
+
+.users-list {
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table th,
+.users-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 12px;
+  text-align: left;
+}
+
+.users-table th {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
