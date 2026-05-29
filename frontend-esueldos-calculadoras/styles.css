@@ -8520,10 +8520,41 @@ body > * {
   border-bottom: 0;
 }
 
+.category-guide {
+  display: grid;
+  gap: 14px;
+}
+
+.uocra-guide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.uocra-guide-badge {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border-radius: 999px;
+  color: #047857;
+  background: #dcfce7;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.uocra-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
 @media screen and (max-width: 1180px) {
   .summary-kpis,
   .summary-rule-grid,
-  .summary-definition-list {
+  .summary-definition-list,
+  .uocra-guide-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -8544,8 +8575,18 @@ body > * {
 
   .summary-kpis,
   .summary-rule-grid,
-  .summary-definition-list {
+  .summary-definition-list,
+  .uocra-guide-grid {
     grid-template-columns: 1fr;
+  }
+
+  .uocra-guide-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .uocra-guide-badge {
+    width: max-content;
   }
 
   .convention-summary-hero {
