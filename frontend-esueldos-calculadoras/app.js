@@ -15,6 +15,38 @@
   let currentStep = 1;
   const TOTAL_STEPS = 4;
   const leiaHistory = [];
+  const leiaGuidedTopics = [
+    {
+      id: "scales",
+      label: "Escalas salariales",
+      detail: "Basicos, jornales, no remunerativos y escala aprobada vigente."
+    },
+    {
+      id: "categories",
+      label: "Categorias",
+      detail: "Listado de categorias del convenio con sus valores de referencia."
+    },
+    {
+      id: "additionals",
+      label: "Adicionales",
+      detail: "Conceptos, pluses, viaticos e items parametrizados."
+    },
+    {
+      id: "zones",
+      label: "Zonas",
+      detail: "Ambitos, zonas y coeficientes aplicables."
+    },
+    {
+      id: "deductions",
+      label: "Aportes y descuentos",
+      detail: "Aportes generales y propios del convenio."
+    },
+    {
+      id: "rules",
+      label: "Reglas de liquidacion",
+      detail: "Divisores, jornada, presentismo, antiguedad y controles."
+    }
+  ];
   const scaleState = {
     recent: [],
     months: [],
@@ -28,6 +60,9 @@
   };
 
   function getApiBase() {
+    if (window.eSueldosApiClient?.baseUrl !== undefined) {
+      return window.eSueldosApiClient.baseUrl;
+    }
     if (typeof window.ESUELDOS_API_URL === "string") {
       return window.ESUELDOS_API_URL.replace(/\/$/, "");
     }
@@ -41,7 +76,22 @@
   }
 
   function apiUrl(path) {
+    if (window.eSueldosApiClient?.url) return window.eSueldosApiClient.url(path);
     return `${API_BASE}${path}`;
+  }
+
+  function authHeaders(extra = {}) {
+    const headers = { ...extra };
+    const token = window.eSueldosAuth?.getStoredToken?.();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+
+  function authFetch(path, options = {}) {
+    return fetch(apiUrl(path), {
+      ...options,
+      headers: authHeaders(options.headers || {})
+    });
   }
 
   async function fetchCatalog() {
@@ -308,6 +358,16 @@
               <span></span>
             </div>
             <span class="use-btn"><span>Usar este convenio</span><span aria-hidden="true">&gt;</span></span>
+            <button class="convention-delete-btn" type="button" data-delete-convention-id="${escapeHtml(conv.id)}" aria-label="Borrar convenio ${escapeHtml(meta.title)}">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+                <path d="M6 7l1 14h10l1-14" />
+                <path d="M9 7V4h6v3" />
+              </svg>
+              <span>Borrar</span>
+            </button>
           </div>
         </article>`;
       })
@@ -315,6 +375,13 @@
 
     // Usar delegación de eventos para evitar re-registro en cada updateConvention()
     container.onclick = (e) => {
+      const deleteButton = e.target.closest("[data-delete-convention-id]");
+      if (deleteButton) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteConvention(deleteButton.dataset.deleteConventionId);
+        return;
+      }
       const card = e.target.closest(".convention-card");
       if (card) {
         e.preventDefault();
@@ -322,6 +389,7 @@
       }
     };
     container.onkeydown = (e) => {
+      if (e.target.closest("[data-delete-convention-id]")) return;
       if (e.key === "Enter" || e.key === " ") {
         const card = e.target.closest(".convention-card");
         if (card) {
@@ -330,6 +398,30 @@
         }
       }
     };
+  }
+
+  async function deleteConvention(id) {
+    const conv = DATA.conventions[id];
+    if (!conv) return;
+    const name = conv.shortName || conv.name || id;
+    const confirmed = window.confirm(`¿Seguro que queres borrar el convenio "${name}"?\n\nSe eliminara del listado y tambien se borraran sus escalas cargadas. Esta accion no borra empleados ni liquidaciones historicas.`);
+    if (!confirmed) return;
+    const finalConfirmed = window.confirm(`Confirmacion final:\n\n¿Borrar definitivamente "${name}" y sus escalas asociadas?`);
+    if (!finalConfirmed) return;
+
+    try {
+      await fetchJson(`/api/conventions/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await loadCatalog();
+      const currentId = str("convention");
+      const fallbackId = DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions)[0];
+      updateConventionSelectsAfterCatalogReload(currentId === id ? fallbackId : currentId);
+      renderConventionCards();
+      syncScaleConvention();
+      await refreshActiveScaleContext();
+      if ($("scaleConvention")) await loadScaleDashboard();
+    } catch (error) {
+      window.alert(`No se pudo borrar el convenio: ${error.message}`);
+    }
   }
 
   function chooseConvention(id) {
@@ -1430,7 +1522,285 @@
     };
   }
 
-  function calculate() {
+  function buildBackendCalculationPayload() {
+    const conv = getConvention();
+    const inputs = {};
+    document.querySelectorAll("#payrollForm input, #payrollForm select").forEach((el) => {
+      if (!el.id || ["convention", "period", "category", "zone"].includes(el.id)) return;
+      if (el.type === "checkbox") inputs[el.id] = el.checked;
+      else inputs[el.id] = el.value;
+    });
+    return {
+      conventionId: conv.id,
+      period: getPeriod(conv),
+      categoryId: getCategory(conv).id,
+      zoneId: getZone(conv).id,
+      employee: {
+        legajo: str("employeeLegajo", ""),
+        name: str("employeeName", "Sin nombre") || "Sin nombre",
+        cuil: str("employeeCuil", "-") || "-",
+        entryDate: str("entryDate", "") || "",
+        civilStatus: str("civilStatus", "soltero")
+      },
+      inputs,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  function authUser() {
+    const user = window.eSueldosAuth?.getStoredUser?.() || null;
+    if (!user || !user.email || !user.role || !window.eSueldosAuth?.getStoredToken?.()) return null;
+    return user;
+  }
+
+  function setAuthStatus(message = "", tone = "") {
+    const status = $("authStatus");
+    if (!status) return;
+    status.textContent = message;
+    status.className = `auth-status ${tone}`.trim();
+  }
+
+  function renderAuthState() {
+    const user = authUser();
+    const avatar = $("authAvatarBtn");
+    const sessionBox = $("authSessionBox");
+    const loginForm = $("authLoginForm");
+    const name = $("authSessionName");
+    const role = $("authSessionRole");
+    const adminBox = $("userAdminBox");
+    if (avatar) {
+      avatar.textContent = user?.name
+        ? user.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()
+        : "?";
+      avatar.title = user ? `${user.name} (${user.role})` : "Iniciar sesion";
+    }
+    if (sessionBox && loginForm) {
+      sessionBox.hidden = !user;
+      loginForm.hidden = !!user;
+    }
+    if (name) name.textContent = user?.name || "Usuario";
+    if (role) role.textContent = user?.role || "";
+    if (adminBox) {
+      adminBox.hidden = user?.role !== "admin";
+      if (user?.role === "admin") loadUsers();
+    }
+  }
+
+  async function refreshAuthStatus() {
+    const notice = $("authModeNotice");
+    const bootstrap = $("authBootstrapBtn");
+    const login = $("authLoginBtn");
+    const title = $("authModalTitle");
+    const copy = $("authModalCopy");
+    try {
+      const status = await fetchJson("/api/auth/status");
+      if (status.hasUsers) {
+        if (title) title.textContent = "Iniciar sesion";
+        if (copy) copy.textContent = "Ya hay usuarios creados. Ingresá con un usuario admin, auditor u operador.";
+        if (notice) {
+          notice.className = "auth-mode-notice info";
+          notice.innerHTML = "Ya existe al menos un usuario. Si no recordás la contraseña del admin, hay que resetearla desde MongoDB.";
+        }
+        if (bootstrap) bootstrap.hidden = true;
+        if (login) {
+          login.textContent = "Iniciar sesion";
+          login.hidden = false;
+        }
+      } else {
+        if (title) title.textContent = "Primer acceso";
+        if (copy) copy.textContent = "Todavía no hay usuarios. Creá el primer administrador con email y contraseña.";
+        if (notice) {
+          notice.className = "auth-mode-notice setup";
+          notice.innerHTML = "No hay usuarios en la tabla <strong>users</strong>. Usá este formulario para crear el primer admin.";
+        }
+        if (bootstrap) {
+          bootstrap.hidden = false;
+          bootstrap.textContent = "Crear primer admin";
+        }
+        if (login) {
+          login.textContent = "Crear primer admin";
+          login.hidden = true;
+        }
+      }
+    } catch (error) {
+      if (notice) {
+        notice.className = "auth-mode-notice bad";
+        notice.textContent = "No pude consultar el estado de usuarios. Verificá que el backend esté iniciado.";
+      }
+      if (bootstrap) bootstrap.hidden = true;
+      if (login) login.hidden = false;
+    }
+  }
+
+  function openAuthModal() {
+    renderAuthState();
+    setAuthStatus("");
+    refreshAuthStatus();
+    const modal = $("authModal");
+    if (modal) modal.style.display = "flex";
+  }
+
+  function closeAuthModal() {
+    const modal = $("authModal");
+    if (modal) modal.style.display = "none";
+  }
+
+  async function submitAuth(path, successMessage) {
+    const email = str("authEmail").trim();
+    const password = str("authPassword");
+    if (!email || !password) {
+      setAuthStatus("Completá email y contraseña.", "bad");
+      return;
+    }
+    setAuthStatus("Validando credenciales...");
+    try {
+      const payload = await fetchJson(path, {
+        method: "POST",
+        body: JSON.stringify({ email, password, name: email.split("@")[0] })
+      });
+      window.eSueldosAuth?.storeToken?.(payload.token);
+      window.eSueldosAuth?.storeUser?.(payload.user);
+      renderAuthState();
+      setAuthStatus(successMessage, "ok");
+      window.setTimeout(closeAuthModal, 800);
+    } catch (error) {
+      if (path.includes("bootstrap-admin") && /Ya existen usuarios/i.test(error.message || "")) {
+        await refreshAuthStatus();
+      }
+      setAuthStatus(error.message || "No se pudo iniciar sesion.", "bad");
+    }
+  }
+
+  function renderUsers(users = []) {
+    const target = $("usersList");
+    if (!target) return;
+    if (!users.length) {
+      target.className = "users-list empty-state";
+      target.innerHTML = "Todavia no hay usuarios para mostrar.";
+      return;
+    }
+    target.className = "users-list";
+    target.innerHTML = `<table class="users-table">
+      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
+      <tbody>${users.map((user) => `<tr>
+        <td>${escapeHtml(user.name || "-")}</td>
+        <td>${escapeHtml(user.email || "-")}</td>
+        <td>${escapeHtml(user.role || "-")}</td>
+        <td>${user.active === false ? "Inactivo" : "Activo"}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+
+  async function loadUsers() {
+    if (authUser()?.role !== "admin") return;
+    try {
+      renderUsers(await fetchJson("/api/users"));
+    } catch (error) {
+      const target = $("usersList");
+      if (target) {
+        target.className = "users-list empty-state";
+        target.innerHTML = escapeHtml(error.message || "No se pudieron cargar usuarios.");
+      }
+    }
+  }
+
+  async function createUser(event) {
+    event.preventDefault();
+    const payload = {
+      name: str("newUserName").trim() || str("newUserEmail").split("@")[0],
+      email: str("newUserEmail").trim(),
+      password: str("newUserPassword"),
+      role: str("newUserRole", "operator")
+    };
+    if (!payload.email || !payload.password) {
+      setAuthStatus("Completá email y contraseña del nuevo usuario.", "bad");
+      return;
+    }
+    try {
+      await fetchJson("/api/users", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      $("createUserForm")?.reset();
+      setAuthStatus("Usuario creado en la tabla users.", "ok");
+      await loadUsers();
+    } catch (error) {
+      setAuthStatus(error.message || "No se pudo crear el usuario.", "bad");
+    }
+  }
+
+  function setupAuthUi() {
+    renderAuthState();
+    $("authAvatarBtn")?.addEventListener("click", openAuthModal);
+    $("authMenuBtn")?.addEventListener("click", openAuthModal);
+    $("closeAuthModal")?.addEventListener("click", closeAuthModal);
+    $("authModal")?.addEventListener("click", (event) => {
+      if (event.target.id === "authModal") closeAuthModal();
+    });
+    $("authLoginForm")?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const isFirstAccess = !$("authBootstrapBtn")?.hidden;
+      submitAuth(
+        isFirstAccess ? "/api/auth/bootstrap-admin" : "/api/auth/login",
+        isFirstAccess ? "Primer admin creado." : "Sesion iniciada."
+      );
+    });
+    $("authBootstrapBtn")?.addEventListener("click", () => {
+      submitAuth("/api/auth/bootstrap-admin", "Primer admin creado.");
+    });
+    $("authLogoutBtn")?.addEventListener("click", () => {
+      window.eSueldosAuth?.clearToken?.();
+      window.eSueldosAuth?.storeUser?.(null);
+      renderAuthState();
+      setAuthStatus("Sesion cerrada.", "ok");
+      refreshAuthStatus();
+    });
+    $("refreshUsersBtn")?.addEventListener("click", loadUsers);
+    $("createUserForm")?.addEventListener("submit", createUser);
+  }
+
+  function normalizeBackendResult(payload) {
+    const conv = DATA.conventions[payload.conventionId] || payload.conv || getConvention();
+    return {
+      conv,
+      employee: payload.employee,
+      period: payload.period,
+      category: payload.category || getCategory(conv),
+      zone: payload.zone || getZone(conv),
+      activeScale: payload.activeScale || null,
+      remRows: payload.remunerative || payload.remRows || [],
+      noRemRows: payload.nonRemunerative || payload.noRemRows || [],
+      deductionRows: payload.deductions || payload.deductionRows || [],
+      employerRows: payload.employer || payload.employerRows || [],
+      details: payload.details || [],
+      totals: payload.totals,
+      calculation: payload.calculation || null
+    };
+  }
+
+  async function calculate() {
+    try {
+      const response = await authFetch("/api/liquidations/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildBackendCalculationPayload())
+      });
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        throw new Error(errorPayload.error || `HTTP ${response.status}`);
+      }
+      lastAudit = null;
+      lastResult = normalizeBackendResult(await response.json());
+      renderAll(lastResult);
+      setActionButtonsEnabled(true);
+      return;
+    } catch (error) {
+      console.warn("Calculo backend no disponible; usando motor local.", error);
+      calculateLocal();
+    }
+  }
+
+  function calculateLocal() {
     const conv = getConvention();
     if (!conv) return;
     lastAudit = null;
@@ -1662,6 +2032,101 @@
     </section>`;
   }
 
+  function renderCategoryGuide(conv, result = null) {
+    if (!conv?.categories?.length) return "";
+    if (conv.id === "uocra") return renderUocraCategoryGuide(conv);
+    if (conv.id === "farmacia") return renderFarmaciaCategoryGuide(conv);
+    if (conv.id === "camioneros") return renderCamionerosCategoryGuide(conv);
+    return renderGenericCategoryGuide(conv, result);
+  }
+
+  function renderUocraCategoryGuide(conv) {
+    const periods = conv.periods || [];
+    const zones = conv.zones?.length ? conv.zones : [{ id: "A", label: "Zona A" }];
+    const tables = zones.map((zone) => renderSummaryTable(`Cuadro de categorias - ${zone.label}`, [
+      "Categoria",
+      "Jornada",
+      ...periods.map((item) => item.label),
+      "SNR abril"
+    ], (conv.categories || []).map((cat) => [
+      cat.label,
+      cat.monthly ? "Mensual" : "Jornal diario",
+      ...periods.map((item) => {
+        const value = Number(conv.scales?.[item.id]?.[zone.id]?.[cat.id] || 0);
+        return cat.monthly ? `${fmt(value)} mensual` : fmt(value);
+      }),
+      fmt(Number(conv.nonRem?.abr26?.[zone.id]?.[cat.id] || 0))
+    ])));
+    return `<div class="category-guide">${tables.join("")}</div>`;
+  }
+
+  function renderFarmaciaCategoryGuide(conv) {
+    const rules = conv.rules || {};
+    const periods = conv.periods || [];
+    return `<div class="category-guide">${renderSummaryTable("Cuadro de categorias y jornada", [
+      "Categoria",
+      "Jornada",
+      "Basico mensual",
+      ...periods.map((item) => `No rem. ${item.label}`)
+    ], (conv.categories || []).map((cat) => [
+      cat.label,
+      `${rules.weeklyHours || 45} hs semanales`,
+      fmt(Number(cat.monthly || 0)),
+      ...periods.map((item) => fmt(Number(cat.nonRem?.[item.id] || 0)))
+    ]))}</div>`;
+  }
+
+  function renderCamionerosCategoryGuide(conv) {
+    const zones = conv.zones?.length ? conv.zones : [{ id: "base", label: "General", coef: 1 }];
+    const tables = zones.map((zone) => {
+      const coef = Number(zone.coef || 1);
+      return renderSummaryTable(`Cuadro de categorias - ${zone.label}`, [
+        "Categoria",
+        "Jornada",
+        "Basico mensual",
+        "Jornal ref. 24 dias"
+      ], (conv.categories || []).map((cat) => {
+        const monthly = Number(cat.monthly || 0) * coef;
+        return [
+          cat.label,
+          "Mensual / jornada convencional",
+          fmt(monthly),
+          fmt(monthly / 24)
+        ];
+      }));
+    });
+    return `<div class="category-guide">${tables.join("")}</div>`;
+  }
+
+  function renderGenericCategoryGuide(conv, result = null) {
+    const { period, zone } = currentSummaryContext(conv, result);
+    const zones = conv.zones?.length ? conv.zones : [zone || { id: "general", label: "General" }];
+    const rules = conv.rules || conv.liquidationModel?.rules || {};
+    const tables = zones.map((tableZone) => renderSummaryTable(`Cuadro de categorias - ${tableZone.label || "General"}`, [
+      "Categoria",
+      "Jornada",
+      "Mensual",
+      "Jornal",
+      "Hora",
+      "No rem. periodo"
+    ], (conv.categories || []).map((cat) => {
+      const row = scaleCategoryRow(conv, cat, tableZone);
+      const monthly = firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]);
+      const day = firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]);
+      const hourly = firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]);
+      const jornada = cat.normalWeeklyHours || rules.weeklyHours || cat.weeklyHours;
+      return [
+        cat.label,
+        jornada ? `${jornada} hs semanales` : summaryValue(cat.salaryType || conv.type || "Segun convenio"),
+        monthly ? fmt(monthly) : "-",
+        day ? fmt(day) : "-",
+        hourly ? fmt(hourly) : "-",
+        periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
+      ];
+    })));
+    return `<div class="category-guide">${tables.join("")}</div>`;
+  }
+
   function renderConventionSummary(result = null) {
     const conv = result?.conv || getConvention();
     const meta = conventionCardMeta(conv);
@@ -1698,15 +2163,34 @@
         { label: "Periodos", value: conv.periods?.length || 0 },
         { label: "Origen", value: dataOrigin === "mongodb" ? "MongoDB" : "Local" }
       ])}
+      ${renderCategoryGuide(conv, result)}
       ${body}
     </div>`;
   }
 
-  function renderUocraSummary(conv, result = null) {
-    const { period, zone, category } = currentSummaryContext(conv, result);
-    const value = selectedScaleAmount(conv, category, zone, period);
-    const snr = firstFinite(scaleCategoryRow(conv, category, zone)?.nonRemunerative, conv.nonRem?.[period]?.[zone?.id]?.[category?.id]) || 0;
-    const isMonthly = !!category?.monthly;
+  function renderUocraGuideScaleTable(conv, period, options = {}) {
+    const zoneId = options.zoneId || "A";
+    const periodLabel = conv.periods?.find((item) => item.id === period)?.label || monthLabel(period);
+    const headers = options.withSplitSnr
+      ? ["Categoria", "Jornal/dia", "Valor/hora", "Quincena 88hs", "SNR mensual", "SNR 1ra Q.", "SNR 2da Q."]
+      : ["Categoria", "Jornal/dia", "Valor/hora", "Quincena 88hs", "SNR mensual"];
+    const rows = (conv.categories || []).map((cat) => {
+      const scale = Number(conv.scales?.[period]?.[zoneId]?.[cat.id] || 0);
+      const snr = Number(conv.nonRem?.[period]?.[zoneId]?.[cat.id] || 0);
+      const hour = cat.monthly ? "-" : fmt(scale / 8);
+      const fortnight = cat.monthly ? "-" : fmt((scale / 8) * 88);
+      const base = cat.monthly ? `${fmt(scale)} mensual` : fmt(scale);
+      const row = [cat.label, base, hour, fortnight, fmt(snr)];
+      if (options.withSplitSnr) {
+        row.push(fmt(snr / 2), fmt(period === "mar26" ? snr : snr / 2));
+      }
+      return row;
+    });
+
+    return renderSummaryTable(`Zona ${zoneId} - ${periodLabel}`, headers, rows);
+  }
+
+  function renderUocraLegacySummary(conv) {
     return `
       <section class="summary-section summary-highlight">
         <h3>Lectura contable</h3>
@@ -1738,6 +2222,49 @@
         "Revisar si aplica vestimenta, altura u otros adicionales de tarea.",
         "Comparar SNR contra la escala aprobada del mes antes de cerrar."
       ])}
+    `;
+  }
+
+  function renderUocraSummary(conv) {
+    return `
+      <section class="summary-section summary-highlight uocra-guide-head">
+        <div>
+          <h3>Escalas salariales - Acuerdo 31/03/2026</h3>
+          <p>Jornales diarios. Valor hora = jornal / 8. Sereno: salario mensual. Vigencia hasta 31/05/2026.</p>
+        </div>
+        <span class="uocra-guide-badge">Vigente</span>
+      </section>
+      ${renderUocraGuideScaleTable(conv, "abr26", { zoneId: "A", withSplitSnr: true })}
+      ${renderUocraGuideScaleTable(conv, "mar26", { zoneId: "A" })}
+      ${renderUocraGuideScaleTable(conv, "may26", { zoneId: "A" })}
+      <div class="uocra-guide-grid">
+        ${renderSummaryTable("Aportes empleado", ["Concepto", "%", "Base"], [
+          ["Jubilacion SIPA", "11%", "Base SS"],
+          ["PAMI", "3%", "Base SS"],
+          ["Obra social OSMICON", "3%", "Rem + SNR"],
+          ["Cuota sindical UOCRA", "2,50%", "Remunerativo"],
+          ["Aporte solidario (abr-may 26)", "2,00%", "Remunerativo"],
+          ["Aporte UOCRA SS", "1,80%", "Remunerativo"],
+          ["ISTIC", "0,50%", "Remunerativo"]
+        ])}
+        ${renderSummaryTable("Contribuciones empleador", ["Concepto", "%", "Base"], [
+          ["Jubilacion empleador", "10,77%", "Base SS"],
+          ["PAMI empleador", "1,58%", "Base SS"],
+          ["Obra social empleador", "6%", "Rem + SNR"],
+          ["Asignaciones familiares", "4,70%", "Base SS"],
+          ["Fondo Nac. Empleo", "0,95%", "Base SS"],
+          ["Contribucion UOCRA", "2,30%", "Remunerativo"],
+          ["ISTIC empleador", "0,50%", "Remunerativo"],
+          ["Contrib. empresarial (abr-may)", "$6.000", "Por trabajador"],
+          ["ART variable", "2,50%", "Remunerativo"],
+          ["ART cuota fija", "$1.450", "Por mes"],
+          ["SCVO", "$424,62", "Por mes"]
+        ])}
+      </div>
+      <section class="summary-section summary-highlight">
+        <h3>Base SS</h3>
+        <p>Base SS = Remunerativo - $7.003,68 (Ley 27.430). Cuota sindical absorbe aporte solidario para afiliados.</p>
+      </section>
     `;
   }
 
@@ -2510,7 +3037,7 @@
     const auditTimeout = setTimeout(() => controller.abort(), 18000);
     try {
       await refreshActiveScaleContext();
-      const response = await fetch(apiUrl("/api/leia/audit-liquidation"), {
+      const response = await authFetch("/api/leia/audit-liquidation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -2620,7 +3147,11 @@
   }
 
   async function fetchJson(path, options = {}) {
-    const response = await fetch(apiUrl(path), options);
+    if (window.eSueldosApiClient?.json) return window.eSueldosApiClient.json(path, options);
+    const headers = new Headers(options.headers || {});
+    const token = window.eSueldosAuth?.getStoredToken?.();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
     return payload;
@@ -2707,7 +3238,12 @@
     URL.revokeObjectURL(url);
   }
 
-  function downloadScaleExcel(scale) {
+  function csvCell(value) {
+    const text = String(value ?? "");
+    return /[",\n;]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  }
+
+  function downloadScaleCsv(scale) {
     if (!scale || !scale.parsedScale || !scale.parsedScale.categories) return;
     const data = [];
     data.push(["", "", "", "Exportar Montos Categorias"]);
@@ -2734,36 +3270,17 @@
       ];
       data.push(row);
     });
-    
-    if (typeof XLSX !== "undefined") {
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      
-      // Ajustar anchos de columna para que el Excel quede prolijo
-      ws["!cols"] = [
-        { wch: 10 }, // convenio
-        { wch: 12 }, // idcategoria
-        { wch: 45 }, // denominacion
-        { wch: 25 }, // Asignación Mensual
-        { wch: 25 }, // Asignacion Jornal
-        { wch: 20 }, // Adicional 1
-        { wch: 20 }, // Adicional 2
-        { wch: 20 }, // Adicional 3
-        { wch: 20 }, // Adicional 4
-        { wch: 20 }, // Adicional 5
-        { wch: 20 }, // Adicional 6
-        { wch: 20 }, // Adicional 7
-        { wch: 20 }, // Adicional 8
-        { wch: 20 }, // Adicional 9
-        { wch: 20 }  // Adicional 10
-      ];
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Hoja1");
-      const filename = `Escala_${scale.conventionId || 'escala'}_${scale.period || 'periodo'}.xlsx`;
-      XLSX.writeFile(wb, filename);
-    } else {
-      console.error("XLSX library not loaded");
-    }
+    const csv = data.map((row) => row.map(csvCell).join(";")).join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Escala_${scale.conventionId || "escala"}_${scale.period || "periodo"}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function renderScaleEditor(scale) {
@@ -2786,7 +3303,7 @@
       <button class="icon-btn" id="saveScaleDraftBtn" type="button" hidden>Guardar cambios</button>`
       : `<button class="icon-btn" id="saveScaleDraftBtn" type="button">Guardar edicion</button>`;
     const downloadActions = `<button class="icon-btn" id="downloadJsonBtn" type="button">Descargar JSON</button>
-      <button class="icon-btn" id="downloadExcelBtn" type="button">Descargar Excel</button>`;
+          <button class="icon-btn" id="downloadExcelBtn" type="button">Descargar CSV</button>`;
     const moderationActions = isPending
       ? `<button class="primary-action" id="approveScaleBtn" type="button">Aprobar escala</button>
       <button class="icon-btn danger" id="rejectScaleBtn" type="button">Rechazar</button>`
@@ -2821,7 +3338,7 @@
     $("approveScaleBtn")?.addEventListener("click", approveSelectedScale);
     $("rejectScaleBtn")?.addEventListener("click", rejectSelectedScale);
     $("downloadJsonBtn")?.addEventListener("click", () => downloadScaleJson(scale));
-    $("downloadExcelBtn")?.addEventListener("click", () => downloadScaleExcel(scale));
+    $("downloadExcelBtn")?.addEventListener("click", () => downloadScaleCsv(scale));
   }
 
   function parseScaleEditorJson() {
@@ -2962,7 +3479,7 @@
     if (button) button.disabled = true;
     setScaleStatus("Subiendo PDF y consultando a leIA...", "");
     try {
-      const response = await fetch(apiUrl("/api/scales/upload"), {
+      const response = await authFetch("/api/scales/upload", {
         method: "POST",
         body: formData
       });
@@ -3061,13 +3578,25 @@
     list.innerHTML = items.map((draft) => {
       const conv = draft.parsedConvention || {};
       const statusClass = draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : "";
-      return `<button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
-        <span>
-          <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
-          <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
-        </span>
-        <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
-      </button>`;
+      const canDelete = ["APROBADO", "RECHAZADO"].includes(draft.status);
+      return `<div class="convention-draft-row ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}">
+        <button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
+          <span>
+            <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
+            <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
+          </span>
+          <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
+        </button>
+        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4h8v2"></path>
+            <path d="M19 6l-1 14H6L5 6"></path>
+            <path d="M10 11v5"></path>
+            <path d="M14 11v5"></path>
+          </svg>
+        </button>` : ""}
+      </div>`;
     }).join("");
     if (!conventionBuilderState.selected || !items.some((item) => item.id === conventionBuilderState.selected.id)) {
       renderConventionJsonEditor(null);
@@ -3110,7 +3639,16 @@
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar JSON</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${draft.status === "APROBADO" ? "disabled" : ""}>Guardar JSON</button>
       ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
-      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
+      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : `<button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4h8v2"></path>
+          <path d="M19 6l-1 14H6L5 6"></path>
+          <path d="M10 11v5"></path>
+          <path d="M14 11v5"></path>
+        </svg>
+        Eliminar
+      </button>`}
     </div>
     <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
 
@@ -3118,6 +3656,7 @@
     $("saveConventionJsonBtn")?.addEventListener("click", saveConventionDraftJson);
     $("approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
     $("rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
+    $("deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
   }
 
   function parseConventionJsonEditor() {
@@ -3208,6 +3747,80 @@
     }
   }
 
+  async function deleteConventionDraft(id) {
+    const draft = conventionBuilderState.drafts.find((item) => item.id === id)
+      || (conventionBuilderState.selected?.id === id ? conventionBuilderState.selected : null);
+    const status = conventionDraftStatusLabel(draft?.status);
+    if (!draft || !["APROBADO", "RECHAZADO"].includes(draft.status)) {
+      setConventionBuilderStatus("Solo se pueden eliminar borradores aprobados o rechazados.", "bad");
+      return;
+    }
+    const name = draft.parsedConvention?.shortName || draft.parsedConvention?.name || draft.name || "este borrador";
+    if (!confirm(`Eliminar ${name} (${status}) de la auditoria humana? Esta accion no se puede deshacer.`)) return;
+    try {
+      await fetchJson(`/api/convention-drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (conventionBuilderState.selected?.id === id) {
+        conventionBuilderState.selected = null;
+        renderConventionJsonEditor(null);
+      }
+      await loadConventionDrafts();
+      setConventionBuilderStatus(`Borrador ${status.toLowerCase()} eliminado.`, "ok");
+    } catch (error) {
+      setConventionBuilderStatus(error.message, "bad");
+    }
+  }
+
+  async function deleteConventionDraftsByStatus(status) {
+    const allowedStatuses = {
+      APROBADO: "aprobados",
+      RECHAZADO: "rechazados"
+    };
+    const label = allowedStatuses[status];
+    if (!label) return;
+
+    const drafts = conventionBuilderState.drafts.filter((draft) => draft.status === status);
+    if (!drafts.length) {
+      setConventionBuilderStatus(`No hay borradores ${label} para eliminar.`, "bad");
+      return;
+    }
+
+    const question = `Eliminar ${drafts.length} borrador${drafts.length === 1 ? "" : "es"} ${label} de la auditoria humana? Esta accion no se puede deshacer.`;
+    if (!confirm(question)) return;
+
+    const approvedButton = $("deleteApprovedDraftsBtn");
+    const rejectedButton = $("deleteRejectedDraftsBtn");
+    [approvedButton, rejectedButton].forEach((button) => {
+      if (button) button.disabled = true;
+    });
+    setConventionBuilderStatus(`Eliminando ${drafts.length} borrador${drafts.length === 1 ? "" : "es"} ${label}...`, "");
+
+    const results = await Promise.allSettled(
+      drafts.map((draft) => fetchJson(`/api/convention-drafts/${encodeURIComponent(draft.id)}`, { method: "DELETE" }))
+    );
+    const deletedIds = new Set(
+      results
+        .map((result, index) => result.status === "fulfilled" ? drafts[index].id : null)
+        .filter(Boolean)
+    );
+
+    if (conventionBuilderState.selected && deletedIds.has(conventionBuilderState.selected.id)) {
+      conventionBuilderState.selected = null;
+      renderConventionJsonEditor(null);
+    }
+
+    await loadConventionDrafts();
+    [approvedButton, rejectedButton].forEach((button) => {
+      if (button) button.disabled = false;
+    });
+
+    const failed = results.filter((result) => result.status === "rejected");
+    if (failed.length) {
+      setConventionBuilderStatus(`Se eliminaron ${deletedIds.size} y fallaron ${failed.length}. Revisar conexion/backend.`, "bad");
+      return;
+    }
+    setConventionBuilderStatus(`Se eliminaron ${deletedIds.size} borrador${deletedIds.size === 1 ? "" : "es"} ${label}.`, "ok");
+  }
+
   function updateConventionSelectsAfterCatalogReload(preferredId = "") {
     const selectedId = preferredId || str("convention", "camioneros");
     const conventionSelect = $("convention");
@@ -3244,7 +3857,7 @@
     if (button) button.disabled = true;
     setConventionBuilderStatus("leIA esta estructurando el convenio en JSON ejecutable...", "");
     try {
-      const response = await fetch(apiUrl("/api/convention-drafts/upload"), {
+      const response = await authFetch("/api/convention-drafts/upload", {
         method: "POST",
         body: formData
       });
@@ -3266,7 +3879,16 @@
   function setupConventionBuilder() {
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
+    $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("APROBADO"));
+    $("deleteRejectedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("RECHAZADO"));
     $("conventionDraftList")?.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-delete-convention-draft-id]");
+      if (deleteButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteConventionDraft(deleteButton.dataset.deleteConventionDraftId);
+        return;
+      }
       const button = event.target.closest("[data-convention-draft-id]");
       if (button) selectConventionDraft(button.dataset.conventionDraftId);
     });
@@ -3397,6 +4019,309 @@
     }).join("");
   }
 
+  function leiaConventionList() {
+    return Object.values(DATA?.conventions || {})
+      .filter((conv) => conv && conv.id && conv.name);
+  }
+
+  function appendLeiaActionPanel({ title, detail = "", buttons = [] }) {
+    const messages = $("leiaMessages");
+    if (!messages) return;
+    const panel = document.createElement("div");
+    panel.className = "leia-action-panel";
+    panel.innerHTML = `
+      <div class="leia-action-title">${escapeHtml(title)}</div>
+      ${detail ? `<div class="leia-action-detail">${escapeHtml(detail)}</div>` : ""}
+      <div class="leia-action-grid">
+        ${buttons.map((button) => `
+          <button class="leia-action-chip ${button.variant ? `is-${escapeHtml(button.variant)}` : ""}" type="button" ${button.attrs || ""}>
+            <span>${escapeHtml(button.label)}</span>
+            ${button.detail ? `<small>${escapeHtml(button.detail)}</small>` : ""}
+          </button>
+        `).join("")}
+      </div>
+    `;
+    messages.appendChild(panel);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function renderLeiaMainMenu() {
+    appendLeiaActionPanel({
+      title: "Consulta rapida por convenio",
+      detail: "Elegi un tema y despues selecciona el convenio. La respuesta sale del catalogo cargado en el sistema.",
+      buttons: leiaGuidedTopics.map((topic) => ({
+        label: topic.label,
+        detail: topic.detail,
+        attrs: `data-leia-topic="${escapeHtml(topic.id)}"`
+      }))
+    });
+  }
+
+  function renderLeiaConventionPicker(topicId) {
+    const topic = leiaGuidedTopics.find((item) => item.id === topicId);
+    const conventions = leiaConventionList();
+    if (!topic || !conventions.length) {
+      renderLeiaMessage("model", "No encontre convenios cargados en el catalogo. Si estas usando MongoDB, verifica que el backend este iniciado y que `/api/catalog` responda correctamente.");
+      return;
+    }
+
+    appendLeiaActionPanel({
+      title: `Sobre que convenio queres ver ${topic.label.toLowerCase()}?`,
+      detail: `${conventions.length} convenio${conventions.length !== 1 ? "s" : ""} disponible${conventions.length !== 1 ? "s" : ""}.`,
+      buttons: [
+        ...conventions.map((conv) => ({
+          label: conv.shortName || conv.name,
+          detail: conv.source || conv.name,
+          attrs: `data-leia-topic-convention="${escapeHtml(topic.id)}" data-leia-convention-id="${escapeHtml(conv.id)}"`
+        })),
+        {
+          label: "Volver al menu",
+          detail: "Elegir otro tipo de consulta",
+          variant: "secondary",
+          attrs: "data-leia-menu"
+        }
+      ]
+    });
+  }
+
+  function latestConventionPeriod(conv) {
+    const periods = Array.isArray(conv?.periods) ? conv.periods : [];
+    const selected = conv?.id === getConvention()?.id ? getPeriod(conv) : "";
+    return periods.find((period) => period.id === selected) || periods[periods.length - 1] || null;
+  }
+
+  function firstConventionZone(conv) {
+    return Array.isArray(conv?.zones) && conv.zones.length ? conv.zones[0] : null;
+  }
+
+  function moneyOrDash(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number !== 0 ? fmt(number) : "-";
+  }
+
+  function firstMoneyValue(...values) {
+    for (const value of values) {
+      if (typeof value === "boolean") continue;
+      const number = Number(value);
+      if (Number.isFinite(number) && number > 0) return number;
+    }
+    return null;
+  }
+
+  function rowAmountForSummary({ conv, category, periodId, zone, activeScale }) {
+    const activeRow = activeScale ? findScaleRow(activeScale.parsedScale?.categories, category, zone) : null;
+    const scaleZone = zone?.id && conv.scales?.[periodId]?.[zone.id] ? conv.scales[periodId][zone.id] : null;
+    const scaleZoneAmount = scaleZone?.[category.id];
+    const monthly = firstMoneyValue(
+      activeRow?.monthly,
+      periodAmountValue(activeRow, periodId, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]),
+      periodAmountValue(category, periodId, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]),
+      category.monthly === true ? scaleZoneAmount : null,
+      category.monthly
+    );
+    const day = firstMoneyValue(
+      activeRow?.day,
+      periodAmountValue(activeRow, periodId, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]),
+      periodAmountValue(category, periodId, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]),
+      category.monthly === false ? scaleZoneAmount : null,
+      category.day
+    );
+    const hourly = firstMoneyValue(
+      activeRow?.hourly,
+      periodAmountValue(activeRow, periodId, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]),
+      periodAmountValue(category, periodId, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]),
+      category.hourly
+    );
+    const nonRem = firstMoneyValue(
+      activeRow?.nonRemunerative,
+      periodNonRemValue(activeRow, periodId),
+      periodNonRemValue(category, periodId),
+      conv.nonRem?.[periodId]?.[zone?.id]?.[category.id]
+    );
+    const parts = [];
+    if (monthly) parts.push(`mensual ${moneyOrDash(monthly)}`);
+    if (day) parts.push(`jornal ${moneyOrDash(day)}`);
+    if (hourly) parts.push(`hora ${moneyOrDash(hourly)}`);
+    if (nonRem) parts.push(`no rem. ${moneyOrDash(nonRem)}`);
+    return parts.join(" | ") || "sin importe cargado";
+  }
+
+  async function fetchActiveScaleForConvention(conv, periodId) {
+    const period = periodIdToMonth(periodId) || periodId || currentMonthValue();
+    if (!conv?.id || !period) return null;
+    if (scaleState.activeForPayroll?.conventionId === conv.id && scaleState.activeForPayroll?.period === period) {
+      return scaleState.activeForPayroll;
+    }
+    try {
+      return await fetchJson(`/api/scales/active?conventionId=${encodeURIComponent(conv.id)}&period=${encodeURIComponent(period)}`);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function conventionSourceLine(conv, activeScale) {
+    const source = [`Catalogo: ${conv.source || conv.name}`];
+    if (activeScale) {
+      source.push(`Escala aprobada: ${activeScale.periodLabel || monthLabel(activeScale.period)}${activeScale.approvedAt ? `, aprobada el ${shortDate(activeScale.approvedAt)}` : ""}`);
+    } else {
+      source.push("Escala aprobada: no disponible para este periodo; muestro la base cargada en el catalogo.");
+    }
+    return source.join("\n");
+  }
+
+  function formatCategoryLines(conv, periodId, activeScale, limit = 12) {
+    const zone = firstConventionZone(conv);
+    const categories = Array.isArray(conv.categories) ? conv.categories : [];
+    return categories.slice(0, limit).map((category) => (
+      `- **${category.label || category.id}**: ${rowAmountForSummary({ conv, category, periodId, zone, activeScale })}`
+    ));
+  }
+
+  function formatAdditionals(conv, periodId, activeScale) {
+    const rows = [];
+    Object.entries(conv.additionals || {}).forEach(([key, item]) => {
+      const activeRow = activeScale ? findScaleRow(activeScale.parsedScale?.additionals, { id: key, label: item.label }, null) : null;
+      const monthly = firstFinite(activeRow?.monthly, item.monthly);
+      const day = firstFinite(activeRow?.day, item.day);
+      const hourly = firstFinite(activeRow?.hourly, item.hourly);
+      const nonRem = firstFinite(activeRow?.nonRemunerative, periodNonRemValue(item, periodId));
+      const parts = [monthly && `mensual ${moneyOrDash(monthly)}`, day && `jornal ${moneyOrDash(day)}`, hourly && `hora ${moneyOrDash(hourly)}`, nonRem && `no rem. ${moneyOrDash(nonRem)}`].filter(Boolean);
+      rows.push(`- **${item.label || key}**: ${parts.join(" | ") || "configurado sin importe fijo"}`);
+    });
+    Object.entries(conv.items || {}).forEach(([key, value]) => {
+      if (typeof value === "number") rows.push(`- **${key}**: ${moneyOrDash(value)}`);
+      else if (key.toLowerCase().includes("pct")) rows.push(`- **${key}**: ${value}%`);
+    });
+    (conv.liquidationModel?.concepts || []).forEach((concept) => {
+      const value = concept.calculation === "fixed"
+        ? moneyOrDash(conceptPeriodAmount(concept, periodId, ["amountByPeriod", "amountPorPeriodo"], concept.amount))
+        : concept.calculation === "amountPerUnit"
+          ? `${moneyOrDash(conceptPeriodAmount(concept, periodId, ["unitAmountByPeriod", "valorUnidadPorPeriodo"], concept.unitAmount || concept.amount))} por unidad`
+          : `${Number(concept.percent || 0)}% sobre ${concept.base || "base"}`;
+      rows.push(`- **${concept.label}**: ${value}`);
+    });
+    return rows.length ? rows.slice(0, 18) : ["- No hay adicionales parametrizados para este convenio."];
+  }
+
+  function formatDeductions(conv) {
+    const rows = [
+      `- Jubilacion: ${((DATA.constants?.worker?.jubilacion || 0.11) * 100).toLocaleString("es-AR")}%`,
+      `- Ley 19032 / PAMI: ${((DATA.constants?.worker?.pami || 0.03) * 100).toLocaleString("es-AR")}%`,
+      `- Obra social: ${((DATA.constants?.worker?.obraSocial || 0.03) * 100).toLocaleString("es-AR")}%`
+    ];
+    (conv.liquidationModel?.deductions || []).forEach((item) => {
+      rows.push(`- **${item.label}**: ${item.percent ? `${item.percent}%` : moneyOrDash(item.amount)} sobre ${item.base || "remunerativo"}`);
+    });
+    if (conv.id === "camioneros") {
+      rows.push("- Camioneros: cuota sindical, contribucion solidaria y seguro de sepelio segun parametros activos.");
+    }
+    if (conv.id === "farmacia") {
+      rows.push("- Farmacia Mendoza: ADEF, sindicato, caja compensadora y pro edificio segun parametros del convenio.");
+    }
+    return rows;
+  }
+
+  function formatRules(conv) {
+    const modelRules = conv.liquidationModel?.rules || {};
+    const rules = { ...(conv.rules || {}), ...modelRules };
+    const rows = [
+      `- Tipo de liquidacion: ${conv.type || rules.salaryType || "mensual"}`,
+      `- Jornada semanal: ${rules.weeklyHours || conv.rules?.weeklyHours || "no especificada"} horas`,
+      `- Divisor mensual: ${rules.monthDivisor || rules.dayDivisor || "no especificado"}`,
+      `- Divisor hora: ${rules.overtime?.divisor || rules.hourDivisor || "no especificado"}`
+    ];
+    if (modelRules.seniority?.enabled !== false) rows.push(`- Antiguedad: ${modelRules.seniority?.percentPerYear || conv.items?.antiguedadPct || "segun convenio"}% por anio cuando corresponde.`);
+    if (modelRules.presentism?.enabled || conv.items?.presentismoPct || conv.rules?.presentismoPct) rows.push(`- Presentismo: ${modelRules.presentism?.percent || conv.items?.presentismoPct || conv.rules?.presentismoPct || "segun convenio"}%.`);
+    (conv.auditChecklist || []).slice(0, 6).forEach((item) => rows.push(`- Control: ${item}`));
+    return rows;
+  }
+
+  async function buildLeiaGuidedAnswer(topicId, conventionId) {
+    const topic = leiaGuidedTopics.find((item) => item.id === topicId);
+    const conv = DATA.conventions?.[conventionId];
+    if (!topic || !conv) return "No pude encontrar ese tema o convenio en el catalogo actual.";
+    const period = latestConventionPeriod(conv);
+    const periodId = period?.id || currentMonthValue();
+    const activeScale = await fetchActiveScaleForConvention(conv, periodId);
+    const header = [
+      `**${topic.label} - ${conv.name}**`,
+      `Periodo de referencia: ${period?.label || monthLabel(periodIdToMonth(periodId) || periodId)}`,
+      conventionSourceLine(conv, activeScale)
+    ];
+
+    if (topicId === "scales") {
+      const lines = [
+        ...header,
+        "",
+        `Categorias cargadas: ${(conv.categories || []).length}. Zonas: ${(conv.zones || []).map((zone) => zone.label).join(", ") || "sin zonas"}.`,
+        activeScale?.parsedScale?.sourceSummary ? `Resumen de escala aprobada: ${activeScale.parsedScale.sourceSummary}` : "",
+        "",
+        ...formatCategoryLines(conv, periodId, activeScale, 10)
+      ].filter(Boolean);
+      return lines.join("\n");
+    }
+
+    if (topicId === "categories") {
+      return [
+        ...header,
+        "",
+        ...formatCategoryLines(conv, periodId, activeScale, 20),
+        (conv.categories || []).length > 20 ? `\nMostre las primeras 20 de ${(conv.categories || []).length} categorias cargadas.` : ""
+      ].filter(Boolean).join("\n");
+    }
+
+    if (topicId === "additionals") {
+      return [...header, "", ...formatAdditionals(conv, periodId, activeScale)].join("\n");
+    }
+
+    if (topicId === "zones") {
+      const zones = (conv.zones || []).map((zone) => `- **${zone.label || zone.id}**: coeficiente ${Number(zone.coef || 1).toLocaleString("es-AR")}`);
+      return [...header, "", ...(zones.length ? zones : ["- Sin zonas cargadas."])].join("\n");
+    }
+
+    if (topicId === "deductions") {
+      return [...header, "", ...formatDeductions(conv)].join("\n");
+    }
+
+    if (topicId === "rules") {
+      return [...header, "", ...formatRules(conv)].join("\n");
+    }
+
+    return "Ese item todavia no tiene una vista guiada disponible.";
+  }
+
+  async function handleLeiaGuidedAction(event) {
+    const topicButton = event.target.closest("[data-leia-topic]");
+    const conventionButton = event.target.closest("[data-leia-topic-convention]");
+    const menuButton = event.target.closest("[data-leia-menu]");
+    if (menuButton) {
+      renderLeiaMainMenu();
+      return;
+    }
+    if (topicButton) {
+      const topic = leiaGuidedTopics.find((item) => item.id === topicButton.dataset.leiaTopic);
+      if (!topic) return;
+      renderLeiaMessage("user", topic.label);
+      renderLeiaConventionPicker(topic.id);
+      return;
+    }
+    if (conventionButton) {
+      const topic = leiaGuidedTopics.find((item) => item.id === conventionButton.dataset.leiaTopicConvention);
+      const conv = DATA.conventions?.[conventionButton.dataset.leiaConventionId];
+      if (!topic || !conv) return;
+      renderLeiaMessage("user", `${topic.label} de ${conv.shortName || conv.name}`);
+      setLeiaLoading(true);
+      try {
+        renderLeiaMessage("model", await buildLeiaGuidedAnswer(topic.id, conv.id));
+        renderLeiaMainMenu();
+      } catch (error) {
+        renderLeiaMessage("model", `No pude preparar esa consulta guiada: ${leiaErrorMessage(error)}`);
+      } finally {
+        setLeiaLoading(false);
+      }
+    }
+  }
+
   function renderLeiaMessage(role, text) {
     const messages = $("leiaMessages");
     if (!messages) return;
@@ -3459,7 +4384,7 @@
     setLeiaLoading(true);
 
     try {
-      const response = await fetch(apiUrl("/api/leia/chat"), {
+      const response = await authFetch("/api/leia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3486,12 +4411,15 @@
     const toggle = $("leiaToggle");
     const close = $("leiaClose");
     const form = $("leiaForm");
+    const messages = $("leiaMessages");
     if (!toggle || !close || !form) return;
 
     toggle.addEventListener("click", () => toggleLeia(!$("leiaWidget").classList.contains("open")));
     close.addEventListener("click", () => toggleLeia(false));
     form.addEventListener("submit", sendLeiaMessage);
-    renderLeiaMessage("model", "Hola, soy leIA. Elegi un convenio y preguntame por escalas, adicionales, pasos de carga o el recibo que estas armando.");
+    messages?.addEventListener("click", handleLeiaGuidedAction);
+    renderLeiaMessage("model", "Hola, soy leIA. Podes escribirme libremente o usar estas consultas guiadas para ver informacion confiable del catalogo.");
+    renderLeiaMainMenu();
     syncLeiaContext();
   }
 
@@ -3849,7 +4777,7 @@
       btn.disabled = true;
       setTimeout(async () => {
         await refreshActiveScaleContext();
-        calculate();
+        await calculate();
         btn.textContent = originalText;
         btn.disabled = false;
         goToStep(4);
@@ -3885,6 +4813,7 @@
     if (exportBtn) exportBtn.addEventListener("click", exportJson);
     if (saveBtn) saveBtn.addEventListener("click", saveLiquidation);
     if (auditBtn) auditBtn.addEventListener("click", runLiquidationAudit);
+    setupAuthUi();
     setupScaleDashboard();
     setupConventionBuilder();
     setupLeia();
@@ -3954,7 +4883,7 @@
     };
 
     try {
-      const response = await fetch(apiUrl("/api/liquidations"), {
+      const response = await authFetch("/api/liquidations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -3981,11 +4910,11 @@
   async function fetchEmployees() {
     try {
       const [resEmp, resLiq] = await Promise.all([
-        fetch(apiUrl("/api/employees")),
-        fetch(apiUrl("/api/liquidations?limit=1000"))
+        fetchJson("/api/employees"),
+        fetchJson("/api/liquidations?limit=1000")
       ]);
-      if (resEmp.ok) employees = await resEmp.json();
-      if (resLiq.ok) liquidationsList = await resLiq.json();
+      employees = resEmp;
+      liquidationsList = resLiq;
       renderEmployeeTable();
     } catch (error) {
       console.error("Error fetching employees/liquidations:", error);
@@ -4064,13 +4993,9 @@
   window.deleteLiquidation = async (id) => {
     if (!confirm("¿Eliminar este recibo guardado? Esta accion no se puede deshacer.")) return;
     try {
-      const response = await fetch(apiUrl(`/api/liquidations/${id}`), { method: "DELETE" });
-      if (response.ok) {
-        await fetchEmployees();
-        window.renderLiquidationsList();
-      } else {
-        alert("No se pudo eliminar el recibo.");
-      }
+      await fetchJson(`/api/liquidations/${id}`, { method: "DELETE" });
+      await fetchEmployees();
+      window.renderLiquidationsList();
     } catch (e) {
       alert("Error de red al intentar eliminar.");
     }
@@ -4158,8 +5083,8 @@
   window.deleteEmployee = async (id) => {
     if (!confirm("¿Estás seguro de eliminar este empleado?")) return;
     try {
-      const response = await fetch(apiUrl(`/api/employees/${id}`), { method: "DELETE" });
-      if (response.ok) fetchEmployees();
+      await fetchJson(`/api/employees/${id}`, { method: "DELETE" });
+      fetchEmployees();
     } catch (error) {
       alert("Error al eliminar");
     }
@@ -4195,7 +5120,7 @@
       const method = id ? "PUT" : "POST";
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload)
       });
       if (response.ok) {
@@ -4321,5 +5246,9 @@
     markDirty();
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
 })();

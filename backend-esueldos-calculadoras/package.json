@@ -7,16 +7,25 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "test": "node --test test/payroll-engine.test.js test/api.test.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.6.1",
     "express": "^4.18.3",
+<<<<<<< HEAD
     "mongodb": "^5.9.2",
     "mongoose": "^8.24.0",
+=======
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^5.9.2",
+>>>>>>> db247a1c67f1e25e83ccea93c90eacd8a6b5931f
     "multer": "^2.1.1",
     "pdf-parse": "^1.1.1",
-    "xlsx": "^0.18.5"
+    "zod": "^4.4.3"
   }
 }

@@ -1,0 +1,1260 @@
+{
+  "id": "afa_553_09",
+  "name": "AFA - UTEDYC CCT 553/09",
+  "shortName": "AFA/UTEDYC",
+  "source": "gemini-code-1780061723601.json normalizado",
+  "type": "monthly",
+  "calculationMode": "generic-v1",
+  "parties": [
+    "AFA",
+    "UTEDYC"
+  ],
+  "scope": "Todo el territorio de la Nación (clubes directamente afiliados e instituciones del interior)",
+  "cct": {
+    "id": "cct_553_2009",
+    "label": "Personal Mensualizado AFA - UTEDYC"
+  },
+  "metadata": {
+    "originalFile": "C:\\Users\\Alejandro Provenzano\\Documents\\LEANDRO\\Pasantias e-Sueldos\\CCT_src\\Escalas\\AFA-553-09\\gemini-code-1780061723601.json",
+    "generatedBy": "scripts/build-afa-convention.js",
+    "generatedAt": "2026-05-29T13:45:47.124Z",
+    "reviewStatus": "pending-human-review",
+    "dataQualityNotes": [
+      "Se normalizó el valor admin_2da no remunerativo marzo_2026 de 52.779 a 52779 por formato decimal probable.",
+      "Las reglas quedan declarativas; la aprobación normativa sigue pendiente antes de usar en liquidaciones reales."
+    ]
+  },
+  "normative": {
+    "validFrom": "2026-03-01",
+    "validTo": "2026-07-22",
+    "source": "Acuerdo paritario AFA-UTEDYC CCT 553/09 firmado el 2026-03-30",
+    "approvedBy": "pendiente",
+    "approvedAt": null
+  },
+  "periods": [
+    {
+      "id": "feb26",
+      "label": "Febrero 2026",
+      "validFrom": "2026-02-01"
+    },
+    {
+      "id": "mar26",
+      "label": "Marzo 2026",
+      "validFrom": "2026-03-01"
+    },
+    {
+      "id": "abr26",
+      "label": "Abril 2026",
+      "validFrom": "2026-04-01"
+    },
+    {
+      "id": "may26",
+      "label": "Mayo 2026",
+      "validFrom": "2026-05-01"
+    },
+    {
+      "id": "jun26",
+      "label": "Junio 2026",
+      "validFrom": "2026-06-01"
+    }
+  ],
+  "zones": [
+    {
+      "id": "general",
+      "label": "General",
+      "coef": 1
+    }
+  ],
+  "categories": [
+    {
+      "id": "jerarquico_1ra",
+      "label": "1ra Categoría",
+      "branch": "PERSONAL JERÁRQUICO",
+      "salaryType": "monthly",
+      "monthly": 1748273,
+      "monthlyByPeriod": {
+        "feb26": 1584497,
+        "mar26": 1584497,
+        "abr26": 1639954,
+        "may26": 1697352,
+        "jun26": 1748273
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 55457,
+        "abr26": 57398,
+        "may26": 50921,
+        "jun26": 34965
+      },
+      "roles": [
+        "Jefe de Personal",
+        "Asesor Letrado",
+        "Director de Servicios Médicos",
+        "Director del Departamento de Educación Física",
+        "Director de Área, Departamento o Sector"
+      ]
+    },
+    {
+      "id": "jerarquico_2da",
+      "label": "2da Categoría",
+      "branch": "PERSONAL JERÁRQUICO",
+      "salaryType": "monthly",
+      "monthly": 1717736,
+      "monthlyByPeriod": {
+        "feb26": 1556820,
+        "mar26": 1556820,
+        "abr26": 1611309,
+        "may26": 1667705,
+        "jun26": 1717736
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 54489,
+        "abr26": 56396,
+        "may26": 50031,
+        "jun26": 34355
+      },
+      "roles": [
+        "Jefe de Contaduría",
+        "Intendente",
+        "Sub director del Departamento de Educación Física",
+        "Sub Director de Área, Departamento o Sector"
+      ]
+    },
+    {
+      "id": "jerarquico_3ra",
+      "label": "3ra Categoría",
+      "branch": "PERSONAL JERÁRQUICO",
+      "salaryType": "monthly",
+      "monthly": 1697678,
+      "monthlyByPeriod": {
+        "feb26": 1538642,
+        "mar26": 1538642,
+        "abr26": 1592494,
+        "may26": 1648231,
+        "jun26": 1697678
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 53852,
+        "abr26": 55737,
+        "may26": 49447,
+        "jun26": 33954
+      },
+      "roles": [
+        "Subintendente",
+        "Sub Jefe de contaduría",
+        "Sub contador"
+      ]
+    },
+    {
+      "id": "admin_1ra",
+      "label": "1ra Categoría",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1685498,
+      "monthlyByPeriod": {
+        "feb26": 1527603,
+        "mar26": 1527603,
+        "abr26": 1581069,
+        "may26": 1636406,
+        "jun26": 1685498
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 53466,
+        "abr26": 55337,
+        "may26": 49092,
+        "jun26": 33710
+      },
+      "roles": [
+        "Gerente de Filial",
+        "Jefe de Despacho",
+        "Secretaría General",
+        "Jefe de Cobranzas",
+        "Encargado Administrativo de Departamento Médico",
+        "Encargado administrativo de Área o Sector",
+        "Secretario Administrativo",
+        "Tenedor de Libros",
+        "Jefe de Registro de Socios, Empadronamiento y Censos",
+        "Jefe de Compras",
+        "Encargado Administrativo del Departamento de Educación Física",
+        "Jefe de Valores",
+        "Administrador",
+        "Subintendente de Campo de Deportes",
+        "Cajero",
+        "Encargado Administrativo de Fútbol Profesional",
+        "Oficial Mayor de Secretaría"
+      ]
+    },
+    {
+      "id": "admin_2da",
+      "label": "2da Categoría",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1663827,
+      "monthlyByPeriod": {
+        "feb26": 1507961,
+        "mar26": 1507961,
+        "abr26": 1560740,
+        "may26": 1615366,
+        "jun26": 1663827
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 52779,
+        "abr26": 54626,
+        "may26": 48461,
+        "jun26": 33277
+      },
+      "roles": [
+        "Subjefe de Cobranzas",
+        "Subjefe de Valores",
+        "Sub encargado administrativo de Fútbol Profesional",
+        "Sub encargado de Dpto. Médico",
+        "Sub cajero",
+        "Subjefe de Registro de Socios, Empadronamientos y Censos",
+        "Sub encargado Administrativo de Dpto. de Educación Física"
+      ]
+    },
+    {
+      "id": "admin_3ra",
+      "label": "3ra Categoría",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1650178,
+      "monthlyByPeriod": {
+        "feb26": 1495591,
+        "mar26": 1495591,
+        "abr26": 1547937,
+        "may26": 1602115,
+        "jun26": 1650178
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 52346,
+        "abr26": 54178,
+        "may26": 48063,
+        "jun26": 33004
+      },
+      "roles": [
+        "Intendente de Sede Social",
+        "Encargado Administrativo de Fútbol Amateurs",
+        "Encargado General",
+        "Encargado General de Biblioteca",
+        "Encargado de Filial"
+      ]
+    },
+    {
+      "id": "admin_4ta_aux_1ra",
+      "label": "4ta Categoría - Auxiliar de Primera",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1637172,
+      "monthlyByPeriod": {
+        "feb26": 1483803,
+        "mar26": 1483803,
+        "abr26": 1535736,
+        "may26": 1589487,
+        "jun26": 1637172
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 51933,
+        "abr26": 53751,
+        "may26": 47685,
+        "jun26": 32743
+      },
+      "roles": [
+        "Auxiliar de primera"
+      ]
+    },
+    {
+      "id": "admin_4ta_aux_2da",
+      "label": "4ta Categoría - Auxiliar de Segunda",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1624703,
+      "monthlyByPeriod": {
+        "feb26": 1472503,
+        "mar26": 1472503,
+        "abr26": 1524041,
+        "may26": 1577382,
+        "jun26": 1624703
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 51538,
+        "abr26": 53341,
+        "may26": 47321,
+        "jun26": 32494
+      },
+      "roles": [
+        "Auxiliar de segunda"
+      ]
+    },
+    {
+      "id": "admin_5ta_tel_mas_20",
+      "label": "5ta Categoría - Telefonistas +20 int",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1612881,
+      "monthlyByPeriod": {
+        "feb26": 1461788,
+        "mar26": 1461788,
+        "abr26": 1512951,
+        "may26": 1565904,
+        "jun26": 1612881
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 51163,
+        "abr26": 52953,
+        "may26": 46977,
+        "jun26": 32258
+      },
+      "roles": [
+        "Telefonistas con más de 20 internos"
+      ]
+    },
+    {
+      "id": "admin_5ta_tel_hasta_20",
+      "label": "5ta Categoría - Telefonistas hasta 20 int",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1601429,
+      "monthlyByPeriod": {
+        "feb26": 1451409,
+        "mar26": 1451409,
+        "abr26": 1502208,
+        "may26": 1554785,
+        "jun26": 1601429
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 50799,
+        "abr26": 52577,
+        "may26": 46644,
+        "jun26": 32029
+      },
+      "roles": [
+        "Telefonistas de hasta 20 internos"
+      ]
+    },
+    {
+      "id": "admin_6ta_cadetes",
+      "label": "6ta Categoría - Cadetes",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1601429,
+      "monthlyByPeriod": {
+        "feb26": 1451409,
+        "mar26": 1451409,
+        "abr26": 1502208,
+        "may26": 1554785,
+        "jun26": 1601429
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 50799,
+        "abr26": 52577,
+        "may26": 46644,
+        "jun26": 32029
+      },
+      "roles": [
+        "Cadetes mayores de 18 años"
+      ]
+    },
+    {
+      "id": "admin_6ta_grumete",
+      "label": "6ta Categoría - Grumete",
+      "branch": "PERSONAL ADMINISTRATIVO",
+      "salaryType": "monthly",
+      "monthly": 1590561,
+      "monthlyByPeriod": {
+        "feb26": 1441559,
+        "mar26": 1441559,
+        "abr26": 1492014,
+        "may26": 1544234,
+        "jun26": 1590561
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 50455,
+        "abr26": 52220,
+        "may26": 46327,
+        "jun26": 31811
+      },
+      "roles": [
+        "Grumete de 16 a 18 años"
+      ]
+    },
+    {
+      "id": "it_1_gerencia",
+      "label": "Categoría 1 - Gerencia",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1747923,
+      "monthlyByPeriod": {
+        "feb26": 1584180,
+        "mar26": 1584180,
+        "abr26": 1639626,
+        "may26": 1697013,
+        "jun26": 1747923
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 55446,
+        "abr26": 57387,
+        "may26": 50910,
+        "jun26": 34958
+      },
+      "roles": [
+        "Gerencia de Sistemas",
+        "Supervisor/Jefe de Área"
+      ]
+    },
+    {
+      "id": "it_1_supervisor",
+      "label": "Categoría 1 - Supervisor",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1717534,
+      "monthlyByPeriod": {
+        "feb26": 1556638,
+        "mar26": 1556638,
+        "abr26": 1611120,
+        "may26": 1667509,
+        "jun26": 1717534
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 54482,
+        "abr26": 56389,
+        "may26": 50025,
+        "jun26": 34351
+      },
+      "roles": [
+        "Supervisor/Jefe de Área"
+      ]
+    },
+    {
+      "id": "it_2_prog_sr",
+      "label": "Categoría 2 - Programación Senior",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1697518,
+      "monthlyByPeriod": {
+        "feb26": 1538497,
+        "mar26": 1538497,
+        "abr26": 1592344,
+        "may26": 1648076,
+        "jun26": 1697518
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 53847,
+        "abr26": 55732,
+        "may26": 49442,
+        "jun26": 33950
+      },
+      "roles": [
+        "Programador Senior"
+      ]
+    },
+    {
+      "id": "it_2_prog_ssr",
+      "label": "Categoría 2 - Programación Semi Senior",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1685661,
+      "monthlyByPeriod": {
+        "feb26": 1527750,
+        "mar26": 1527750,
+        "abr26": 1581221,
+        "may26": 1636564,
+        "jun26": 1685661
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 53471,
+        "abr26": 55343,
+        "may26": 49097,
+        "jun26": 33713
+      },
+      "roles": [
+        "Programador Semi Senior"
+      ]
+    },
+    {
+      "id": "it_2_prog_jr",
+      "label": "Categoría 2 - Programación Junior",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1664160,
+      "monthlyByPeriod": {
+        "feb26": 1508263,
+        "mar26": 1508263,
+        "abr26": 1561052,
+        "may26": 1615689,
+        "jun26": 1664160
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 52789,
+        "abr26": 54637,
+        "may26": 48471,
+        "jun26": 33283
+      },
+      "roles": [
+        "Programador Junior"
+      ]
+    },
+    {
+      "id": "it_3_redes_sr",
+      "label": "Categoría 3 - Redes Senior",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1686429,
+      "monthlyByPeriod": {
+        "feb26": 1528446,
+        "mar26": 1528446,
+        "abr26": 1581942,
+        "may26": 1637310,
+        "jun26": 1686429
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 53496,
+        "abr26": 55368,
+        "may26": 49119,
+        "jun26": 33729
+      },
+      "roles": [
+        "Administrador de Redes Senior"
+      ]
+    },
+    {
+      "id": "it_3_redes_ssr",
+      "label": "Categoría 3 - Redes Semi Senior",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1637480,
+      "monthlyByPeriod": {
+        "feb26": 1484082,
+        "mar26": 1484082,
+        "abr26": 1536025,
+        "may26": 1589786,
+        "jun26": 1637480
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 51943,
+        "abr26": 53761,
+        "may26": 47694,
+        "jun26": 32750
+      },
+      "roles": [
+        "Administrador de Redes Semi Senior"
+      ]
+    },
+    {
+      "id": "it_3_redes_jr",
+      "label": "Categoría 3 - Redes Junior",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1624873,
+      "monthlyByPeriod": {
+        "feb26": 1472657,
+        "mar26": 1472657,
+        "abr26": 1524200,
+        "may26": 1577547,
+        "jun26": 1624873
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 51543,
+        "abr26": 53347,
+        "may26": 47326,
+        "jun26": 32497
+      },
+      "roles": [
+        "Administrador de Redes Junior"
+      ]
+    },
+    {
+      "id": "it_4_helpdesk_n2",
+      "label": "Categoría 4 - Help Desk Nivel 2",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1612273,
+      "monthlyByPeriod": {
+        "feb26": 1461238,
+        "mar26": 1461238,
+        "abr26": 1512381,
+        "may26": 1565314,
+        "jun26": 1612273
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 51143,
+        "abr26": 52933,
+        "may26": 46959,
+        "jun26": 32245
+      },
+      "roles": [
+        "Help Desk Nivel 2"
+      ]
+    },
+    {
+      "id": "it_4_helpdesk_n1",
+      "label": "Categoría 4 - Help Desk Nivel 1",
+      "branch": "INFORMATICA Y SISTEMAS",
+      "salaryType": "monthly",
+      "monthly": 1601149,
+      "monthlyByPeriod": {
+        "feb26": 1451156,
+        "mar26": 1451156,
+        "abr26": 1501946,
+        "may26": 1554514,
+        "jun26": 1601149
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 50790,
+        "abr26": 52568,
+        "may26": 46635,
+        "jun26": 32023
+      },
+      "roles": [
+        "Help Desk Nivel 1 y Mesa de Ayuda"
+      ]
+    },
+    {
+      "id": "maestranza_1ra",
+      "label": "1ra Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1541375,
+      "monthlyByPeriod": {
+        "feb26": 1396981,
+        "mar26": 1396981,
+        "abr26": 1445875,
+        "may26": 1496481,
+        "jun26": 1541375
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 48894,
+        "abr26": 50606,
+        "may26": 44894,
+        "jun26": 30828
+      },
+      "roles": [
+        "Maestro Mayor de Obra",
+        "Utilero",
+        "Chofer"
+      ]
+    },
+    {
+      "id": "maestranza_2da",
+      "label": "2da Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1521694,
+      "monthlyByPeriod": {
+        "feb26": 1379144,
+        "mar26": 1379144,
+        "abr26": 1427414,
+        "may26": 1477373,
+        "jun26": 1521694
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 48270,
+        "abr26": 49959,
+        "may26": 44321,
+        "jun26": 30434
+      },
+      "roles": [
+        "Capataz General",
+        "Sobrestante"
+      ]
+    },
+    {
+      "id": "maestranza_3ra",
+      "label": "3ra Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1512149,
+      "monthlyByPeriod": {
+        "feb26": 1370493,
+        "mar26": 1370493,
+        "abr26": 1418460,
+        "may26": 1468106,
+        "jun26": 1512149
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 47967,
+        "abr26": 49646,
+        "may26": 44043,
+        "jun26": 30243
+      },
+      "roles": [
+        "Capataz",
+        "Mayordomo",
+        "Ayudante Utilero"
+      ]
+    },
+    {
+      "id": "maestranza_4ta",
+      "label": "4ta Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1500017,
+      "monthlyByPeriod": {
+        "feb26": 1360017,
+        "mar26": 1360017,
+        "abr26": 1407618,
+        "may26": 1456885,
+        "jun26": 1500017
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 47601,
+        "abr26": 49267,
+        "may26": 43707,
+        "jun26": 30012
+      },
+      "roles": [
+        "Sub mayordomo",
+        "Sub capataz",
+        "Oficial Especializado",
+        "Calderista con Título",
+        "Cocinero",
+        "Tractorista",
+        "Oficial de mantenimiento de espacios verdes"
+      ]
+    },
+    {
+      "id": "maestranza_5ta",
+      "label": "5ta Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1489485,
+      "monthlyByPeriod": {
+        "feb26": 1349952,
+        "mar26": 1349952,
+        "abr26": 1397200,
+        "may26": 1446102,
+        "jun26": 1489485
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 47248,
+        "abr26": 48902,
+        "may26": 43383,
+        "jun26": 29790
+      },
+      "roles": [
+        "Medio Oficial Especializado",
+        "Encargado de Equipo",
+        "Calderista sin título",
+        "Bañero"
+      ]
+    },
+    {
+      "id": "maestranza_6ta",
+      "label": "6ta Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1484357,
+      "monthlyByPeriod": {
+        "feb26": 1345303,
+        "mar26": 1345303,
+        "abr26": 1392389,
+        "may26": 1441123,
+        "jun26": 1484357
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 47086,
+        "abr26": 48734,
+        "may26": 43234,
+        "jun26": 29687
+      },
+      "roles": [
+        "Encargado de Canchas de Distintos Deportes",
+        "Encargado de Vestuario",
+        "Encargado Responsable de Pañol",
+        "Encargado Responsable de Depósito",
+        "Sereno con Reloj",
+        "Portero",
+        "Vigilador",
+        "Mozo",
+        "Ascensorista",
+        "Encargado de Equipos",
+        "Encargado de Canchas de Bowling"
+      ]
+    },
+    {
+      "id": "maestranza_7ma",
+      "label": "7ma Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1468706,
+      "monthlyByPeriod": {
+        "feb26": 1331119,
+        "mar26": 1331119,
+        "abr26": 1377708,
+        "may26": 1425928,
+        "jun26": 1468706
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 46589,
+        "abr26": 48220,
+        "may26": 42778,
+        "jun26": 29374
+      },
+      "roles": [
+        "Ayudante Cocinero"
+      ]
+    },
+    {
+      "id": "maestranza_8va",
+      "label": "8va Categoría",
+      "branch": "PERSONAL DE MAESTRANZA Y SERVICIO",
+      "salaryType": "monthly",
+      "monthly": 1459434,
+      "monthlyByPeriod": {
+        "feb26": 1322716,
+        "mar26": 1322716,
+        "abr26": 1369011,
+        "may26": 1416926,
+        "jun26": 1459434
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 46295,
+        "abr26": 47915,
+        "may26": 42508,
+        "jun26": 29189
+      },
+      "roles": [
+        "Peón",
+        "Sereno sin Reloj",
+        "Ordenanza"
+      ]
+    },
+    {
+      "id": "otros_cat_a_prof",
+      "label": "Categoría A (Prof)",
+      "branch": "PROFESIONALES Y OTROS",
+      "salaryType": "hourly",
+      "hourly": 13371,
+      "hourlyByPeriod": {
+        "feb26": 12119,
+        "mar26": 12119,
+        "abr26": 12543,
+        "may26": 12982,
+        "jun26": 13371
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 424,
+        "abr26": 439,
+        "may26": 389,
+        "jun26": 267
+      },
+      "roles": [
+        "Profesores de Educación Física",
+        "Profesores de Extensión Cultural",
+        "Profesores de Recreación",
+        "Profesores de Música y otros"
+      ]
+    },
+    {
+      "id": "otros_cat_b_inst",
+      "label": "Categoría B (Inst)",
+      "branch": "PROFESIONALES Y OTROS",
+      "salaryType": "hourly",
+      "hourly": 12703,
+      "hourlyByPeriod": {
+        "feb26": 11513,
+        "mar26": 11513,
+        "abr26": 11916,
+        "may26": 12333,
+        "jun26": 12703
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 403,
+        "abr26": 417,
+        "may26": 370,
+        "jun26": 254
+      },
+      "roles": [
+        "Instructores de Educación Física",
+        "Instructores de Extensión Cultural",
+        "Instructores de Recreación"
+      ]
+    },
+    {
+      "id": "otros_banero_salvataje",
+      "label": "Bañero Natatorio",
+      "branch": "PROFESIONALES Y OTROS",
+      "salaryType": "hourly",
+      "hourly": 12631,
+      "hourlyByPeriod": {
+        "feb26": 11447,
+        "mar26": 11447,
+        "abr26": 11848,
+        "may26": 12263,
+        "jun26": 12631
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 401,
+        "abr26": 415,
+        "may26": 368,
+        "jun26": 253
+      },
+      "roles": [
+        "Bañero de Natatorio",
+        "Personal de Salvataje"
+      ]
+    },
+    {
+      "id": "medicos_jefe",
+      "label": "a) Jefe Médico / Odontólogo",
+      "branch": "MEDICOS Y ODONTOLOGOS",
+      "salaryType": "hourly",
+      "hourly": 18562,
+      "hourlyByPeriod": {
+        "feb26": 16823,
+        "mar26": 16823,
+        "abr26": 17412,
+        "may26": 18021,
+        "jun26": 18562
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 589,
+        "abr26": 609,
+        "may26": 541,
+        "jun26": 371
+      },
+      "roles": [
+        "Jefe Médico",
+        "Jefe Odontólogo"
+      ]
+    },
+    {
+      "id": "medicos_staff",
+      "label": "b) Médicos y Auxiliares",
+      "branch": "MEDICOS Y ODONTOLOGOS",
+      "salaryType": "hourly",
+      "hourly": 16330,
+      "hourlyByPeriod": {
+        "feb26": 14800,
+        "mar26": 14800,
+        "abr26": 15318,
+        "may26": 15854,
+        "jun26": 16330
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 518,
+        "abr26": 536,
+        "may26": 476,
+        "jun26": 327
+      },
+      "roles": [
+        "Médicos",
+        "Odontólogos",
+        "Asistente Social",
+        "Nutricionista",
+        "Kinesiólogo",
+        "Enfermera",
+        "Psicólogo"
+      ]
+    },
+    {
+      "id": "medicos_practicantes",
+      "label": "c) Practicantes",
+      "branch": "MEDICOS Y ODONTOLOGOS",
+      "salaryType": "hourly",
+      "hourly": 14845,
+      "hourlyByPeriod": {
+        "feb26": 13455,
+        "mar26": 13455,
+        "abr26": 13926,
+        "may26": 14413,
+        "jun26": 14845
+      },
+      "nonRemunerativeByPeriod": {
+        "feb26": 0,
+        "mar26": 471,
+        "abr26": 487,
+        "may26": 432,
+        "jun26": 297
+      },
+      "roles": [
+        "Practicantes"
+      ]
+    }
+  ],
+  "rules": {
+    "monthDivisor": 30,
+    "hourDivisor": 176,
+    "weeklyHours": 44,
+    "reducedScheduleDivisor": 40,
+    "nonRemunerativeScale": {
+      "enabled": true,
+      "detail": "Suma no remunerativa del mes de aplicación, incorporada al básico como remunerativa al mes siguiente."
+    },
+    "seniority": {
+      "enabled": true,
+      "percentPerYear": 2,
+      "base": "basic",
+      "detail": "Salario básico de la categoría proporcional a la jornada. Cobradores base fija en Administrativo 4ta Aux de 1ra."
+    },
+    "presentism": {
+      "enabled": true,
+      "percent": 15,
+      "base": "basic",
+      "requiresNoUnjustifiedAbsence": true,
+      "toleratedAbsences": [
+        "enfermedad",
+        "accidente",
+        "paternidad",
+        "maternidad",
+        "fallecimiento_familiar_1_grado",
+        "donacion_sangre",
+        "matrimonio"
+      ]
+    },
+    "punctuality": {
+      "enabled": true,
+      "percent": 10,
+      "base": "basic",
+      "monthlyToleranceMinutes": 30,
+      "toleratedAbsences": [
+        "enfermedad",
+        "accidente",
+        "paternidad",
+        "maternidad",
+        "fallecimiento_familiar_1_grado",
+        "donacion_sangre",
+        "matrimonio"
+      ]
+    },
+    "cashShortage": {
+      "mainCashierPercent": 10,
+      "auxiliaryCashierPercent": 5,
+      "base": "basic"
+    },
+    "overtime": {
+      "divisor": 176,
+      "weekdayPercent": 50,
+      "weekendHolidayPercent": 100,
+      "weekendCondition": "Sábados después de las 13:00 hs y domingos",
+      "minimumFractionMinutes": 15
+    }
+  },
+  "liquidationModel": {
+    "rules": {
+      "monthDivisor": 30,
+      "hourDivisor": 176,
+      "weeklyHours": 44,
+      "reducedScheduleDivisor": 40,
+      "nonRemunerativeScale": {
+        "enabled": true,
+        "detail": "Suma no remunerativa del mes de aplicación, incorporada al básico como remunerativa al mes siguiente."
+      },
+      "seniority": {
+        "enabled": true,
+        "percentPerYear": 2,
+        "base": "basic",
+        "detail": "Salario básico de la categoría proporcional a la jornada. Cobradores base fija en Administrativo 4ta Aux de 1ra."
+      },
+      "presentism": {
+        "enabled": true,
+        "percent": 15,
+        "base": "basic",
+        "requiresNoUnjustifiedAbsence": true,
+        "toleratedAbsences": [
+          "enfermedad",
+          "accidente",
+          "paternidad",
+          "maternidad",
+          "fallecimiento_familiar_1_grado",
+          "donacion_sangre",
+          "matrimonio"
+        ]
+      },
+      "punctuality": {
+        "enabled": true,
+        "percent": 10,
+        "base": "basic",
+        "monthlyToleranceMinutes": 30,
+        "toleratedAbsences": [
+          "enfermedad",
+          "accidente",
+          "paternidad",
+          "maternidad",
+          "fallecimiento_familiar_1_grado",
+          "donacion_sangre",
+          "matrimonio"
+        ]
+      },
+      "cashShortage": {
+        "mainCashierPercent": 10,
+        "auxiliaryCashierPercent": 5,
+        "base": "basic"
+      },
+      "overtime": {
+        "divisor": 176,
+        "weekdayPercent": 50,
+        "weekendHolidayPercent": 100,
+        "weekendCondition": "Sábados después de las 13:00 hs y domingos",
+        "minimumFractionMinutes": 15
+      }
+    },
+    "concepts": [
+      {
+        "id": "punctuality",
+        "label": "Puntualidad",
+        "rowType": "remunerative",
+        "calculation": "percent",
+        "percent": 10,
+        "base": "basic",
+        "defaultValue": true,
+        "detail": "Tolerancia mensual 30 minutos"
+      },
+      {
+        "id": "cash_shortage_main",
+        "label": "Falla de caja principal",
+        "rowType": "remunerative",
+        "calculation": "percent",
+        "percent": 10,
+        "base": "basic",
+        "defaultValue": false,
+        "detail": "Caja principal"
+      },
+      {
+        "id": "cash_shortage_aux",
+        "label": "Falla de caja auxiliar / cobradores",
+        "rowType": "remunerative",
+        "calculation": "percent",
+        "percent": 5,
+        "base": "basic",
+        "defaultValue": false,
+        "detail": "Caja auxiliar o cobradores"
+      },
+      {
+        "id": "scholarship_subsidy",
+        "label": "Subsidio becas",
+        "rowType": "remunerative",
+        "calculation": "amountPerUnit",
+        "inputType": "number",
+        "unitAmountByPeriod": {
+          "feb26": 1483803,
+          "mar26": 1483803,
+          "abr26": 1535736,
+          "may26": 1589487,
+          "jun26": 1637172
+        },
+        "percent": 10,
+        "detail": "10% por beca sobre Administrativo 4ta Auxiliar de Primera. Requiere validación manual del requisito de entidad."
+      }
+    ]
+  },
+  "agreement2026": {
+    "fecha_firma": "2026-03-30",
+    "vigencia_tramo": {
+      "desde": "2026-03-01",
+      "hasta": "2026-07-22"
+    },
+    "politica_salarial": {
+      "incremento_acumulado_nominal_pct": 12.5,
+      "mecanismo": "Acumulativo mes a mes sobre básico conformado anterior. Excepcionalmente no remunerativo en el mes de aplicación, incorporándose al básico como remunerativo al mes siguiente."
+    },
+    "cronograma_aumentos": [
+      {
+        "mes": "2026-03",
+        "porcentaje": 3.5,
+        "calculado_sobre": "2026-02"
+      },
+      {
+        "mes": "2026-04",
+        "porcentaje": 3.5,
+        "calculado_sobre": "2026-03"
+      },
+      {
+        "mes": "2026-05",
+        "porcentaje": 3,
+        "calculado_sobre": "2026-04"
+      },
+      {
+        "mes": "2026-06",
+        "porcentaje": 2,
+        "calculado_sobre": "2026-05"
+      }
+    ],
+    "normative": {
+      "validFrom": "2026-03-01",
+      "validTo": "2026-07-22",
+      "source": "Acuerdo paritario AFA-UTEDYC CCT 553/09 firmado el 2026-03-30",
+      "approvedBy": "pendiente",
+      "approvedAt": null
+    }
+  },
+  "licenses": {
+    "ordinaryVacation": [
+      {
+        "max_anios_antiguedad": 5,
+        "dias_corridos": 14,
+        "dias_credito_adicional": 2
+      },
+      {
+        "max_anios_antiguedad": 10,
+        "dias_corridos": 21,
+        "dias_credito_adicional": 2
+      },
+      {
+        "max_anios_antiguedad": 20,
+        "dias_corridos": 28,
+        "dias_credito_adicional": 3
+      },
+      {
+        "max_anios_antiguedad": 99,
+        "dias_corridos": 35,
+        "dias_credito_adicional": 3
+      }
+    ],
+    "paidSpecialLeaves": {
+      "matrimonio": 12,
+      "nacimiento_o_adopcion_paterna": 4,
+      "fallecimiento_1er_grado": 5,
+      "fallecimiento_1er_grado_mas_100km": 7,
+      "fallecimiento_otros": 1,
+      "donacion_sangre": 1,
+      "mudanza_con_familia": 2,
+      "mudanza_sin_familia": 1,
+      "enfermedad_grave_familiar_1er_grado_max_anual": 10,
+      "examen_medio_tecnico_max_anual": 15,
+      "examen_universitario_max_anual": 18,
+      "asueto_utedyc_5_febrero": 1
+    },
+    "normative": {
+      "validFrom": "2026-03-01",
+      "validTo": "2026-07-22",
+      "source": "Acuerdo paritario AFA-UTEDYC CCT 553/09 firmado el 2026-03-30",
+      "approvedBy": "pendiente",
+      "approvedAt": null
+    }
+  }
+}
