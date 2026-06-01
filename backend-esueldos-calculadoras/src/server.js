@@ -9,7 +9,7 @@ const { getDb, closeDb } = require("./db");
 const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
-const { extractConventionFromPdfs, tryBuildLocalConventionFallback, normalizeConvention, GeminiConventionError } = require("./convention-ai");
+const { structureConvention, tryBuildLocalConventionFallback, normalizeConventionV2, normalizeConventionLegacy: normalizeConvention, convertV2ToLegacy, validateConvention, GeminiConventionError } = require("./convention-ai");
 const { configureSecurity } = require("./middleware/security");
 const { escapeRegex } = require("./middleware/validate");
 const { calculatePayroll } = require("./domain/payroll-engine");
@@ -658,32 +658,12 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
     let aiError = null;
     let aiModel = null;
     let aiModelsTried = [];
-    let parsedConvention = normalizeConvention({
-      convention: {
-        name: draftName,
-        shortName: draftName.slice(0, 42),
-        source: cctFile?.originalname || scaleFile?.originalname || "",
-        periods: [],
-        zones: [{ id: "general", label: "General", coef: 1 }],
-        categories: [],
-        liquidationModel: {
-          rules: {
-            salaryType: "monthly",
-            monthDivisor: 30,
-            hourDivisor: 200,
-            weeklyHours: 48,
-            seniority: { enabled: true, percentPerYear: 1, capYears: 0, base: "basic" },
-            presentism: { enabled: true, percent: 0, requiresNoUnjustifiedAbsence: true },
-            nonRemunerativeScale: { enabled: true },
-            overtime: { enabled: true, divisor: 200 }
-          },
-          concepts: [],
-          deductions: [],
-          employerContributions: []
-        },
-        warnings: ["Carga pendiente de lectura por IA."]
-      }
-    }, { fallbackName: draftName });
+    
+    let parsedConvention = {
+      convenio: { nombre: draftName },
+      categorias: [],
+      escalas_salariales: []
+    };
 
     const cctPdf = cctFile ? {
       buffer: await fs.promises.readFile(cctFile.path),
@@ -704,7 +684,8 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       aiError: null,
       allowGeneric: false
     });
-    if (localFirst?.parsedConvention?.categories?.length) {
+    
+    if (localFirst?.parsedConvention?.categorias?.length) {
       parsedConvention = localFirst.parsedConvention;
       aiStatus = "ESTRUCTURADO_POR_LECTURA_LOCAL";
       aiError = null;
@@ -712,7 +693,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       aiModelsTried = localFirst.modelsTried || [];
     } else if (apiKey) {
       try {
-        const result = await extractConventionFromPdfs({
+        const result = await structureConvention({
           apiKey,
           model: process.env.GEMINI_CONVENTION_MODEL || process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
           fallbackModels: geminiFallbackModels(),
@@ -721,7 +702,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
           draftName,
           notes
         });
-        parsedConvention = result.parsedConvention;
+        parsedConvention = result.convention;
         aiStatus = "ESTRUCTURADO_POR_LEIA";
         aiModel = result.model;
         aiModelsTried = result.modelsTried;
@@ -730,11 +711,10 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
         aiError = error.message || "No se pudo estructurar el convenio con leIA.";
         aiModel = error.model || null;
         aiModelsTried = error.modelsTried || [];
-        parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), aiError]));
       }
     }
 
-    if (!parsedConvention.categories?.length || aiStatus === "ERROR_IA" || aiStatus === "SIN_API_KEY") {
+    if (!parsedConvention.categorias?.length || aiStatus === "ERROR_IA" || aiStatus === "SIN_API_KEY") {
       const fallback = await tryBuildLocalConventionFallback({
         cctPdf,
         scalePdf,
@@ -743,13 +723,23 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
         aiError,
         allowGeneric: true
       });
-      if (fallback?.parsedConvention?.categories?.length) {
+      if (fallback?.parsedConvention?.categorias?.length) {
         parsedConvention = fallback.parsedConvention;
         aiStatus = "ESTRUCTURADO_POR_LECTURA_LOCAL";
         aiError = null;
         aiModel = fallback.model;
         aiModelsTried = Array.from(new Set([...(aiModelsTried || []), ...(fallback.modelsTried || [])]));
       }
+    }
+
+    // Asegurar validacion
+    if (parsedConvention.categorias?.length) {
+      const val = validateConvention(parsedConvention);
+      parsedConvention.auditoria = { ...parsedConvention.auditoria, ...val };
+    } else {
+      if (!parsedConvention.auditoria) parsedConvention.auditoria = { alertas: [] };
+      if (!parsedConvention.auditoria.alertas) parsedConvention.auditoria.alertas = [];
+      parsedConvention.auditoria.alertas.push(aiError || "Carga pendiente de lectura por IA.");
     }
 
     const files = [cctFile, scaleFile].filter(Boolean).map((file) => ({
@@ -761,6 +751,8 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       mimeType: file.mimetype
     }));
 
+    const parsedConventionLegacy = convertV2ToLegacy(parsedConvention);
+
     const doc = {
       name: draftName,
       status: "PENDIENTE_REVISION",
@@ -769,6 +761,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       aiModel,
       aiModelsTried,
       parsedConvention,
+      parsedConventionLegacy,
       auditNote: notes,
       files,
       createdAt: now,
@@ -789,7 +782,11 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
     }
     const update = { updatedAt: new Date() };
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedConvention")) {
-      update.parsedConvention = normalizeConvention({ convention: req.body.parsedConvention }, { fallbackName: req.body.parsedConvention?.name });
+      const v2 = normalizeConventionV2(req.body.parsedConvention);
+      const val = validateConvention(v2);
+      v2.auditoria = { ...v2.auditoria, ...val };
+      update.parsedConvention = v2;
+      update.parsedConventionLegacy = convertV2ToLegacy(v2);
       update.humanEdited = true;
       update.humanEditedAt = new Date();
     }
@@ -824,9 +821,20 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
     }
 
     const now = new Date();
-    const convention = normalizeConvention({
-      convention: req.body?.parsedConvention || draft.parsedConvention
-    }, { fallbackName: draft.name });
+    const v2Data = req.body?.parsedConvention || draft.parsedConvention;
+    
+    let convention;
+    if (v2Data.convenio) {
+      // Es V2, convertir a Legacy y normalizar
+      const legacyConverted = convertV2ToLegacy(v2Data);
+      convention = normalizeConvention({ convention: legacyConverted }, { fallbackName: draft.name });
+    } else {
+      // Legacy fallback
+      convention = normalizeConvention({
+        convention: v2Data
+      }, { fallbackName: draft.name });
+    }
+
     if (!convention.categories.length) {
       res.status(400).json({ error: "El JSON no tiene categorias con importes. Revisalo antes de aprobar." });
       return;
@@ -852,7 +860,8 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       {
         $set: {
           status: "APROBADO",
-          parsedConvention: convention,
+          parsedConvention: v2Data, // Mantenemos V2 en el draft
+          parsedConventionLegacy: convention,
           approvedConventionId: convention.id,
           reviewedAt: now,
           reviewedBy: req.body?.reviewedBy || "Auditoria humana",

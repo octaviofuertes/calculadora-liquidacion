@@ -3616,7 +3616,111 @@
     }
   }
 
+  function conventionSectionStatus(data) {
+    if (!data) return 'empty';
+    if (Array.isArray(data)) {
+      if (data.length === 0) return 'empty';
+      return 'complete';
+    }
+    if (typeof data === 'object') {
+      if (Object.keys(data).length === 0) return 'empty';
+      return 'complete';
+    }
+    return 'complete';
+  }
+
+  function conventionSectionIcon(status) {
+    if (status === 'complete') return '✅';
+    if (status === 'partial') return '⚠️';
+    return '❌';
+  }
+
+  function renderConventionSection(title, status, contentHtml, collapsed = true) {
+    return `<div class="convention-section ${collapsed ? 'collapsed' : ''}">
+      <div class="convention-section-header">
+        <span class="convention-section-title">${escapeHtml(title)}</span>
+        <span class="convention-section-status">${conventionSectionIcon(status)}</span>
+      </div>
+      <div class="convention-section-body">
+        ${contentHtml}
+      </div>
+    </div>`;
+  }
+
+  function renderConvenioIdentification(convenio) {
+    if (!convenio) return '<div class="empty-state">Sin datos de convenio.</div>';
+    return `<div class="convention-data-grid">
+      <div class="convention-data-item"><span class="convention-data-label">Código</span><span class="convention-data-value">${escapeHtml(convenio.codigo || '-')}</span></div>
+      <div class="convention-data-item"><span class="convention-data-label">Nombre</span><span class="convention-data-value">${escapeHtml(convenio.nombre || '-')}</span></div>
+      <div class="convention-data-item"><span class="convention-data-label">Actividad</span><span class="convention-data-value">${escapeHtml(convenio.actividad || '-')}</span></div>
+      <div class="convention-data-item"><span class="convention-data-label">Vigencia</span><span class="convention-data-value">${escapeHtml(convenio.vigencia?.fecha_inicio || '-')} a ${escapeHtml(convenio.vigencia?.fecha_fin || '-')}</span></div>
+    </div>`;
+  }
+
+  function renderCategoriasTable(categorias) {
+    if (!categorias || !categorias.length) return '<div class="empty-state">Sin categorías.</div>';
+    return `<div style="overflow-x:auto"><table class="convention-data-table">
+      <thead><tr><th>Código</th><th>Nombre</th><th>Nivel</th><th>Funciones</th></tr></thead>
+      <tbody>
+        ${categorias.map(c => `<tr>
+          <td>${escapeHtml(c.codigo || '-')}</td>
+          <td>${escapeHtml(c.nombre || '-')}</td>
+          <td>${escapeHtml(c.nivel || '-')}</td>
+          <td>${escapeHtml((c.funciones || []).join(', ') || '-')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  function renderEscalasTable(escalas) {
+    if (!escalas || !escalas.length) return '<div class="empty-state">Sin escalas salariales.</div>';
+    return `<div style="overflow-x:auto"><table class="convention-data-table">
+      <thead><tr><th>Período</th><th>Categoría</th><th>Básico</th><th>Valor Hora</th><th>Valor Jornal</th><th>No Rem.</th></tr></thead>
+      <tbody>
+        ${escalas.map(e => `<tr>
+          <td>${escapeHtml(e.periodo_desde || '-')} ${e.periodo_hasta ? `al ${escapeHtml(e.periodo_hasta)}` : ''}</td>
+          <td>${escapeHtml(e.categoria || '-')}</td>
+          <td>${e.basico ? fmt.money.format(e.basico) : '-'}</td>
+          <td>${e.valor_hora ? fmt.money.format(e.valor_hora) : '-'}</td>
+          <td>${e.valor_jornal ? fmt.money.format(e.valor_jornal) : '-'}</td>
+          <td>${e.no_remunerativo ? fmt.money.format(e.no_remunerativo) : '-'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  function renderConceptosTable(conceptos) {
+    if (!conceptos || !conceptos.length) return '<div class="empty-state">Sin conceptos.</div>';
+    return `<div style="overflow-x:auto"><table class="convention-data-table">
+      <thead><tr><th>Código</th><th>Nombre</th><th>Fórmula / Porcentaje</th><th>Base de Cálculo</th></tr></thead>
+      <tbody>
+        ${conceptos.map(c => `<tr>
+          <td>${escapeHtml(c.codigo || '-')}</td>
+          <td>${escapeHtml(c.nombre || '-')}</td>
+          <td><span class="convention-formula-tag">${escapeHtml(c.formula || (c.porcentaje ? c.porcentaje + '%' : '-'))}</span></td>
+          <td>${escapeHtml(c.base_calculo || '-')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
   function conventionQualityHtml(conv = {}) {
+    const isV2 = conv.convenio !== undefined;
+    
+    if (isV2) {
+      const auditoria = conv.auditoria || {};
+      const alertas = auditoria.alertas || [];
+      const noConfirmados = auditoria.campos_no_confirmados || [];
+      return `<div class="scale-mini-grid">
+        <div><span>Confianza</span><strong>${escapeHtml(auditoria.nivel_confianza || 'Bajo')}</strong></div>
+        <div><span>Categorías</span><strong>${(conv.categorias || []).length}</strong></div>
+        <div><span>Escalas</span><strong>${(conv.escalas_salariales || []).length}</strong></div>
+        <div><span>Alertas</span><strong>${alertas.length}</strong></div>
+      </div>
+      ${alertas.length ? `<div class="scale-warning">${alertas.map(escapeHtml).join("<br>")}</div>` : `<div class="scale-summary">Sin alertas detectadas por leIA.</div>`}
+      ${noConfirmados.length ? `<div class="convention-checklist">${noConfirmados.slice(0, 8).map((item) => `<span>Revisar: ${escapeHtml(item)}</span>`).join("")}</div>` : ""}`;
+    }
+
     const warnings = conv.warnings || [];
     const checklist = conv.auditChecklist || [];
     return `<div class="scale-mini-grid">
@@ -3638,16 +3742,35 @@
       return;
     }
     const conv = draft.parsedConvention || {};
+    const isV2 = conv.convenio !== undefined;
     const isPending = draft.status === "PENDIENTE_REVISION";
+    
     editor.className = "scale-editor convention-json-editor";
-    editor.innerHTML = `<div class="scale-editor-head">
+    
+    let editorHtml = `<div class="scale-editor-head">
       <div>
-        <strong>${escapeHtml(conv.name || draft.name)}</strong>
+        <strong>${escapeHtml(conv.nombre || conv.name || draft.name)}</strong>
         <span>${escapeHtml(draft.aiError || "JSON ejecutable generado por leIA. Revisalo antes de aprobar.")}</span>
       </div>
-      <span class="status-pill ${draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : ""}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</span>
-    </div>
-    <textarea id="conventionJsonText" spellcheck="false" ${draft.status === "APROBADO" ? "readonly" : ""}>${escapeHtml(JSON.stringify(conv, null, 2))}</textarea>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        ${isV2 ? `<button class="convention-viewer-toggle" id="conventionViewToggleBtn" type="button">Ver JSON / Vista Estructurada</button>` : ''}
+        <span class="status-pill ${draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : ""}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</span>
+      </div>
+    </div>`;
+
+    if (isV2) {
+      editorHtml += `<div id="conventionStructuredView" class="convention-viewer">
+        ${renderConventionSection('Identificación del Convenio', conventionSectionStatus(conv.convenio), renderConvenioIdentification(conv.convenio), false)}
+        ${renderConventionSection('Categorías', conventionSectionStatus(conv.categorias), renderCategoriasTable(conv.categorias), true)}
+        ${renderConventionSection('Escalas Salariales', conventionSectionStatus(conv.escalas_salariales), renderEscalasTable(conv.escalas_salariales), true)}
+        ${renderConventionSection('Haberes Remunerativos', conventionSectionStatus(conv.conceptos?.haberes_remunerativos), renderConceptosTable(conv.conceptos?.haberes_remunerativos), true)}
+        ${renderConventionSection('Haberes No Remunerativos', conventionSectionStatus(conv.conceptos?.haberes_no_remunerativos), renderConceptosTable(conv.conceptos?.haberes_no_remunerativos), true)}
+        ${renderConventionSection('Descuentos', conventionSectionStatus(conv.conceptos?.descuentos), renderConceptosTable(conv.conceptos?.descuentos), true)}
+        ${renderConventionSection('Retenciones', conventionSectionStatus(conv.conceptos?.retenciones), renderConceptosTable(conv.conceptos?.retenciones), true)}
+      </div>`;
+    }
+
+    editorHtml += `<textarea id="conventionJsonText" spellcheck="false" ${draft.status === "APROBADO" ? "readonly" : ""} ${isV2 ? 'style="display:none"' : ''}>${escapeHtml(JSON.stringify(conv, null, 2))}</textarea>
     <div class="scale-editor-actions">
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar JSON</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${draft.status === "APROBADO" ? "disabled" : ""}>Guardar JSON</button>
@@ -3665,11 +3788,33 @@
     </div>
     <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
 
+    editor.innerHTML = editorHtml;
+
     $("downloadConventionJsonBtn")?.addEventListener("click", () => downloadConventionJson(draft));
     $("saveConventionJsonBtn")?.addEventListener("click", saveConventionDraftJson);
     $("approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
     $("rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
     $("deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
+
+    if (isV2) {
+      $("conventionViewToggleBtn")?.addEventListener("click", () => {
+        const structuredView = $("conventionStructuredView");
+        const jsonText = $("conventionJsonText");
+        if (structuredView.style.display === "none") {
+          structuredView.style.display = "flex";
+          jsonText.style.display = "none";
+        } else {
+          structuredView.style.display = "none";
+          jsonText.style.display = "block";
+        }
+      });
+
+      document.querySelectorAll('.convention-section-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          e.currentTarget.parentElement.classList.toggle('collapsed');
+        });
+      });
+    }
   }
 
   function parseConventionJsonEditor() {

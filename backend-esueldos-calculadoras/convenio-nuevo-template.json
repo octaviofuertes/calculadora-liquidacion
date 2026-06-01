@@ -1,0 +1,157 @@
+{
+  "convenio": {
+    "codigo": "CCT-000-00",
+    "nombre": "Nombre del convenio colectivo de trabajo",
+    "actividad": "Actividad economica alcanzada",
+    "ambito_aplicacion": {
+      "geografico": "Nacional / Provincial / Municipal",
+      "personal": "Trabajadores alcanzados",
+      "empresa_actividad": "Tipo de empresas o actividades"
+    },
+    "partes_firmantes": ["Sindicato", "Camara empresaria"],
+    "vigencia": {
+      "fecha_inicio": "2026-01-01",
+      "fecha_fin": "2026-12-31",
+      "renovacion": "automatica / requiere negociacion"
+    },
+    "fuentes": [
+      {
+        "documento": "CCT / Acta / Resolucion",
+        "articulo": "Art. N",
+        "pagina": "1",
+        "texto_referencia": "Texto relevante del articulo"
+      }
+    ]
+  },
+  "categorias": [
+    {
+      "codigo": "CAT-001",
+      "nombre": "Categoria A",
+      "descripcion": "Descripcion de tareas y funciones",
+      "nivel": "1",
+      "funciones": ["Funcion 1", "Funcion 2"],
+      "fuente": "Art. N CCT"
+    }
+  ],
+  "modalidad_liquidacion": {
+    "tipo": "mensual",
+    "base_calculo": "sueldo_basico",
+    "divisor_mensual": 30,
+    "divisor_horas": 200,
+    "observaciones": "Jornada de 48 horas semanales"
+  },
+  "escalas_salariales": [
+    {
+      "periodo_desde": "2026-04",
+      "periodo_hasta": "2026-06",
+      "categoria": "CAT-001",
+      "basico": 450000,
+      "valor_hora": null,
+      "valor_jornal": null,
+      "no_remunerativo": 0,
+      "moneda": "ARS",
+      "fuente": "Escala salarial abril 2026"
+    }
+  ],
+  "conceptos": {
+    "haberes_remunerativos": [
+      {
+        "codigo": "HR001",
+        "nombre": "Antiguedad",
+        "descripcion": "Porcentaje sobre basico por cada año de antiguedad",
+        "formula": "basico * 0.01 * antiguedad_anios",
+        "base_calculo": "sueldo_basico",
+        "condiciones": ["antiguedad_anios > 0"],
+        "topes": [],
+        "afecta_presentismo": true,
+        "afecta_sac": true,
+        "afecta_vacaciones": true,
+        "fuente": "Art. N CCT"
+      }
+    ],
+    "haberes_no_remunerativos": [
+      {
+        "codigo": "HNR001",
+        "nombre": "Suma no remunerativa de escala",
+        "descripcion": "Suma fija no remunerativa segun acuerdo",
+        "formula": "valor_fijo",
+        "base_calculo": "monto_fijo",
+        "condiciones": [],
+        "topes": [],
+        "afecta_aportes": false,
+        "afecta_sac": false,
+        "fuente": "Acuerdo salarial"
+      }
+    ],
+    "descuentos": [
+      {
+        "codigo": "D001",
+        "nombre": "Cuota sindical",
+        "descripcion": "Aporte del trabajador al sindicato",
+        "formula": "total_remunerativo * porcentaje / 100",
+        "base_calculo": "total_remunerativo",
+        "porcentaje": 2,
+        "obligatorio": false,
+        "fuente": "Art. N CCT"
+      }
+    ],
+    "retenciones": [
+      {
+        "codigo": "R001",
+        "nombre": "Aporte solidario",
+        "descripcion": "Contribucion solidaria del trabajador no afiliado",
+        "formula": "total_remunerativo * porcentaje / 100",
+        "base_calculo": "total_remunerativo",
+        "porcentaje": 2,
+        "obligatorio": false,
+        "fuente": "Art. N CCT"
+      }
+    ]
+  },
+  "novedades_requeridas": [
+    {
+      "codigo": "NOV001",
+      "nombre": "Antiguedad en años",
+      "tipo_dato": "numero",
+      "obligatoria": true,
+      "valor_default": 0,
+      "rango_permitido": { "min": 0, "max": 50 },
+      "aplica_a_conceptos": ["HR001"]
+    }
+  ],
+  "reglas_validacion": [
+    {
+      "codigo": "RV001",
+      "descripcion": "Basico no puede ser cero",
+      "condicion": "basico > 0",
+      "mensaje_advertencia": "El basico de la categoria es cero. Verificar escala vigente.",
+      "requiere_confirmacion_usuario": true,
+      "fuente": "LCT Art. 116"
+    }
+  ],
+  "flujo_liquidacion": [
+    "validar_convenio",
+    "validar_novedades",
+    "calcular_haberes_remunerativos",
+    "calcular_haberes_no_remunerativos",
+    "calcular_bruto",
+    "aplicar_descuentos",
+    "aplicar_retenciones",
+    "calcular_neto",
+    "auditar_resultado",
+    "generar_recibo"
+  ],
+  "auditoria": {
+    "requiere_revision": true,
+    "alertas": [],
+    "nivel_confianza": "alto",
+    "campos_no_confirmados": []
+  },
+  "metadata": {
+    "version": "1.0",
+    "estado": "borrador",
+    "fecha_estructuracion": "",
+    "estructurado_por": "IA",
+    "observaciones": ""
+  }
+}

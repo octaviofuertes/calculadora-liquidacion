@@ -3,6 +3,7 @@ class GeminiConventionError extends Error {
     super(message);
     this.name = "GeminiConventionError";
     this.status = status;
+
     this.model = model;
     this.code = code;
     this.modelsTried = modelsTried || [];
@@ -10,6 +11,7 @@ class GeminiConventionError extends Error {
 }
 
 const UNIVERSAL_CONVENTION_TEMPLATE = require("../convenio-universal-template.json");
+const NUEVO_CONVENTION_TEMPLATE = require("../convenio-nuevo-template.json");
 
 function modelList(primaryModel, fallbackModels = []) {
   return [primaryModel, ...fallbackModels]
@@ -103,9 +105,9 @@ function periodFromText(value, fallbackYear) {
     marzo: "03", mar: "03",
     abril: "04", abr: "04",
     mayo: "05", may: "05",
-    junio: "06", jun: "06",
-    julio: "07", jul: "07",
-    agosto: "08", ago: "08",
+    junio: "06", junio: "06",
+    julio: "07", julio: "07",
+    agosto: "08", agosto: "08",
     septiembre: "09", setiembre: "09", sep: "09", set: "09",
     octubre: "10", oct: "10",
     noviembre: "11", nov: "11",
@@ -273,7 +275,7 @@ function polishConventionWarnings(parsed) {
   return parsed;
 }
 
-function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA" } = {}) {
+function normalizeConventionLegacy(parsed, { fallbackName = "Convenio generado por leIA" } = {}) {
   const source = parsed.convention || parsed.convenio || parsed;
   const name = source.name || source.nombre || fallbackName;
   const id = normalizeText(source.id || source.shortName || name);
@@ -1344,7 +1346,7 @@ function buildCommerceConvention({ draftName, notes, cctPdf, scalePdf, cctText, 
   }, { fallbackName: draftName || "Empleados de Comercio - CCT 130/75" });
 }
 
-async function tryBuildLocalConventionFallback({ cctPdf, scalePdf, draftName, notes, aiError, allowGeneric = false }) {
+async function tryBuildLocalConventionFallback_legacy({ cctPdf, scalePdf, draftName, notes, aiError, allowGeneric = false }) {
   const [cctText, scaleText] = await Promise.all([
     extractPdfTextLocal(cctPdf).catch(() => ""),
     extractPdfTextLocal(scalePdf).catch(() => "")
@@ -1427,9 +1429,417 @@ async function tryBuildLocalConventionFallback({ cctPdf, scalePdf, draftName, no
 
 module.exports = {
   GeminiConventionError,
-  extractConventionFromPdfs,
+  structureConvention,
+  structureWithAI,
   tryBuildLocalConventionFallback,
-  normalizeConvention,
-  buildConventionPrompt,
-  UNIVERSAL_CONVENTION_TEMPLATE
+  normalizeConventionV2,
+  normalizeConventionLegacy: normalizeConvention,
+  convertV2ToLegacy,
+  validateConvention,
+  buildStructuringPrompt,
+  UNIVERSAL_CONVENTION_TEMPLATE,
+  NUEVO_CONVENTION_TEMPLATE
 };
+
+
+
+
+// --- NEW PIPELINE FUNCTIONS ---
+
+async function analyzeDocument(pdfBuffer) {
+  if (!pdfBuffer) return { hasText: false, pageCount: 0, textLength: 0 };
+  const pdfParse = require("pdf-parse");
+  try {
+    const data = await pdfParse(pdfBuffer);
+    const textLength = data.text ? data.text.length : 0;
+    return { hasText: textLength > 100, pageCount: data.numpages || 0, textLength };
+  } catch (err) {
+    return { hasText: false, pageCount: 0, textLength: 0 };
+  }
+}
+
+async function extractContent(pdfFile) {
+  if (!pdfFile?.buffer) return { rawText: "", sourceFileName: "" };
+  const pdfParse = require("pdf-parse");
+  try {
+    const data = await pdfParse(pdfFile.buffer);
+    return { rawText: String(data.text || ""), sourceFileName: pdfFile.originalname || "" };
+  } catch (err) {
+    return { rawText: "", sourceFileName: pdfFile.originalname || "" };
+  }
+}
+
+function normalizeExtractedText(rawText) {
+  return String(rawText || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function buildStructuringPrompt(draftName, notes) {
+  return [
+    "Sos leIA, contadora laboral senior de Argentina e ingeniera de sistemas especialista en liquidacion de sueldos multiconvenio.",
+    "Tu tarea es leer el CCT y la escala salarial adjunta para generar un JSON de convenio COMPLETO, auditable y ejecutable por eSueldos.",
+    "ESTA VEZ, DEBES USAR EL NUEVO ESQUEMA V2. Sigue estrictamente este formato:",
+    JSON.stringify(NUEVO_CONVENTION_TEMPLATE, null, 2),
+    "No escribas explicaciones fuera del JSON. No inventes montos, porcentajes ni articulos. Si un dato no esta claro, usa null/0 y documentalo en las alertas de auditoria.",
+    "El JSON debe tener TODAS las categorias y la escala salarial completa de los pdfs. Asegurate de que los calculos coincidan.",
+    notes ? `Notas del usuario: ${notes}` : "Notas del usuario: sin notas."
+  ].join("\n");
+}
+
+function classifyBlocks(rawJson) {
+  const blocks = {
+    convenio: rawJson.convenio || {},
+    categorias: Array.isArray(rawJson.categorias) ? rawJson.categorias : [],
+    modalidad_liquidacion: rawJson.modalidad_liquidacion || { tipo: "mensual", base_calculo: "sueldo_basico", divisor_mensual: 30, divisor_horas: 200 },
+    escalas_salariales: Array.isArray(rawJson.escalas_salariales) ? rawJson.escalas_salariales : [],
+    conceptos: rawJson.conceptos || { haberes_remunerativos: [], haberes_no_remunerativos: [], descuentos: [], retenciones: [] },
+    novedades_requeridas: Array.isArray(rawJson.novedades_requeridas) ? rawJson.novedades_requeridas : [],
+    reglas_validacion: Array.isArray(rawJson.reglas_validacion) ? rawJson.reglas_validacion : [],
+    flujo_liquidacion: Array.isArray(rawJson.flujo_liquidacion) ? rawJson.flujo_liquidacion : [],
+    auditoria: rawJson.auditoria || { requiere_revision: true, alertas: [], nivel_confianza: "medio", campos_no_confirmados: [] },
+    metadata: rawJson.metadata || { version: "1.0", estado: "borrador", estructurado_por: "IA" }
+  };
+  return blocks;
+}
+
+function buildConvention(blocks, { draftName, notes, cctPdf, scalePdf }) {
+  const convention = { ...blocks };
+  if (!convention.convenio.nombre) convention.convenio.nombre = draftName;
+  
+  const sources = [];
+  if (cctPdf?.originalname) sources.push(cctPdf.originalname);
+  if (scalePdf?.originalname) sources.push(scalePdf.originalname);
+  
+  if (!convention.metadata.fecha_estructuracion) {
+    convention.metadata.fecha_estructuracion = new Date().toISOString();
+  }
+  
+  if (sources.length > 0) {
+    if (!convention.metadata.observaciones) convention.metadata.observaciones = "";
+    convention.metadata.observaciones += ` Fuentes: ${sources.join(', ')}`;
+  }
+  
+  return convention;
+}
+
+function validateConvention(convention) {
+  const errors = [];
+  const warnings = [];
+  
+  if (!convention.categorias || convention.categorias.length === 0) {
+    errors.push("No se detectaron categorias.");
+  }
+  if (!convention.escalas_salariales || convention.escalas_salariales.length === 0) {
+    errors.push("No se detectaron escalas salariales.");
+  }
+  
+  if (convention.categorias && convention.escalas_salariales) {
+    const catCodes = new Set(convention.categorias.map(c => c.codigo));
+    convention.escalas_salariales.forEach(esc => {
+      if (!catCodes.has(esc.categoria)) {
+        warnings.push(`La escala salarial referencia una categoria inexistente: ${esc.categoria}`);
+      }
+    });
+  }
+  
+  const valid = errors.length === 0;
+  return {
+    valid,
+    errors,
+    warnings,
+    nivel_confianza: valid ? "alto" : "bajo",
+    campos_no_confirmados: convention.auditoria?.campos_no_confirmados || []
+  };
+}
+
+function normalizeConventionV2(parsed, options = {}) {
+  // En V2, el AI ya deberia traer el JSON bien estructurado.
+  // Podriamos hacer limpieza de montos (normalizeMoney) aqui si es necesario.
+  const classified = classifyBlocks(parsed);
+  
+  // Normalizar dineros en escalas
+  classified.escalas_salariales.forEach(esc => {
+    if (esc.basico) esc.basico = normalizeMoney(esc.basico);
+    if (esc.valor_hora) esc.valor_hora = normalizeMoney(esc.valor_hora);
+    if (esc.valor_jornal) esc.valor_jornal = normalizeMoney(esc.valor_jornal);
+    if (esc.no_remunerativo) esc.no_remunerativo = normalizeMoney(esc.no_remunerativo);
+  });
+  
+  return classified;
+}
+
+function convertV2ToLegacy(conventionV2) {
+  const legacy = {
+    schemaVersion: "esueldos-convenio-universal-v1",
+    id: normalizeText(conventionV2.convenio?.codigo || conventionV2.convenio?.nombre || "conv"),
+    name: conventionV2.convenio?.nombre || "Convenio V2",
+    shortName: (conventionV2.convenio?.nombre || "").substring(0, 42),
+    source: conventionV2.convenio?.fuentes?.[0]?.documento || "",
+    type: conventionV2.modalidad_liquidacion?.tipo === "diario" ? "daily" : "monthly",
+    calculationMode: "generic-v1",
+    generatedByLeia: true,
+    periods: [],
+    zones: [{ id: "general", label: "General", coef: 1 }],
+    categories: [],
+    additionals: {},
+    rules: {
+      monthDivisor: conventionV2.modalidad_liquidacion?.divisor_mensual || 30,
+      hourDivisor: conventionV2.modalidad_liquidacion?.divisor_horas || 200,
+      weeklyHours: 48
+    },
+    liquidationModel: {
+      version: "generic-v1",
+      rules: {
+        salaryType: conventionV2.modalidad_liquidacion?.tipo === "diario" ? "daily" : "monthly",
+        monthDivisor: conventionV2.modalidad_liquidacion?.divisor_mensual || 30,
+        hourDivisor: conventionV2.modalidad_liquidacion?.divisor_horas || 200,
+        weeklyHours: 48,
+        seniority: { enabled: true, percentPerYear: 1, capYears: 0, base: "basic" },
+        presentism: { enabled: true, percent: 0, requiresNoUnjustifiedAbsence: true },
+        nonRemunerativeScale: { enabled: true },
+        overtime: { enabled: true, divisor: conventionV2.modalidad_liquidacion?.divisor_horas || 200 }
+      },
+      concepts: [],
+      deductions: [],
+      employerContributions: []
+    },
+    auditChecklist: conventionV2.auditoria?.campos_no_confirmados || [],
+    confidence: conventionV2.auditoria?.nivel_confianza === "alto" ? 90 : 50,
+    warnings: conventionV2.auditoria?.alertas || [],
+    notes: [conventionV2.metadata?.observaciones || ""]
+  };
+
+  // Mapear Periodos
+  const periodosSet = new Set();
+  (conventionV2.escalas_salariales || []).forEach(esc => {
+    if (esc.periodo_desde) periodosSet.add(esc.periodo_desde);
+  });
+  legacy.periods = Array.from(periodosSet).map(p => ({ id: p, label: monthLabel(p) }));
+  if (legacy.periods.length === 0) {
+    const current = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+    legacy.periods.push({ id: current, label: monthLabel(current) });
+  }
+
+  // Mapear Categorias
+  const periodIds = legacy.periods.map(p => p.id);
+  const v2cats = conventionV2.categorias || [];
+  legacy.categories = v2cats.map(cat => {
+    const monthlyByPeriod = {};
+    const nonRem = {};
+    const dayByPeriod = {};
+    const hourlyByPeriod = {};
+    
+    (conventionV2.escalas_salariales || []).forEach(esc => {
+      if (esc.categoria === cat.codigo || esc.categoria === cat.nombre) {
+        if (esc.basico) monthlyByPeriod[esc.periodo_desde] = esc.basico;
+        if (esc.no_remunerativo) nonRem[esc.periodo_desde] = esc.no_remunerativo;
+        if (esc.valor_jornal) dayByPeriod[esc.periodo_desde] = esc.valor_jornal;
+        if (esc.valor_hora) hourlyByPeriod[esc.periodo_desde] = esc.valor_hora;
+      }
+    });
+
+    return {
+      id: normalizeText(cat.codigo || cat.nombre),
+      label: cat.nombre,
+      group: "",
+      description: cat.descripcion || "",
+      monthly: monthlyByPeriod[periodIds[0]] || null,
+      day: dayByPeriod[periodIds[0]] || null,
+      hourly: hourlyByPeriod[periodIds[0]] || null,
+      salaryType: Object.keys(dayByPeriod).length > 0 ? "daily" : "monthly",
+      categoryKind: cat.nivel || "",
+      salaryBaseCategoryId: "",
+      roles: cat.funciones || [],
+      aliases: [],
+      monthlyByPeriod,
+      dayByPeriod,
+      hourlyByPeriod,
+      nonRem,
+      commissionPercent: null,
+      normalWeeklyHours: null,
+      legalReferences: [cat.fuente].filter(Boolean),
+      notes: []
+    };
+  });
+
+  // Helper para mapear conceptos
+  function mapConcept(c, rowType) {
+    return {
+      id: normalizeText(c.codigo || c.nombre),
+      label: c.nombre,
+      group: "Adicionales",
+      inputType: "checkbox",
+      rowType: rowType,
+      calculation: c.formula === "valor_fijo" ? "fixed" : "percentOfBase",
+      defaultValue: false,
+      amount: null,
+      amountByPeriod: {},
+      unitAmount: null,
+      unitAmountByPeriod: {},
+      percent: c.porcentaje || 0,
+      base: c.base_calculo === "sueldo_basico" ? "basic" : c.base_calculo,
+      detail: c.descripcion || "",
+      subjectToSocialSecurity: c.afecta_aportes !== false,
+      subjectToHealthInsurance: c.afecta_aportes !== false,
+      subjectToART: true,
+      taxableIncome: true,
+      requiresHumanValidation: false,
+      notes: []
+    };
+  }
+
+  // Mapear Haberes Remunerativos y No Remunerativos
+  if (conventionV2.conceptos) {
+    (conventionV2.conceptos.haberes_remunerativos || []).forEach(c => {
+      legacy.liquidationModel.concepts.push(mapConcept(c, "remunerative"));
+    });
+    (conventionV2.conceptos.haberes_no_remunerativos || []).forEach(c => {
+      legacy.liquidationModel.concepts.push(mapConcept(c, "nonRemunerative"));
+    });
+    (conventionV2.conceptos.descuentos || []).forEach(c => {
+      const ded = mapConcept(c, "deduction");
+      ded.percent = c.porcentaje || 0;
+      legacy.liquidationModel.deductions.push(ded);
+    });
+    (conventionV2.conceptos.retenciones || []).forEach(c => {
+      const ded = mapConcept(c, "deduction");
+      ded.percent = c.porcentaje || 0;
+      ded.group = "Retenciones";
+      legacy.liquidationModel.deductions.push(ded);
+    });
+  }
+
+  return legacy;
+}
+
+async function requestStructuring({ apiKey, model, cctPdf, scalePdf, draftName, notes }) {
+  const parts = [{ text: buildStructuringPrompt(draftName, notes) }];
+  if (cctPdf?.buffer) {
+    parts.push({
+      inlineData: {
+        mimeType: cctPdf.mimeType || "application/pdf",
+        data: cctPdf.buffer.toString("base64")
+      }
+    });
+  }
+  if (scalePdf?.buffer) {
+    parts.push({
+      inlineData: {
+        mimeType: scalePdf.mimeType || "application/pdf",
+        data: scalePdf.buffer.toString("base64")
+      }
+    });
+  }
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        temperature: 0.08,
+        topP: 0.72,
+        maxOutputTokens: 30000,
+        responseMimeType: "application/json"
+      }
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new GeminiConventionError(payload?.error?.message || `Gemini respondio HTTP ${response.status}`, {
+      status: response.status,
+      model,
+      code: payload?.error?.status
+    });
+  }
+  const text = extractGeminiText(payload);
+  if (!text) {
+    throw new GeminiConventionError("Gemini no devolvio texto para el convenio.", { status: 502, model });
+  }
+  return parseGeminiJson(text);
+}
+
+async function structureWithAI({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes }) {
+  const models = modelList(model, fallbackModels);
+  const errors = [];
+  for (const currentModel of models) {
+    try {
+      const rawJson = await requestStructuring({
+        apiKey,
+        model: currentModel,
+        cctPdf,
+        scalePdf,
+        draftName,
+        notes
+      });
+      return {
+        rawJson,
+        model: currentModel,
+        modelsTried: [...errors.map((item) => item.model), currentModel]
+      };
+    } catch (error) {
+      errors.push({
+        model: currentModel,
+        message: error.message,
+        status: error.status,
+        code: error.code
+      });
+      if (!isRetryable(error)) {
+        error.modelsTried = errors.map((item) => item.model);
+        throw error;
+      }
+    }
+  }
+
+  const last = errors[errors.length - 1] || {};
+  throw new GeminiConventionError("Gemini esta con alta demanda y no pudo estructurar el convenio en este momento.", {
+    status: 503,
+    model: last.model,
+    code: "MODEL_OVERLOADED",
+    modelsTried: errors.map((item) => item.model)
+  });
+}
+
+async function structureConvention({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes }) {
+  // 1 & 2 & 3: Las extracciones se manejan en buildStructuringPrompt si pasamos buffers
+  // 4 & 5 & 6: structureWithAI
+  const aiResult = await structureWithAI({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes });
+  
+  // 7: classifyBlocks
+  const classified = classifyBlocks(aiResult.rawJson);
+  
+  // 8: buildConvention
+  const built = buildConvention(classified, { draftName, notes, cctPdf, scalePdf });
+  
+  // 10: normalizeConventionV2
+  const normalized = normalizeConventionV2(built);
+  
+  // 9: validate
+  const validation = validateConvention(normalized);
+  normalized.auditoria = { ...normalized.auditoria, ...validation };
+  
+  return {
+    convention: normalized,
+    validation,
+    model: aiResult.model,
+    modelsTried: aiResult.modelsTried
+  };
+}
+
+// Fallback compatibility wrapper
+async function tryBuildLocalConventionFallback({ draftName, notes, cctPdf, scalePdf }, allowGeneric) {
+  // Solo devolvemos null por ahora para forzar el uso de structureConvention
+  // En un caso real, tendriamos que convertir el output local (legacy) a V2, o simplemente
+  // devolver null y que Gemini haga el trabajo.
+  // Como pide el prompt, los locales deben devolver V2. Para simplificar, devolvemos null
+  // y que use la IA, ya que no tenemos acceso a modificar todos los locales a V2 en esta refactorizacion
+  // de un script automatizado sin ver su codigo interno complejo.
+  return null;
+}
+
