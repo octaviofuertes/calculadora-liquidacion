@@ -2040,52 +2040,72 @@
     return renderGenericCategoryGuide(conv, result);
   }
 
+  function categoryGuideGroups(categories) {
+    const rows = Array.isArray(categories) ? categories : [];
+    const hasGroups = rows.some((cat) => cat.group || cat.grupo || cat.categoryGroup || cat.category_group || cat.rama || cat.branch || cat.section || cat.seccion || cat.jornada);
+    if (!hasGroups) return [{ label: "", categories: rows }];
+    const groups = new Map();
+    rows.forEach((cat) => {
+      const label = cat.group || cat.grupo || cat.categoryGroup || cat.category_group || cat.rama || cat.branch || cat.section || cat.seccion || cat.jornada || "Sin grupo";
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(cat);
+    });
+    return Array.from(groups, ([label, groupCategories]) => ({ label, categories: groupCategories }));
+  }
+
+  function categoryGuideTitle(base, group) {
+    return group ? `${base} - ${group}` : base;
+  }
+
   function renderUocraCategoryGuide(conv) {
     const periods = conv.periods || [];
     const zones = conv.zones?.length ? conv.zones : [{ id: "A", label: "Zona A" }];
-    const tables = zones.map((zone) => renderSummaryTable(`Cuadro de categorias - ${zone.label}`, [
-      "Categoria",
-      "Jornada",
-      ...periods.map((item) => item.label),
-      "SNR abril"
-    ], (conv.categories || []).map((cat) => [
-      cat.label,
-      cat.monthly ? "Mensual" : "Jornal diario",
-      ...periods.map((item) => {
-        const value = Number(conv.scales?.[item.id]?.[zone.id]?.[cat.id] || 0);
-        return cat.monthly ? `${fmt(value)} mensual` : fmt(value);
-      }),
-      fmt(Number(conv.nonRem?.abr26?.[zone.id]?.[cat.id] || 0))
-    ])));
+    const groups = categoryGuideGroups(conv.categories);
+    const tables = zones.flatMap((zone) => groups.map((group) => renderSummaryTable(categoryGuideTitle(`Cuadro de categorias - ${zone.label}`, group.label), [
+        "Categoria",
+        "Jornada",
+        ...periods.map((item) => item.label),
+        "SNR abril"
+      ], group.categories.map((cat) => [
+        cat.label,
+        cat.monthly ? "Mensual" : "Jornal diario",
+        ...periods.map((item) => {
+          const value = Number(conv.scales?.[item.id]?.[zone.id]?.[cat.id] || 0);
+          return cat.monthly ? `${fmt(value)} mensual` : fmt(value);
+        }),
+        fmt(Number(conv.nonRem?.abr26?.[zone.id]?.[cat.id] || 0))
+      ]))));
     return `<div class="category-guide">${tables.join("")}</div>`;
   }
 
   function renderFarmaciaCategoryGuide(conv) {
     const rules = conv.rules || {};
     const periods = conv.periods || [];
-    return `<div class="category-guide">${renderSummaryTable("Cuadro de categorias y jornada", [
-      "Categoria",
-      "Jornada",
-      "Basico mensual",
-      ...periods.map((item) => `No rem. ${item.label}`)
-    ], (conv.categories || []).map((cat) => [
-      cat.label,
-      `${rules.weeklyHours || 45} hs semanales`,
-      fmt(Number(cat.monthly || 0)),
-      ...periods.map((item) => fmt(Number(cat.nonRem?.[item.id] || 0)))
-    ]))}</div>`;
+    const tables = categoryGuideGroups(conv.categories).map((group) => renderSummaryTable(categoryGuideTitle("Cuadro de categorias y jornada", group.label), [
+        "Categoria",
+        "Jornada",
+        "Basico mensual",
+        ...periods.map((item) => `No rem. ${item.label}`)
+      ], group.categories.map((cat) => [
+        cat.label,
+        `${rules.weeklyHours || 45} hs semanales`,
+        fmt(Number(cat.monthly || 0)),
+        ...periods.map((item) => fmt(Number(cat.nonRem?.[item.id] || 0)))
+      ])));
+    return `<div class="category-guide">${tables.join("")}</div>`;
   }
 
   function renderCamionerosCategoryGuide(conv) {
     const zones = conv.zones?.length ? conv.zones : [{ id: "base", label: "General", coef: 1 }];
-    const tables = zones.map((zone) => {
+    const groups = categoryGuideGroups(conv.categories);
+    const tables = zones.flatMap((zone) => groups.map((group) => {
       const coef = Number(zone.coef || 1);
-      return renderSummaryTable(`Cuadro de categorias - ${zone.label}`, [
+      return renderSummaryTable(categoryGuideTitle(`Cuadro de categorias - ${zone.label}`, group.label), [
         "Categoria",
         "Jornada",
         "Basico mensual",
         "Jornal ref. 24 dias"
-      ], (conv.categories || []).map((cat) => {
+      ], group.categories.map((cat) => {
         const monthly = Number(cat.monthly || 0) * coef;
         return [
           cat.label,
@@ -2094,7 +2114,7 @@
           fmt(monthly / 24)
         ];
       }));
-    });
+    }));
     return `<div class="category-guide">${tables.join("")}</div>`;
   }
 
@@ -2102,14 +2122,15 @@
     const { period, zone } = currentSummaryContext(conv, result);
     const zones = conv.zones?.length ? conv.zones : [zone || { id: "general", label: "General" }];
     const rules = conv.rules || conv.liquidationModel?.rules || {};
-    const tables = zones.map((tableZone) => renderSummaryTable(`Cuadro de categorias - ${tableZone.label || "General"}`, [
+    const groups = categoryGuideGroups(conv.categories);
+    const tables = zones.flatMap((tableZone) => groups.map((group) => renderSummaryTable(categoryGuideTitle(`Cuadro de categorias - ${tableZone.label || "General"}`, group.label), [
       "Categoria",
       "Jornada",
       "Mensual",
       "Jornal",
       "Hora",
       "No rem. periodo"
-    ], (conv.categories || []).map((cat) => {
+    ], group.categories.map((cat) => {
       const row = scaleCategoryRow(conv, cat, tableZone);
       const monthly = firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]);
       const day = firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]);
@@ -2123,7 +2144,7 @@
         hourly ? fmt(hourly) : "-",
         periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
       ];
-    })));
+    }))));
     return `<div class="category-guide">${tables.join("")}</div>`;
   }
 
@@ -2405,13 +2426,27 @@
     const legal = conv.legalFramework || {};
     const sources = summaryArray(legal.primarySources).map((source) => `${source.title || source.type || "Fuente"}${source.fileName ? ` - ${source.fileName}` : ""}`);
     const scope = conv.scope || {};
-    const conceptRows = summaryArray(model.concepts || conv.concepts).map((item) => [
+    const concepts = summaryArray(model.concepts || conv.concepts);
+    const conceptSummaryRow = (item) => [
       item.label || item.id,
       item.group || item.rowType || "Concepto",
       item.calculation ? `${item.calculation}${item.percent ? ` ${item.percent}%` : ""}` : (item.amount ? fmt(Number(item.amount)) : "-"),
       item.base || "-",
       item.detail || item.notes?.[0] || ""
-    ]);
+    ];
+    const conceptType = (item) => String(item.rowType || "remunerative").toLowerCase().replace(/[^a-z]/g, "");
+    const remunerativeConceptRows = concepts
+      .filter((item) => conceptType(item) === "remunerative")
+      .map(conceptSummaryRow);
+    const nonRemunerativeConceptRows = concepts
+      .filter((item) => conceptType(item) === "nonremunerative")
+      .map(conceptSummaryRow);
+    const deductionConceptRows = concepts
+      .filter((item) => conceptType(item) === "deduction")
+      .map(conceptSummaryRow);
+    const otherConceptRows = concepts
+      .filter((item) => !["remunerative", "nonremunerative", "deduction"].includes(conceptType(item)))
+      .map(conceptSummaryRow);
     const deductionRows = summaryArray(model.deductions || conv.deductions).map((item) => [
       item.label || item.id,
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
@@ -2457,7 +2492,10 @@
       ${renderSummaryBulletSection("Trabajadores incluidos", scope.workersIncluded)}
       ${renderSummaryBulletSection("Trabajadores excluidos", scope.workersExcluded)}
       ${renderSummaryTable("Articulos relevantes", ["Articulo", "Resumen"], articleRows)}
-      ${renderSummaryTable("Conceptos del motor JSON", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], conceptRows)}
+      ${renderSummaryTable("Haberes remunerativos", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], remunerativeConceptRows)}
+      ${renderSummaryTable("Haberes no remunerativos", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], nonRemunerativeConceptRows)}
+      ${renderSummaryTable("Descuentos convencionales variables", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], deductionConceptRows)}
+      ${renderSummaryTable("Otros conceptos del motor JSON", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], otherConceptRows)}
       ${renderSummaryTable("Deducciones propias", ["Concepto", "Valor", "Base", "Detalle"], deductionRows)}
       ${renderSummaryTable("Contribuciones propias empleador", ["Concepto", "Valor", "Base", "Detalle"], employerRows)}
       ${renderSummaryTable("Categorias de escala", ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], (conv.categories || []).map((cat) => {
@@ -4427,7 +4465,6 @@
     if (isGenericConvention(conv)) {
       const model = conv.liquidationModel || {};
       const rules = model.rules || {};
-      const salaryType = rules.salaryType || conv.type || "monthly";
       const grouped = (model.concepts || []).reduce((acc, concept) => {
         const key = concept.group || "Adicionales";
         if (!acc[key]) acc[key] = [];
@@ -4447,8 +4484,6 @@
         <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
         <div class="generic-section-title">Base del convenio JSON</div>
         <div class="grid three">
-          <label class="field"><span>% del mes</span><input id="genMonthPct" type="number" min="0" max="100" step="0.01" value="100"></label>
-          <label class="field"><span>${salaryType === "hourly" ? "Horas" : salaryType === "daily" ? "Jornales" : "Unidades"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${salaryType === "hourly" ? 0 : (rules.monthDivisor || 30)}"></label>
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Hs extra 50%</span><input id="genExtra50" type="number" min="0" step="0.01" value="0"></label>
           <label class="field"><span>Hs extra 100%</span><input id="genExtra100" type="number" min="0" step="0.01" value="0"></label>
