@@ -92,7 +92,7 @@ function getDbInstance() {
 }
 
 function geminiFallbackModels() {
-  return String(process.env.GEMINI_FALLBACK_MODELS || "gemini-2.5-flash-lite,gemini-2.0-flash")
+  return String(process.env.GEMINI_FALLBACK_MODELS)
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -607,7 +607,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       try {
         const result = await extractConventionFromPdfs({
           apiKey,
-          model: process.env.GEMINI_CONVENTION_MODEL || process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          model: process.env.GEMINI_CONVENTION_MODEL || process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL,
           fallbackModels: geminiFallbackModels(),
           cctPdf,
           scalePdf,
@@ -839,7 +839,7 @@ app.post("/api/leia/chat", async (req, res, next) => {
 
     const result = await askGemini({
       apiKey,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL,
       fallbackModels: geminiFallbackModels(),
       systemInstruction,
       message,
@@ -897,7 +897,7 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
       try {
         const result = await askGemini({
           apiKey,
-          model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          model: process.env.GEMINI_MODEL,
           fallbackModels: geminiFallbackModels(),
           systemInstruction: "Sos leIA, auditora de liquidaciones de eSueldos. Respondés solamente JSON válido.",
           message: buildLiquidationAuditPrompt({ liquidation, precheck, activeScale, catalog }),

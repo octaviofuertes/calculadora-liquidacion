@@ -3503,7 +3503,7 @@
     const prompt = $("conventionTokenPrompt");
     const output = $("conventionTokenOutput");
     const total = $("conventionTokenTotal");
-    if (model) model.textContent = usage.model || "gemini-2.5-flash";
+    if (model) model.textContent = usage.model;
     if (prompt) prompt.textContent = usage.promptTokenCount ? usage.promptTokenCount.toLocaleString("es-AR") : "0";
     const outTokens = usage.candidatesTokenCount || usage.outputTokenCount || 0;
     if (output) output.textContent = outTokens ? outTokens.toLocaleString("es-AR") : "0";
