@@ -1,3 +1,5 @@
+const { geminiModelList } = require("./gemini-config");
+
 class GeminiScaleError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
     super(message);
@@ -7,14 +9,6 @@ class GeminiScaleError extends Error {
     this.code = code;
     this.modelsTried = modelsTried || [];
   }
-}
-
-function modelList(primaryModel, fallbackModels = []) {
-  return [primaryModel, ...fallbackModels]
-    .filter(Boolean)
-    .map((item) => String(item).trim())
-    .filter(Boolean)
-    .filter((item, index, list) => list.indexOf(item) === index);
 }
 
 function isRetryable(error) {
@@ -644,6 +638,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
   }
 
   const markdownText = convertRawTextToMarkdown(rawText);
+  const attachPdf = !hasUsefulPdfText(rawText);
 
   // Debug output requested by user
   console.log("\n==================================================");
@@ -663,7 +658,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
     console.error("Error al guardar archivo debug de escala:", err.message);
   }
 
-  const models = modelList(model, fallbackModels);
+  const models = geminiModelList(model, fallbackModels);
   const errors = [];
 
   for (const currentModel of models) {
@@ -675,6 +670,9 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
         period,
         periodLabel,
         markdownText,
+        pdfBuffer,
+        mimeType,
+        attachPdf,
         sourceFileName
       });
       return {

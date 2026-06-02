@@ -97,35 +97,6 @@ function getDbInstance() {
   return db;
 }
 
-function requireAuth(req, res, next) {
-  if (!req.user) {
-    res.status(401).json({ error: "No autorizado" });
-    return;
-  }
-  next();
-}
-
-function requireRole(role) {
-  return (req, res, next) => {
-    if (!req.user) {
-      res.status(401).json({ error: "No autorizado" });
-      return;
-    }
-    if (req.user.role !== role) {
-      res.status(403).json({ error: "Acceso denegado" });
-      return;
-    }
-    next();
-  };
-}
-
-function requireAuthWhenEnabled(req, res, next) {
-  if (process.env.AUTH_REQUIRED !== "true") {
-    return next();
-  }
-  return requireAuth(req, res, next);
-}
-
 function geminiFallbackModels() {
   return String(process.env.GEMINI_FALLBACK_MODELS || "gemini-2.5-flash-lite,gemini-2.0-flash")
     .split(",")
@@ -592,115 +563,22 @@ function fallbackAuditFromPrecheck(precheck, aiError = null) {
   };
 }
 
-app.get("/api/health", async (req, res) => {
-  try {
-    await db.command({ ping: 1 });
-    res.json({ ok: true, mongo: true, db: db.databaseName });
-  } catch (error) {
-    res.status(503).json({ ok: false, mongo: false, error: error.message });
-  }
-});
-
-app.post("/api/auth/bootstrap-admin", async (req, res, next) => {
-  try {
-    const count = await db.collection("users").countDocuments();
-    if (count > 0) {
-      res.status(409).json({ error: "Ya existen usuarios. Crea nuevos usuarios con un admin autenticado." });
-      return;
-    }
-    const payload = parseOrThrow(userCreateSchema.extend({ role: userCreateSchema.shape.role.default("admin") }), {
-      ...req.body,
-      role: "admin"
-    }, "Usuario admin invalido");
-    const user = await createUser(db, payload);
-    const login = await authenticateUser(db, { email: payload.email, password: payload.password });
-    res.status(201).json({ user: login.user || { id: user._id.toString(), email: user.email, name: user.name, role: user.role }, token: login.token });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/auth/status", async (req, res, next) => {
-  try {
-    const usersCount = await db.collection("users").countDocuments();
-    res.json({
-      hasUsers: usersCount > 0,
-      authRequired: process.env.AUTH_REQUIRED === "true"
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/auth/login", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(loginSchema, req.body, "Credenciales invalidas");
-    res.json(await authenticateUser(db, payload));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/auth/me", requireAuth, async (req, res) => {
-  res.json({ user: req.user });
-});
-
-app.get("/api/users", requireRole("admin"), async (req, res, next) => {
-  try {
-    const docs = await db.collection("users").find({}, {
-      projection: { passwordHash: 0 }
-    }).sort({ createdAt: -1 }).limit(200).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/users", requireRole("admin"), async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(userCreateSchema, req.body, "Usuario invalido");
-    const user = await createUser(db, payload);
-    res.status(201).json({ id: user._id.toString(), email: user.email, name: user.name, role: user.role, active: user.active });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/users/:id", requireRole("admin"), async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const payload = parseOrThrow(userUpdateSchema, req.body, "Usuario invalido");
-    const result = await db.collection("users").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { ...payload, updatedAt: new Date() } },
-      { returnDocument: "after", projection: { passwordHash: 0 } }
-    );
-    if (!result) {
-      res.status(404).json({ error: "Usuario no encontrado" });
-      return;
-    }
-    const { _id, ...doc } = result;
-    res.json({ id: _id.toString(), ...doc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.use("/api", (req, res, next) => {
-  if (req.method === "GET" || req.path.startsWith("/auth/")) return next();
-  return requireAuthWhenEnabled(req, res, next);
-});
-
-app.get("/api/catalog", async (req, res, next) => {
-  try {
-    res.json(await getCatalogPayload());
-  } catch (error) {
-    next(error);
-  }
-});
+app.use(createHealthRouter({ getDb: getDbInstance }));
+app.use(createCatalogRouter({ getDb: getDbInstance }));
+app.use(createScalesRouter({
+  getDb: getDbInstance,
+  scaleUpload,
+  extractScalesFromPdf,
+  geminiFallbackModels,
+  getConventionOr404,
+  monthTimeline,
+  findActiveScale,
+  normalizePeriod,
+  currentPeriod,
+  monthLabel,
+  serializeScale,
+  safeFileName
+}));
 
 app.get("/api/convention-drafts", async (req, res, next) => {
   try {
@@ -791,7 +669,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       try {
         const result = await extractConventionFromPdfs({
           apiKey,
-          model: process.env.GEMINI_CONVENTION_MODEL || process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          model: geminiConventionModel(),
           fallbackModels: geminiFallbackModels(),
           cctPdf,
           scalePdf,
@@ -1297,7 +1175,7 @@ app.post("/api/leia/chat", async (req, res, next) => {
 
     const result = await askGemini({
       apiKey,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: geminiPrimaryModel(),
       fallbackModels: geminiFallbackModels(),
       systemInstruction,
       message,
@@ -1355,7 +1233,7 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
       try {
         const result = await askGemini({
           apiKey,
-          model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          model: geminiPrimaryModel(),
           fallbackModels: geminiFallbackModels(),
           systemInstruction: "Sos leIA, auditora de liquidaciones de eSueldos. Respondés solamente JSON válido.",
           message: buildLiquidationAuditPrompt({ liquidation, precheck, activeScale, catalog }),

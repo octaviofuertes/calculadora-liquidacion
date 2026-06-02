@@ -8,6 +8,7 @@ function createScalesRouter({
   scaleUpload,
   extractScalesFromPdf,
   geminiFallbackModels,
+  geminiScaleModel,
   getConventionOr404,
   monthTimeline,
   findActiveScale,
@@ -131,7 +132,7 @@ function createScalesRouter({
           const pdfBuffer = await fs.promises.readFile(req.file.path);
           const result = await extractScalesFromPdf({
             apiKey,
-            model: process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+            model: geminiScaleModel(),
             fallbackModels: geminiFallbackModels(),
             convention,
             period,
