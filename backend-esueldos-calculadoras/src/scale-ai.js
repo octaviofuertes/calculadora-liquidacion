@@ -502,6 +502,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
   }
 
   const markdownText = convertRawTextToMarkdown(rawText);
+  const attachPdf = !hasUsefulPdfText(rawText);
 
   // Debug output requested by user
   console.log("\n==================================================");
@@ -533,6 +534,9 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
         period,
         periodLabel,
         markdownText,
+        pdfBuffer,
+        mimeType,
+        attachPdf,
         sourceFileName
       });
       return {

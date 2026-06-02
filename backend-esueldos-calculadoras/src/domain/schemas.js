@@ -1,6 +1,20 @@
 const { z } = require("zod");
 
 const dateString = z.string().min(1).optional().default("");
+const optionalFiniteNumber = z.preprocess(
+  (value) => (value === null || value === "" ? undefined : value),
+  z.number().finite().optional()
+);
+const optionalFiniteNumberRecord = z.preprocess((value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value).filter(([, amount]) => amount !== null && amount !== "")
+  );
+}, z.record(z.number().finite()).optional());
+const conceptCalculationSchema = z.preprocess(
+  (value) => (value === "percentOfBase" ? "percent" : value),
+  z.enum(["fixed", "percent", "amountPerUnit"]).optional()
+);
 
 const employeeSchema = z.object({
   legajo: z.string().optional().default(""),
@@ -99,12 +113,12 @@ const categorySchema = z.object({
   label: z.string().min(1),
   salaryType: z.enum(["monthly", "daily", "hourly"]).optional(),
   monthly: z.union([z.number().finite(), z.boolean()]).optional(),
-  day: z.number().finite().optional(),
-  hourly: z.number().finite().optional(),
-  monthlyByPeriod: z.record(z.number().finite()).optional(),
-  dayByPeriod: z.record(z.number().finite()).optional(),
-  hourlyByPeriod: z.record(z.number().finite()).optional(),
-  nonRemunerativeByPeriod: z.record(z.number().finite()).optional()
+  day: optionalFiniteNumber,
+  hourly: optionalFiniteNumber,
+  monthlyByPeriod: optionalFiniteNumberRecord,
+  dayByPeriod: optionalFiniteNumberRecord,
+  hourlyByPeriod: optionalFiniteNumberRecord,
+  nonRemunerativeByPeriod: optionalFiniteNumberRecord
 }).passthrough();
 
 const normativeSchema = z.object({
@@ -119,10 +133,10 @@ const conceptSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   rowType: z.enum(["remunerative", "nonRemunerative", "deduction", "employer"]).optional(),
-  calculation: z.enum(["fixed", "percent", "amountPerUnit"]).optional(),
+  calculation: conceptCalculationSchema,
   base: z.string().optional(),
-  percent: z.number().finite().optional(),
-  amount: z.number().finite().optional(),
+  percent: optionalFiniteNumber,
+  amount: optionalFiniteNumber,
   defaultValue: z.union([z.boolean(), z.number(), z.string()]).optional()
 }).passthrough();
 

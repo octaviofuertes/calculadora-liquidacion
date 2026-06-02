@@ -86,6 +86,13 @@ function normalizeMoneyMap(value) {
   }, {});
 }
 
+function dropNullishKeys(object, keys) {
+  keys.forEach((key) => {
+    if (object[key] === null || object[key] === undefined) delete object[key];
+  });
+  return object;
+}
+
 function periodFromText(value, fallbackYear) {
   const raw = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const iso = raw.match(/\b(20\d{2})-(0[1-9]|1[0-2])\b/);
@@ -138,7 +145,7 @@ function normalizeRows(rows, periodIds = []) {
           nonRem[period] = normalizeMoney(row.nonRemunerative) || 0;
         });
       }
-      return {
+      const normalized = {
         id,
         label: String(label),
         group: row.group || row.grupo || "",
@@ -155,6 +162,7 @@ function normalizeRows(rows, periodIds = []) {
         legalReferences: Array.isArray(row.legalReferences || row.referenciasLegales) ? (row.legalReferences || row.referenciasLegales).filter(Boolean).map(String) : [],
         notes: Array.isArray(row.notes) ? row.notes.filter(Boolean).map(String) : []
       };
+      return dropNullishKeys(normalized, ["monthly", "day", "hourly"]);
     })
     .filter((row) => row.label && (
       row.monthly
@@ -174,7 +182,8 @@ function normalizeConcepts(concepts) {
       const label = concept.label || concept.name || `Concepto ${index + 1}`;
       const inputType = ["checkbox", "number"].includes(concept.inputType) ? concept.inputType : (concept.type === "number" ? "number" : "checkbox");
       const rowType = ["remunerative", "nonRemunerative", "deduction"].includes(concept.rowType) ? concept.rowType : "remunerative";
-      const calculation = ["fixed", "percentOfBase", "amountPerUnit"].includes(concept.calculation) ? concept.calculation : "percentOfBase";
+      const rawCalculation = concept.calculation === "percentOfBase" ? "percent" : concept.calculation;
+      const calculation = ["fixed", "percent", "amountPerUnit"].includes(rawCalculation) ? rawCalculation : "percent";
       const normalized = {
         id: normalizeText(concept.id || label || `concepto-${index + 1}`),
         label: String(label),
@@ -200,7 +209,7 @@ function normalizeConcepts(concepts) {
       ["conditions", "proration", "rounding", "legalReferences", "audit", "ui", "tags"].forEach((key) => {
         if (concept[key] !== undefined) normalized[key] = concept[key];
       });
-      return normalized;
+      return dropNullishKeys(normalized, ["amount", "unitAmount"]);
     })
     .filter((concept) => concept.id && concept.label);
 }
