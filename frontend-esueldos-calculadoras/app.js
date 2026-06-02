@@ -42,6 +42,66 @@
       detail: "Divisores, jornada, presentismo, antiguedad y controles."
     }
   ];
+  const fieldHelpTexts = {
+    "periodo": "Mes que se va a liquidar. Define que escala salarial y reglas vigentes se toman como referencia.",
+    "categoria": "Categoria laboral del trabajador dentro del convenio. Determina el basico o jornal de partida.",
+    "zona": "Zona de prestacion de tareas. Puede aplicar coeficientes o adicionales regionales.",
+    "legajo": "Identificador interno del empleado para buscarlo y asociar sus liquidaciones guardadas.",
+    "trabajador": "Nombre y apellido que se mostrara en el recibo y en el historial del empleado.",
+    "cuil": "Clave unica laboral del trabajador. Se usa para identificarlo correctamente en la documentacion.",
+    "fecha de ingreso": "Fecha desde la que se calcula antiguedad y otros beneficios ligados al tiempo trabajado.",
+    "estado civil": "Dato usado para estimaciones fiscales o deducciones cuando corresponda.",
+    "otros remunerativos": "Importe adicional sujeto a aportes y contribuciones que no esta parametrizado en el convenio.",
+    "otros no remunerativos": "Importe adicional que integra el bruto no remunerativo segun respaldo legal o acuerdo aplicable.",
+    "descuentos varios": "Descuentos manuales extra que reducen el neto a cobrar.",
+    "estimar ganancias 4ta categoria": "Activa una estimacion orientativa de Ganancias sobre la liquidacion.",
+    "% del mes": "Porcentaje del periodo trabajado o pagadero. Usalo para liquidaciones proporcionales.",
+    "unidades": "Cantidad de unidades base del convenio para liquidar cuando no aplica mes completo.",
+    "horas": "Cantidad de horas trabajadas o pagaderas segun el convenio.",
+    "jornales": "Cantidad de jornales trabajados o pagaderos en el periodo.",
+    "dias ausentes injust.": "Dias de ausencia sin justificar que descuentan salario segun las reglas del convenio.",
+    "dias ausentes just.": "Ausencias justificadas informativas que normalmente no descuentan salario.",
+    "hs extra 50%": "Horas extra con recargo del 50%.",
+    "hs extra 100%": "Horas extra con recargo del 100%.",
+    "antiguedad segun json": "Aplica la regla de antiguedad aprobada en el convenio generado por leIA.",
+    "presentismo segun json": "Aplica presentismo si el convenio aprobado lo define y se cumplen sus condiciones.",
+    "no remunerativo de escala": "Incluye sumas no remunerativas cargadas en la escala vigente.",
+    "liquidacion": "Tipo de periodo a liquidar para el convenio seleccionado.",
+    "horas normales": "Horas ordinarias trabajadas o pagaderas antes de adicionales y descuentos.",
+    "hs inasist. injust.": "Horas de ausencia injustificada que descuentan el jornal.",
+    "franco trabajado hs": "Horas trabajadas en franco que deben liquidarse con el tratamiento convencional.",
+    "feriado no trab. hs": "Horas de feriado no trabajado que corresponde abonar segun convenio.",
+    "altura %": "Porcentaje adicional por tareas en altura cuando corresponda.",
+    "horas semanales": "Jornada semanal pactada. Se usa para proporcionalidad y controles de jornada.",
+    "dias del mes": "Divisor de dias del periodo para prorrateos, ausencias y bases diarias.",
+    "dias no rem.": "Dias sobre los que se prorratea la suma no remunerativa. Si queda vacio, el sistema lo calcula.",
+    "idiomas": "Cantidad de idiomas o adicional equivalente cuando el convenio lo reconoce.",
+    "hs nocturnas volunt.": "Horas nocturnas voluntarias a liquidar con el recargo correspondiente.",
+    "feriados trabajados": "Cantidad de feriados efectivamente trabajados.",
+    "feriados no trab.": "Cantidad de feriados no trabajados que se abonan segun regla legal o convencional.",
+    "dia farmacia trab.": "Indica si se trabajo el Dia del Empleado de Farmacia.",
+    "dia farmacia no trab.": "Indica si corresponde abonar el Dia del Empleado de Farmacia sin prestacion.",
+    "dias vacaciones": "Dias de vacaciones a liquidar o descontar del periodo normal.",
+    "dias sac": "Dias computables para calcular SAC proporcional.",
+    "mejor rem. sac": "Mejor remuneracion mensual usada como base del SAC cuando se informa manualmente.",
+    "divisor jornales": "Cantidad de jornales base que usa el convenio para convertir mes a valor diario.",
+    "jornales a pagar": "Jornales efectivamente pagaderos en el periodo.",
+    "plus vacacional dias": "Dias usados para calcular plus vacacional cuando corresponde.",
+    "dia camionero trab.": "Marca el dia del trabajador camionero trabajado para liquidar su adicional.",
+    "pernoctadas": "Cantidad de pernoctadas con viatico no remunerativo.",
+    "km larga distancia": "Kilometros de larga distancia remunerativos a liquidar.",
+    "km sab/dom/feriado": "Kilometros realizados en sabados, domingos o feriados.",
+    "dias viaje km": "Dias de viaje usados para controlar minimos de kilometraje o viaticos.",
+    "km viatico manual": "Kilometros de viatico cargados manualmente cuando no surgen del calculo automatico.",
+    "permanencias": "Cantidad de permanencias no remunerativas del convenio.",
+    "simple presencia": "Cantidad de eventos de simple presencia a liquidar como viatico.",
+    "cruces frontera": "Cruces de frontera que generan viatico o adicional convencional.",
+    "ingresos isla": "Ingresos a isla que generan el adicional correspondiente.",
+    "bitrenes": "Cantidad o unidades vinculadas al adicional por bitrenes.",
+    "adicional rama %": "Porcentaje manual de adicional por rama o tarea especifica.",
+    "otros rem. convenio": "Importe remunerativo manual propio del convenio.",
+    "hs nocturnas 100%": "Horas nocturnas con recargo al 100%."
+  };
   const scaleState = {
     recent: [],
     months: [],
@@ -125,6 +185,39 @@
 
   function sumRows(rows) {
     return ui.sumRows ? ui.sumRows(rows) : rows.reduce((total, row) => total + row.amount, 0);
+  }
+
+  function normalizeHelpKey(value) {
+    return String(value || "")
+      .replace(/\?/g, "")
+      .replace(/\([^)]*\)/g, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function fieldHelpText(label) {
+    const key = normalizeHelpKey(label);
+    return fieldHelpTexts[key] || "Campo del convenio usado por el motor de liquidacion. Revisalo contra la escala, legajo y documentacion respaldatoria.";
+  }
+
+  function addHelpTooltip(labelEl, helpText) {
+    if (!labelEl || labelEl.querySelector(".field-help")) return;
+    const button = document.createElement("button");
+    button.className = "field-help";
+    button.type = "button";
+    button.setAttribute("aria-label", `Ayuda: ${labelEl.textContent.trim()}`);
+    button.setAttribute("data-tooltip", helpText);
+    button.textContent = "?";
+    labelEl.appendChild(button);
+  }
+
+  function enhanceFieldHelp(root = document) {
+    const scope = root.querySelectorAll ? root : document;
+    scope.querySelectorAll('.form-step[data-step="2"] .field > span, .form-step[data-step="3"] .field > span, .form-step[data-step="2"] .check-row > span, .form-step[data-step="3"] .check-row > span')
+      .forEach((labelEl) => addHelpTooltip(labelEl, fieldHelpText(labelEl.textContent)));
   }
 
   function yearsFromEntry() {
@@ -4295,6 +4388,7 @@
           <strong>Motor JSON leIA:</strong> usa reglas aprobadas del convenio, escala vigente si existe, conceptos variables y auditoria automatica del recibo.
         </p>
       </div>`;
+      enhanceFieldHelp($("payrollFormPanel"));
       return;
     }
 
@@ -4333,6 +4427,7 @@
           <label class="check-row"><input id="uocraEncargado" type="checkbox"><span>Encargado 10%</span></label>
         </div>
       </div>`;
+      enhanceFieldHelp($("payrollFormPanel"));
 
       // Listener para auto-actualizar horas al cambiar tipo de liquidación
       const periodModeEl = $("uocraPeriodMode");
@@ -4410,6 +4505,7 @@
           <strong>CCT 429/2005 Mendoza:</strong> horas extra por divisor 200, vacaciones por divisor 25, inasistencias por divisor 30, no remunerativos por periodo y base de obra social controlada para jornada reducida.
         </p>
       </div>`;
+      enhanceFieldHelp($("payrollFormPanel"));
     }
 
     if (conv.id === "camioneros") {
@@ -4479,6 +4575,7 @@
           <strong>CCT 40/89:</strong> usa divisor 24 para jornal, antiguedad 1% por año sobre remunerativos, y separa los viaticos del Art. 4.2.11 fuera de las bases de aportes.
         </p>
       </div>`;
+      enhanceFieldHelp($("payrollFormPanel"));
     }
   }
 
@@ -4490,6 +4587,7 @@
     setOptions($("zone"), conv.zones, str("zone"));
     setOptions($("category"), conv.categories, str("category"));
     renderDynamicFields(conv);
+    enhanceFieldHelp($("payrollFormPanel"));
     syncScaleConvention();
     if ($("scaleConvention")) {
       $("scaleConvention").value = conv.id;
