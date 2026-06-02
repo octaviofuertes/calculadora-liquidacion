@@ -663,6 +663,40 @@ function buildConventionPrompt({ draftName, notes }) {
   ].join("\n");
 }
 
+function conventionAttachmentParts({ cctPdf, scalePdf } = {}) {
+  const parts = [];
+
+  if (cctPdf) {
+    parts.push({
+      text: `ARCHIVO 1 - CCT, ACTA O DOCUMENTO PRINCIPAL. Nombre: ${cctPdf.sourceFileName || "archivo"}`
+    });
+    parts.push({
+      inlineData: {
+        type: "attachment",
+        mimeType: cctPdf.mimeType || "application/octet-stream",
+        fileName: cctPdf.sourceFileName || "cct",
+        data: Buffer.isBuffer(cctPdf.buffer) ? cctPdf.buffer.toString("base64") : Buffer.from(cctPdf.buffer || "").toString("base64")
+      }
+    });
+  }
+
+  if (scalePdf) {
+    parts.push({
+      text: `ARCHIVO 2 - ESCALA SALARIAL. Nombre: ${scalePdf.sourceFileName || "archivo"}`
+    });
+    parts.push({
+      inlineData: {
+        type: "attachment",
+        mimeType: scalePdf.mimeType || "application/octet-stream",
+        fileName: scalePdf.sourceFileName || "scale",
+        data: Buffer.isBuffer(scalePdf.buffer) ? scalePdf.buffer.toString("base64") : Buffer.from(scalePdf.buffer || "").toString("base64")
+      }
+    });
+  }
+
+  return parts;
+}
+
 function convertRawTextToMarkdown(text) {
   if (!text) return "";
   const lines = text.split(/\r?\n/);
@@ -840,7 +874,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         notes
       });
       return {
-        parsedConvention: result.parsedConvention,
+        parsedConvention: result.parsedConvention || result,
         tokenUsage: result.tokenUsage,
         model: currentModel,
         modelsTried: [...errors.map((item) => item.model), currentModel]

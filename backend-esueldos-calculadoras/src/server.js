@@ -10,6 +10,12 @@ const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
 const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
+const {
+  isSupportedConventionDocument,
+  analyzeConventionDocuments,
+  applyConventionArchitecture
+} = require("./domain/convention-pipeline");
+const { calculatePayroll } = require("./domain/payroll-engine");
 const { configureSecurity } = require("./middleware/security");
 const catalogService = require("./services/catalog-service");
 const scaleRepository = require("./repositories/scale-repository");
@@ -20,7 +26,7 @@ const { createEmployeesRouter } = require("./routes/employees.routes");
 const { createHealthRouter } = require("./routes/health.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
 const { createScalesRouter } = require("./routes/scales.routes");
-const { parseOrThrow } = require("./domain/schemas");
+const { parseOrThrow, calculationInputSchema, liquidationResultSchema, savedLiquidationSchema } = require("./domain/schemas");
 
 const app = express();
 const port = Number(process.env.PORT || 4100);
@@ -89,6 +95,35 @@ let db;
 
 function getDbInstance() {
   return db;
+}
+
+function requireAuth(req, res, next) {
+  if (!req.user) {
+    res.status(401).json({ error: "No autorizado" });
+    return;
+  }
+  next();
+}
+
+function requireRole(role) {
+  return (req, res, next) => {
+    if (!req.user) {
+      res.status(401).json({ error: "No autorizado" });
+      return;
+    }
+    if (req.user.role !== role) {
+      res.status(403).json({ error: "Acceso denegado" });
+      return;
+    }
+    next();
+  };
+}
+
+function requireAuthWhenEnabled(req, res, next) {
+  if (process.env.AUTH_REQUIRED !== "true") {
+    return next();
+  }
+  return requireAuth(req, res, next);
 }
 
 function geminiFallbackModels() {
