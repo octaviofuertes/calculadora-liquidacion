@@ -12,7 +12,7 @@
     return "";
   }
 
-  function createApiClient({ baseUrl = resolveApiBase(), tokenProvider = null } = {}) {
+  function createApiClient({ baseUrl = resolveApiBase() } = {}) {
     function url(path) {
       return `${baseUrl}${path}`;
     }
@@ -22,8 +22,6 @@
       if (!headers.has("Content-Type") && options.body && !(options.body instanceof FormData)) {
         headers.set("Content-Type", "application/json");
       }
-      const token = tokenProvider?.();
-      if (token) headers.set("Authorization", `Bearer ${token}`);
       const response = await fetch(url(path), { ...options, headers });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);

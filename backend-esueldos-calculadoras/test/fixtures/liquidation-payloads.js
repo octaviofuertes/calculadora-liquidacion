@@ -59,5 +59,44 @@ module.exports = {
       camSeniority: true,
       camPresentism: true
     }
+  },
+  afaMensualBasic: {
+    conventionId: "afa_553_09",
+    period: "jun26",
+    categoryId: "admin_4ta_aux_1ra",
+    zoneId: "general",
+    employee: {
+      legajo: "004",
+      name: "Trabajadora AFA mensual",
+      cuil: "27-22222222-0",
+      entryDate: "2019-03-01",
+      civilStatus: "soltero"
+    },
+    inputs: {
+      genMonthPct: 100,
+      genSeniority: true,
+      genPresentism: true,
+      gen_punctuality: true,
+      genNonRemScale: true
+    }
+  },
+  afaModuloBasic: {
+    conventionId: "afa_553_09",
+    period: "jun26",
+    categoryId: "otros_cat_a_prof",
+    zoneId: "general",
+    employee: {
+      legajo: "005",
+      name: "Profesor AFA modulo",
+      cuil: "20-33333333-0",
+      entryDate: "2021-07-01",
+      civilStatus: "soltero"
+    },
+    inputs: {
+      genWorkUnits: 80,
+      genSeniority: true,
+      genPresentism: false,
+      genNonRemScale: true
+    }
   }
 };

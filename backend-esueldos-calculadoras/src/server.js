@@ -11,12 +11,16 @@ const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
 const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
 const { configureSecurity } = require("./middleware/security");
-const { escapeRegex } = require("./middleware/validate");
-const { calculatePayroll } = require("./domain/payroll-engine");
-const { analyzeConventionDocuments, applyConventionArchitecture, conventionFingerprint, isSupportedConventionDocument, validateStructuredConvention } = require("./domain/convention-pipeline");
-const { authMiddleware, requireAuth, requireAuthWhenEnabled, requireRole } = require("./middleware/auth");
-const { authenticateUser, createUser, ensureUserIndexes } = require("./services/auth-service");
-const { calculationInputSchema, employeeWriteSchema, liquidationResultSchema, loginSchema, savedLiquidationSchema, userCreateSchema, userUpdateSchema, parseOrThrow } = require("./domain/schemas");
+const catalogService = require("./services/catalog-service");
+const scaleRepository = require("./repositories/scale-repository");
+const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
+const { createAdminRouter } = require("./routes/admin.routes");
+const { createCatalogRouter } = require("./routes/catalog.routes");
+const { createEmployeesRouter } = require("./routes/employees.routes");
+const { createHealthRouter } = require("./routes/health.routes");
+const { createLiquidationsRouter } = require("./routes/liquidations.routes");
+const { createScalesRouter } = require("./routes/scales.routes");
+const { parseOrThrow } = require("./domain/schemas");
 
 const app = express();
 const port = Number(process.env.PORT || 4100);
@@ -79,10 +83,13 @@ const conventionUpload = multer({
 
 configureSecurity(app);
 app.use(express.json({ limit: "2mb" }));
-app.use(authMiddleware(() => db));
 app.use("/uploads", express.static(uploadRoot));
 
 let db;
+
+function getDbInstance() {
+  return db;
+}
 
 function geminiFallbackModels() {
   return String(process.env.GEMINI_FALLBACK_MODELS || "gemini-2.5-flash-lite,gemini-2.0-flash")
@@ -115,13 +122,7 @@ async function ensureCatalogSeeded() {
 }
 
 async function getCatalogPayload() {
-  const [constantsDoc, conventionDocs, legalReferenceDocs] = await Promise.all([
-    db.collection("constants").findOne({ _id: "global" }),
-    db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray(),
-    db.collection("legalReferences").find({}).sort({ order: 1 }).toArray()
-  ]);
-
-  return toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs);
+  return catalogService.getCatalog(db);
 }
 
 async function ensureScaleIndexes() {
@@ -137,7 +138,7 @@ async function ensureScaleIndexes() {
   await db.collection("employees").createIndex({ name: "text" });
   await db.collection("employees").createIndex({ conventionId: 1, name: 1 });
   await db.collection("liquidations").createIndex({ convention: 1, period: 1, createdAt: -1 });
-  await ensureUserIndexes(db);
+  await ensureVersionIndexes(db);
 }
 
 function periodIdToMonth(periodId) {
@@ -266,28 +267,11 @@ function updatedDocument(result) {
 }
 
 async function getConventionOr404(conventionId) {
-  const convention = await db.collection("conventions").findOne({ id: conventionId });
-  if (!convention) {
-    const error = new Error("Convenio no encontrado");
-    error.status = 404;
-    throw error;
-  }
-  const { _id, order, updatedAt, ...payload } = convention;
-  return payload;
+  return catalogService.getConventionOrThrow(db, conventionId);
 }
 
 async function findActiveScale(conventionId, period) {
-  const normalized = normalizePeriod(period) || currentPeriod();
-  return db.collection("salaryScales").findOne(
-    {
-      conventionId,
-      status: "APROBADA",
-      period: { $lte: normalized }
-    },
-    {
-      sort: { period: -1, approvedAt: -1, createdAt: -1 }
-    }
-  );
+  return scaleRepository.findActiveScale(db, conventionId, period);
 }
 
 async function monthTimeline(conventionId) {
@@ -659,12 +643,11 @@ app.patch("/api/users/:id", requireRole("admin"), async (req, res, next) => {
       { $set: { ...payload, updatedAt: new Date() } },
       { returnDocument: "after", projection: { passwordHash: 0 } }
     );
-    const updatedUser = updatedDocument(result);
-    if (!updatedUser) {
+    if (!result) {
       res.status(404).json({ error: "Usuario no encontrado" });
       return;
     }
-    const { _id, ...doc } = updatedUser;
+    const { _id, ...doc } = result;
     res.json({ id: _id.toString(), ...doc });
   } catch (error) {
     next(error);
@@ -885,27 +868,7 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       return;
     }
 
-    const enrichedConvention = sanitizeGenericConventionCategories(applyConventionArchitecture(convention, draft.processingPipeline));
-    const structureValidation = validateStructuredConvention(enrichedConvention);
-    if (!structureValidation.valid) {
-      res.status(400).json({ error: `El convenio no cumple el molde estructural: ${structureValidation.blocking.join(", ")}.` });
-      return;
-    }
-    const existing = await db.collection("conventions").findOne({ id: enrichedConvention.id });
-    const changed = !existing || conventionFingerprint(existing) !== conventionFingerprint(enrichedConvention);
-    const previousVersion = Number(existing?.metadata?.version || 0);
-    const version = existing && changed ? (previousVersion ? (previousVersion + 0.1).toFixed(1) : "1.1") : (existing?.metadata?.version || "1.0");
-    enrichedConvention.metadata = { ...(enrichedConvention.metadata || {}), version, status: "vigente" };
-    enrichedConvention.structuredModel.metadata = { ...enrichedConvention.structuredModel.metadata, version, estado: "vigente" };
-    if (existing && changed) {
-      await db.collection("conventionVersions").insertOne({
-        conventionId: existing.id,
-        version: existing.metadata?.version || "1.0",
-        status: "archivado",
-        convention: existing,
-        archivedAt: now
-      });
-    }
+    const existing = await db.collection("conventions").findOne({ id: convention.id });
     const maxOrderDoc = await db.collection("conventions").find({}).sort({ order: -1 }).limit(1).next();
     const order = existing?.order || ((maxOrderDoc?.order || 0) + 1);
     await db.collection("conventions").replaceOne(
@@ -913,20 +876,20 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       {
         _id: existing?._id || convention.id,
         order,
-        ...enrichedConvention,
+        ...convention,
         sourceDraftId: draft._id.toString(),
         approvedAt: now,
         updatedAt: now
       },
       { upsert: true }
     );
-    const updatedDraftResult = await db.collection("conventionDrafts").findOneAndUpdate(
+    const updatedDraft = await db.collection("conventionDrafts").findOneAndUpdate(
       { _id: draft._id },
       {
         $set: {
           status: "APROBADO",
-          parsedConvention: enrichedConvention,
-          approvedConventionId: enrichedConvention.id,
+          parsedConvention: convention,
+          approvedConventionId: convention.id,
           reviewedAt: now,
           reviewedBy: req.body?.reviewedBy || "Auditoria humana",
           reviewNote: req.body?.note || "",
@@ -936,9 +899,8 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       { returnDocument: "after" }
     );
     res.json({
-      draft: serializeConventionDraft(updatedDocument(updatedDraftResult)),
-      convention: enrichedConvention,
-      versioning: { version, changed, archivedPreviousVersion: Boolean(existing && changed) }
+      draft: serializeConventionDraft(updatedDraft),
+      convention
     });
   } catch (error) {
     next(error);
@@ -1074,7 +1036,7 @@ app.get("/api/scales/:id", async (req, res, next) => {
 app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next) => {
   try {
     if (!req.file) {
-      res.status(400).json({ error: "Selecciona un documento o imagen de escala salarial." });
+      res.status(400).json({ error: "Selecciona un PDF de escala salarial." });
       return;
     }
 
@@ -1125,7 +1087,7 @@ app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next)
         aiModelsTried = result.modelsTried;
       } catch (error) {
         aiStatus = "ERROR_IA";
-        aiError = error.message || "No se pudo leer el documento con leIA.";
+        aiError = error.message || "No se pudo leer el PDF con leIA.";
         aiModel = error.model || null;
         aiModelsTried = error.modelsTried || [];
         parsedScales[0].warnings = [aiError];
@@ -1196,12 +1158,11 @@ app.patch("/api/scales/:id", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    const updatedScale = updatedDocument(result);
-    if (!updatedScale) {
+    if (!result) {
       res.status(404).json({ error: "Escala no encontrada" });
       return;
     }
-    res.json(serializeScale(updatedScale));
+    res.json(serializeScale(result));
   } catch (error) {
     next(error);
   }
@@ -1235,33 +1196,11 @@ app.post("/api/scales/:id/approve", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    const updatedScale = updatedDocument(result);
-    if (!updatedScale) {
+    if (!result) {
       res.status(404).json({ error: "Escala no encontrada" });
       return;
     }
-    const scaleZones = updatedScale.parsedScale?.zones || [];
-    const scaleNonRemunerativeRules = updatedScale.parsedScale?.nonRemunerativeRules
-      || updatedScale.parsedScale?.reglasNoRemunerativas
-      || {};
-    if (scaleZones.length || Object.keys(scaleNonRemunerativeRules).length) {
-      const convention = await db.collection("conventions").findOne({ id: updatedScale.conventionId });
-      if (convention) {
-        const conventionUpdate = { updatedAt: now };
-        if (scaleZones.length) conventionUpdate.zones = mergeConventionZones(convention.zones, scaleZones);
-        if (Object.keys(scaleNonRemunerativeRules).length) {
-          conventionUpdate["liquidationModel.rules.nonRemunerativeScale"] = mergeConventionNonRemunerativeRules(
-            convention.liquidationModel?.rules?.nonRemunerativeScale,
-            scaleNonRemunerativeRules
-          );
-        }
-        await db.collection("conventions").updateOne(
-          { id: updatedScale.conventionId },
-          { $set: conventionUpdate }
-        );
-      }
-    }
-    res.json(serializeScale(updatedScale));
+    res.json(serializeScale(result));
   } catch (error) {
     next(error);
   }
@@ -1290,12 +1229,11 @@ app.post("/api/scales/:id/reject", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    const updatedScale = updatedDocument(result);
-    if (!updatedScale) {
+    if (!result) {
       res.status(404).json({ error: "Escala no encontrada" });
       return;
     }
-    res.json(serializeScale(updatedScale));
+    res.json(serializeScale(result));
   } catch (error) {
     next(error);
   }
@@ -1448,7 +1386,7 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
 app.get("/api/conventions", async (req, res, next) => {
   try {
     const conventions = await db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray();
-    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => sanitizeGenericConventionCategories(convention)));
+    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => convention));
   } catch (error) {
     next(error);
   }
@@ -1462,7 +1400,7 @@ app.get("/api/conventions/:id", async (req, res, next) => {
       return;
     }
     const { _id, order, updatedAt, ...payload } = convention;
-    res.json(sanitizeGenericConventionCategories(payload));
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -1679,12 +1617,11 @@ app.put("/api/employees/:id", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    const updatedEmployee = updatedDocument(result);
-    if (!updatedEmployee) {
+    if (!result) {
       res.status(404).json({ error: "Empleado no encontrado" });
       return;
     }
-    const { _id: mongoId, ...updatedDoc } = updatedEmployee;
+    const { _id: mongoId, ...updatedDoc } = result;
     res.json({ id: mongoId.toString(), ...updatedDoc });
   } catch (error) {
     next(error);

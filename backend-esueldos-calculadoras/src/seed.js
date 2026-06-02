@@ -3,6 +3,8 @@ require("dotenv").config();
 const { getDb, closeDb } = require("./db");
 const { loadCatalogFromBackend, loadCatalogFromFrontend, normalizeCatalog } = require("./catalog-loader");
 const { versionConstants, withConventionMetadata } = require("./domain/normative-versioning");
+const { validateConvention } = require("./services/catalog-service");
+const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
 
 function loadSeedCatalog() {
   try {
@@ -33,12 +35,18 @@ async function seedCatalog(db = null) {
   );
 
   for (const [index, convention] of catalog.conventions.entries()) {
-    const versionedConvention = withConventionMetadata(convention);
+    const versionedConvention = validateConvention(withConventionMetadata(convention));
     await database.collection("conventions").replaceOne(
       { _id: convention.id },
       { _id: convention.id, order: index + 1, ...versionedConvention, updatedAt: now },
       { upsert: true }
     );
+    await saveConventionVersion(database, versionedConvention, {
+      approvedAt: versionedConvention.normative?.approvedAt ? new Date(versionedConvention.normative.approvedAt) : now,
+      approvedBy: versionedConvention.normative?.approvedBy || "seed",
+      source: versionedConvention.normative?.source || versionedConvention.source || "catalog seed",
+      status: "SEED"
+    });
   }
 
   await database.collection("legalReferences").deleteMany({});
@@ -52,6 +60,7 @@ async function seedCatalog(db = null) {
   await database.collection("conventions").createIndex({ order: 1 });
   await database.collection("liquidations").createIndex({ createdAt: -1 });
   await database.collection("liquidations").createIndex({ "employee.cuil": 1 });
+  await ensureVersionIndexes(database);
 
   if (ownsConnection) {
     console.log(`Seed OK: ${catalog.conventions.length} convenios cargados.`);
