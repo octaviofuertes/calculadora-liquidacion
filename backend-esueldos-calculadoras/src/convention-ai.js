@@ -663,31 +663,65 @@ function buildConventionPrompt({ draftName, notes }) {
   ].join("\n");
 }
 
-function conventionAttachmentParts({ cctPdf, scalePdf }) {
-  const parts = [];
-  if (cctPdf?.buffer) {
-    parts.push({ text: `ARCHIVO 1 - CCT, ACTA O DOCUMENTO PRINCIPAL. Nombre: ${cctPdf.sourceFileName || "sin nombre"}. Lee todas sus paginas y extrae reglas y conceptos.` });
-    parts.push({
-      inlineData: {
-        mimeType: cctPdf.mimeType || "application/pdf",
-        data: cctPdf.buffer.toString("base64")
+function convertRawTextToMarkdown(text) {
+  if (!text) return "";
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  let inTable = false;
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) {
+      if (inTable) {
+        result.push("");
+        inTable = false;
       }
-    });
-  }
-  if (scalePdf?.buffer) {
-    parts.push({ text: `ARCHIVO 2 - ESCALA SALARIAL. Nombre: ${scalePdf.sourceFileName || "sin nombre"}. Lee todas sus paginas, tablas, encabezados, filas, columnas, zonas y periodos.` });
-    parts.push({
-      inlineData: {
-        mimeType: scalePdf.mimeType || "application/pdf",
-        data: scalePdf.buffer.toString("base64")
+      continue;
+    }
+    
+    const isHeading = line.length < 85 && (
+      /^[A-Z0-9\s.,()\-#\/º°"':;]+$/.test(line) 
+      || /^(ARTICULO|ART\.|CONVENIO|CCT|ESCALA|VIGENCIA|VIGENTE|ACUERDO|ANEXO|CIRCULAR)/i.test(line)
+    );
+    
+    if (isHeading) {
+      if (inTable) {
+        result.push("");
+        inTable = false;
       }
-    });
+      result.push(`### ${line}`);
+      continue;
+    }
+    
+    const columns = line.split(/\s{2,}|\t+/).map(c => c.trim()).filter(Boolean);
+    if (columns.length >= 2 && columns.some(col => /^\$?\s*\d+(?:\.\d{3})*(?:,\d{2})?%?$/.test(col) || /^\d+$/.test(col))) {
+      if (!inTable) {
+        inTable = true;
+        const separators = columns.map(() => "---");
+        result.push(`| ${columns.join(" | ")} |`);
+        result.push(`| ${separators.join(" | ")} |`);
+      } else {
+        result.push(`| ${columns.join(" | ")} |`);
+      }
+    } else {
+      if (inTable) {
+        inTable = false;
+        result.push("");
+      }
+      result.push(line);
+    }
   }
-  return parts;
+  return result.join("\n");
 }
 
-async function requestConventionOnce({ apiKey, model, cctPdf, scalePdf, draftName, notes }) {
-  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }, ...conventionAttachmentParts({ cctPdf, scalePdf })];
+async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, draftName, notes }) {
+  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
+  if (cctMarkdown) {
+    parts.push({ text: `Texto del CCT extraído en formato Markdown:\n\n${cctMarkdown}` });
+  }
+  if (scaleMarkdown) {
+    parts.push({ text: `Texto de la escala salarial extraída en formato Markdown:\n\n${scaleMarkdown}` });
+  }
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
@@ -714,31 +748,100 @@ async function requestConventionOnce({ apiKey, model, cctPdf, scalePdf, draftNam
       code: payload?.error?.status
     });
   }
+
+  // Print token usage metrics
+  const usage = payload?.usageMetadata || null;
+  if (usage) {
+    const promptTokens = usage.promptTokenCount || 0;
+    const candidateTokens = usage.candidatesTokenCount || usage.outputTokenCount || 0;
+    const totalTokens = usage.totalTokenCount || 0;
+    console.log("\n┌────────────────────────────────────────────────────────┐");
+    console.log(`│ METRICAS DE CONSUMO DE TOKENS - Borrador de Convenio   │`);
+    console.log("├────────────────────────────────────────────────────────┤");
+    console.log(`│ Modelo: ${model.padEnd(46)} │`);
+    console.log(`│ Tokens de Entrada (Prompt): ${String(promptTokens).padStart(26)} │`);
+    console.log(`│ Tokens de Salida (Respuesta): ${String(candidateTokens).padStart(23)} │`);
+    console.log(`│ Tokens Totales: ${String(totalTokens).padStart(35)} │`);
+    console.log("└────────────────────────────────────────────────────────┘\n");
+  }
+
   const text = extractGeminiText(payload);
   if (!text) {
     throw new GeminiConventionError("Gemini no devolvio texto para el convenio.", { status: 502, model });
   }
-  return normalizeConvention(parseGeminiJson(text), {
-    fallbackName: "Convenio pendiente de identificacion documental",
-    useFallbackDefaults: false
-  });
+  return normalizeConvention(parseGeminiJson(text), { fallbackName: draftName });
 }
 
 async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes }) {
+  const fs = require("fs");
+  const path = require("path");
+
+  let cctRaw = "";
+  let scaleRaw = "";
+
+  if (cctPdf) {
+    try {
+      cctRaw = await extractPdfTextLocal(cctPdf);
+    } catch (err) {
+      console.error("Error al extraer texto local del CCT:", err.message);
+    }
+  }
+  if (scalePdf) {
+    try {
+      scaleRaw = await extractPdfTextLocal(scalePdf);
+    } catch (err) {
+      console.error("Error al extraer texto local de la escala de CCT:", err.message);
+    }
+  }
+
+  const cctMarkdown = convertRawTextToMarkdown(cctRaw);
+  const scaleMarkdown = convertRawTextToMarkdown(scaleRaw);
+
+  // Debug logging requested by user
+  console.log("\n==================================================");
+  console.log(`[DEBUG] CCT PDF convertido a Markdown (${cctPdf?.sourceFileName || "sin CCT"}):`);
+  console.log("==================================================");
+  console.log(cctMarkdown.slice(0, 1500) + (cctMarkdown.length > 1500 ? "\n... [TRUNCADO PARA CONSOLA]" : ""));
+  console.log("==================================================");
+  console.log(`[DEBUG] Escala CCT PDF convertida a Markdown (${scalePdf?.sourceFileName || "sin escala"}):`);
+  console.log("==================================================");
+  console.log(scaleMarkdown);
+  console.log("==================================================\n");
+
+  // Save to debug files inside uploads
+  try {
+    const uploadDir = path.resolve(__dirname, "../uploads");
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    if (cctMarkdown) {
+      const cctDebugPath = path.join(uploadDir, "debug-cct.md");
+      fs.writeFileSync(cctDebugPath, cctMarkdown, "utf8");
+      console.log(`[DEBUG] Markdown de CCT guardado en: ${cctDebugPath}`);
+    }
+    if (scaleMarkdown) {
+      const scaleDebugPath = path.join(uploadDir, "debug-escala-cct.md");
+      fs.writeFileSync(scaleDebugPath, scaleMarkdown, "utf8");
+      console.log(`[DEBUG] Markdown de escala de CCT guardado en: ${scaleDebugPath}`);
+    }
+  } catch (err) {
+    console.error("Error al guardar archivos debug de convenio:", err.message);
+  }
+
   const models = modelList(model, fallbackModels);
   const errors = [];
   for (const currentModel of models) {
     try {
-      const parsedConvention = await requestConventionOnce({
+      const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctPdf,
-        scalePdf,
+        cctMarkdown,
+        scaleMarkdown,
         draftName,
         notes
       });
       return {
-        parsedConvention,
+        parsedConvention: result.parsedConvention,
+        tokenUsage: result.tokenUsage,
         model: currentModel,
         modelsTried: [...errors.map((item) => item.model), currentModel]
       };

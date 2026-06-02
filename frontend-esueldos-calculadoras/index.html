@@ -276,6 +276,33 @@
               <button class="primary-action" id="buildConventionBtn" type="submit">Estructurar convenio</button>
               <span id="conventionBuilderStatus" class="scale-status">Sin cargas en curso.</span>
             </div>
+
+            <!-- Token usage metrics card -->
+            <div id="conventionTokenUsageCard" class="token-usage-card" style="display: none; margin-top: 24px;">
+              <div class="token-usage-header">
+                <span class="token-usage-icon">📊</span>
+                <h4>Métricas de Consumo de Tokens (Gemini)</h4>
+              </div>
+              <div class="token-usage-body">
+                <div class="token-usage-row">
+                  <span>Modelo Utilizado:</span>
+                  <strong id="conventionTokenModel">-</strong>
+                </div>
+                <div class="token-usage-row">
+                  <span>Tokens de Entrada (Prompt):</span>
+                  <strong id="conventionTokenPrompt">0</strong>
+                </div>
+                <div class="token-usage-row">
+                  <span>Tokens de Salida (Respuesta):</span>
+                  <strong id="conventionTokenOutput">0</strong>
+                </div>
+                <div class="token-usage-divider"></div>
+                <div class="token-usage-row total">
+                  <span>Tokens Totales:</span>
+                  <strong id="conventionTokenTotal">0</strong>
+                </div>
+              </div>
+            </div>
           </form>
 
           <div class="scale-card convention-builder-audit">

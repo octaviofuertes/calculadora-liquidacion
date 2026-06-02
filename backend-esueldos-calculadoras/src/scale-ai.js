@@ -520,7 +520,58 @@ function buildScalePrompt({ convention, period, periodLabel }) {
   ].join("\n");
 }
 
-async function requestScaleExtractionOnce({ apiKey, model, convention, period, periodLabel, pdfBuffer, mimeType, sourceFileName }) {
+function convertRawTextToMarkdown(text) {
+  if (!text) return "";
+  const lines = text.split(/\r?\n/);
+  const result = [];
+  let inTable = false;
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) {
+      if (inTable) {
+        result.push("");
+        inTable = false;
+      }
+      continue;
+    }
+    
+    const isHeading = line.length < 85 && (
+      /^[A-Z0-9\s.,()\-#\/º°"':;]+$/.test(line) 
+      || /^(ARTICULO|ART\.|CONVENIO|CCT|ESCALA|VIGENCIA|VIGENTE|ACUERDO|ANEXO|CIRCULAR)/i.test(line)
+    );
+    
+    if (isHeading) {
+      if (inTable) {
+        result.push("");
+        inTable = false;
+      }
+      result.push(`### ${line}`);
+      continue;
+    }
+    
+    const columns = line.split(/\s{2,}|\t+/).map(c => c.trim()).filter(Boolean);
+    if (columns.length >= 2 && columns.some(col => /^\$?\s*\d+(?:\.\d{3})*(?:,\d{2})?%?$/.test(col) || /^\d+$/.test(col))) {
+      if (!inTable) {
+        inTable = true;
+        const separators = columns.map(() => "---");
+        result.push(`| ${columns.join(" | ")} |`);
+        result.push(`| ${separators.join(" | ")} |`);
+      } else {
+        result.push(`| ${columns.join(" | ")} |`);
+      }
+    } else {
+      if (inTable) {
+        inTable = false;
+        result.push("");
+      }
+      result.push(line);
+    }
+  }
+  return result.join("\n");
+}
+
+async function requestScaleExtractionOnce({ apiKey, model, convention, period, periodLabel, markdownText, sourceFileName }) {
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
@@ -533,13 +584,7 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
           role: "user",
           parts: [
             { text: buildScalePrompt({ convention, period, periodLabel }) },
-            { text: `ARCHIVO DE ESCALA SALARIAL. Nombre: ${sourceFileName || "sin nombre"}. Lee todas sus paginas, tablas, encabezados, filas, columnas, zonas y periodos.` },
-            {
-              inlineData: {
-                mimeType: mimeType || "application/pdf",
-                data: pdfBuffer.toString("base64")
-              }
-            }
+            { text: `Escala salarial en formato Markdown:\n\n${markdownText}` }
           ]
         }
       ],
@@ -561,6 +606,22 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
     });
   }
 
+  // Print token usage metrics
+  const usage = payload?.usageMetadata || null;
+  if (usage) {
+    const promptTokens = usage.promptTokenCount || 0;
+    const candidateTokens = usage.candidatesTokenCount || usage.outputTokenCount || 0;
+    const totalTokens = usage.totalTokenCount || 0;
+    console.log("\n┌────────────────────────────────────────────────────────┐");
+    console.log(`│ METRICAS DE CONSUMO DE TOKENS - Escala Salarial        │`);
+    console.log("├────────────────────────────────────────────────────────┤");
+    console.log(`│ Modelo: ${model.padEnd(46)} │`);
+    console.log(`│ Tokens de Entrada (Prompt): ${String(promptTokens).padStart(26)} │`);
+    console.log(`│ Tokens de Salida (Respuesta): ${String(candidateTokens).padStart(23)} │`);
+    console.log(`│ Tokens Totales: ${String(totalTokens).padStart(35)} │`);
+    console.log("└────────────────────────────────────────────────────────┘\n");
+  }
+
   const text = extractGeminiText(payload);
   if (!text) {
     throw new GeminiScaleError("Gemini no devolvio texto para la escala.", { status: 502, model });
@@ -570,6 +631,38 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
 }
 
 async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention, period, periodLabel, pdfBuffer, mimeType, sourceFileName }) {
+  const fs = require("fs");
+  const path = require("path");
+
+  let rawText = "";
+  try {
+    const pdfParse = require("pdf-parse");
+    const data = await pdfParse(pdfBuffer);
+    rawText = String(data.text || "");
+  } catch (err) {
+    console.error("Error al extraer texto del PDF:", err.message);
+  }
+
+  const markdownText = convertRawTextToMarkdown(rawText);
+
+  // Debug output requested by user
+  console.log("\n==================================================");
+  console.log(`[DEBUG] Escala PDF convertida a Markdown (${sourceFileName}):`);
+  console.log("==================================================");
+  console.log(markdownText);
+  console.log("==================================================\n");
+
+  // Save to debug file inside uploads
+  try {
+    const uploadDir = path.resolve(__dirname, "../uploads");
+    fs.mkdirSync(uploadDir, { recursive: true });
+    const debugFilePath = path.join(uploadDir, "debug-escala.md");
+    fs.writeFileSync(debugFilePath, markdownText, "utf8");
+    console.log(`[DEBUG] Markdown de la escala guardado en: ${debugFilePath}`);
+  } catch (err) {
+    console.error("Error al guardar archivo debug de escala:", err.message);
+  }
+
   const models = modelList(model, fallbackModels);
   const errors = [];
 
@@ -581,8 +674,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
         convention,
         period,
         periodLabel,
-        pdfBuffer,
-        mimeType,
+        markdownText,
         sourceFileName
       });
       return {

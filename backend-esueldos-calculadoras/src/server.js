@@ -731,6 +731,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
     let aiError = null;
     let aiModel = null;
     let aiModelsTried = [];
+    let tokenUsage = null;
     let parsedConvention = normalizeConvention({
       convention: {
         name: "",
@@ -780,6 +781,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
           notes
         });
         parsedConvention = result.parsedConvention;
+        tokenUsage = result.tokenUsage || null;
         aiStatus = "ESTRUCTURADO_POR_LEIA";
         aiModel = result.model;
         aiModelsTried = result.modelsTried;
@@ -812,6 +814,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       aiModelsTried,
       parsedConvention,
       processingPipeline,
+      tokenUsage: typeof tokenUsage !== "undefined" ? tokenUsage : null,
       auditNote: notes,
       files,
       createdAt: now,
