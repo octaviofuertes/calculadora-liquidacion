@@ -10,6 +10,7 @@ const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
 const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
+const { geminiPrimaryModel, geminiConventionModel } = require("./gemini-config");
 const {
   isSupportedConventionDocument,
   analyzeConventionDocuments,
