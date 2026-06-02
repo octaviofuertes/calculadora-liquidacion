@@ -82,20 +82,95 @@ const employeeWriteSchema = employeeSchema.extend({
   zone: z.string().optional()
 }).passthrough();
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8)
-});
+const periodSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  validFrom: z.string().optional()
+}).passthrough();
 
-const userCreateSchema = loginSchema.extend({
-  name: z.string().min(1).optional(),
-  role: z.enum(["admin", "auditor", "operator"]).default("operator")
-});
+const zoneSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  coef: z.number().finite().optional().default(1)
+}).passthrough();
 
-const userUpdateSchema = z.object({
-  name: z.string().min(1).optional(),
-  role: z.enum(["admin", "auditor", "operator"]).optional(),
-  active: z.boolean().optional()
+const categorySchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  salaryType: z.enum(["monthly", "daily", "hourly"]).optional(),
+  monthly: z.union([z.number().finite(), z.boolean()]).optional(),
+  day: z.number().finite().optional(),
+  hourly: z.number().finite().optional(),
+  monthlyByPeriod: z.record(z.number().finite()).optional(),
+  dayByPeriod: z.record(z.number().finite()).optional(),
+  hourlyByPeriod: z.record(z.number().finite()).optional(),
+  nonRemunerativeByPeriod: z.record(z.number().finite()).optional()
+}).passthrough();
+
+const normativeSchema = z.object({
+  validFrom: z.string().min(1),
+  validTo: z.string().nullable().optional(),
+  source: z.string().min(1),
+  approvedBy: z.string().nullable().optional(),
+  approvedAt: z.string().nullable().optional()
+}).passthrough();
+
+const conceptSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  rowType: z.enum(["remunerative", "nonRemunerative", "deduction", "employer"]).optional(),
+  calculation: z.enum(["fixed", "percent", "amountPerUnit"]).optional(),
+  base: z.string().optional(),
+  percent: z.number().finite().optional(),
+  amount: z.number().finite().optional(),
+  defaultValue: z.union([z.boolean(), z.number(), z.string()]).optional()
+}).passthrough();
+
+const conventionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  shortName: z.string().optional(),
+  source: z.string().optional(),
+  type: z.enum(["monthly", "daily", "hourly"]).optional(),
+  calculationMode: z.string().optional(),
+  normative: normativeSchema.optional(),
+  periods: z.array(periodSchema).min(1),
+  zones: z.array(zoneSchema).optional().default([{ id: "general", label: "General", coef: 1 }]),
+  categories: z.array(categorySchema).min(1),
+  rules: z.record(z.any()).optional().default({}),
+  liquidationModel: z.object({
+    rules: z.record(z.any()).optional().default({}),
+    concepts: z.array(conceptSchema).optional().default([])
+  }).passthrough().optional()
+}).passthrough().superRefine((convention, ctx) => {
+  const periodIds = new Set(convention.periods.map((period) => period.id));
+  const hasConventionScaleMap = !!convention.scales || !!convention.nonRem;
+  convention.categories.forEach((category, index) => {
+    const hasScaleValue = Number.isFinite(Number(category.monthly))
+      || Number.isFinite(category.day)
+      || Number.isFinite(category.hourly)
+      || Object.keys(category.monthlyByPeriod || {}).length > 0
+      || Object.keys(category.dayByPeriod || {}).length > 0
+      || Object.keys(category.hourlyByPeriod || {}).length > 0;
+    if (!hasScaleValue && !hasConventionScaleMap) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["categories", index],
+        message: "La categoria debe tener un importe mensual, diario, horario o por periodo"
+      });
+    }
+    ["monthlyByPeriod", "dayByPeriod", "hourlyByPeriod", "nonRemunerativeByPeriod"].forEach((field) => {
+      Object.keys(category[field] || {}).forEach((periodId) => {
+        if (!periodIds.has(periodId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["categories", index, field, periodId],
+            message: "El periodo de escala no existe en periods"
+          });
+        }
+      });
+    });
+  });
 });
 
 function parseOrThrow(schema, payload, message = "Payload invalido") {
@@ -113,10 +188,8 @@ function parseOrThrow(schema, payload, message = "Payload invalido") {
 module.exports = {
   calculationInputSchema,
   employeeWriteSchema,
-  loginSchema,
   liquidationResultSchema,
   savedLiquidationSchema,
-  userCreateSchema,
-  userUpdateSchema,
+  conventionSchema,
   parseOrThrow
 };

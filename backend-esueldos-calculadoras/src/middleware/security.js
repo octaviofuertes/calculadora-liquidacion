@@ -16,15 +16,6 @@ function buildCors() {
   });
 }
 
-function optionalApiAuth(req, res, next) {
-  const token = process.env.API_AUTH_TOKEN;
-  if (!token) return next();
-  if (req.method === "GET" || req.path === "/api/health") return next();
-  const received = req.get("x-api-key") || "";
-  if (received === token) return next();
-  return res.status(401).json({ error: "No autorizado" });
-}
-
 function configureSecurity(app) {
   app.use(helmet({
     contentSecurityPolicy: false,
@@ -37,10 +28,8 @@ function configureSecurity(app) {
     standardHeaders: true,
     legacyHeaders: false
   }));
-  app.use(optionalApiAuth);
 }
 
 module.exports = {
-  configureSecurity,
-  optionalApiAuth
+  configureSecurity
 };

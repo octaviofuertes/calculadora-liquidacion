@@ -1,14 +1,9 @@
-(function () {
+﻿(function () {
   let DATA = window.PAYROLL_DATA;
   let dataOrigin = "local";
   const API_BASE = getApiBase();
   const $ = (id) => document.getElementById(id);
-  const money = new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  const ui = window.eSueldosUi || {};
 
   let lastResult = null;
   let lastAudit = null;
@@ -80,20 +75,6 @@
     return `${API_BASE}${path}`;
   }
 
-  function authHeaders(extra = {}) {
-    const headers = { ...extra };
-    const token = window.eSueldosAuth?.getStoredToken?.();
-    if (token) headers.Authorization = `Bearer ${token}`;
-    return headers;
-  }
-
-  function authFetch(path, options = {}) {
-    return fetch(apiUrl(path), {
-      ...options,
-      headers: authHeaders(options.headers || {})
-    });
-  }
-
   async function fetchCatalog() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
@@ -108,7 +89,7 @@
   }
 
   function fmt(value) {
-    return money.format(Number.isFinite(value) ? value : 0);
+    return ui.fmt ? ui.fmt(value) : `$ ${Number(value || 0).toFixed(2)}`;
   }
 
   function num(id, fallback = 0) {
@@ -134,7 +115,7 @@
   }
 
   function round2(value) {
-    return Math.round((value + Number.EPSILON) * 100) / 100;
+    return ui.round2 ? ui.round2(value) : Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
   function addRow(list, label, amount, detail = "") {
@@ -143,7 +124,7 @@
   }
 
   function sumRows(rows) {
-    return rows.reduce((total, row) => total + row.amount, 0);
+    return ui.sumRows ? ui.sumRows(rows) : rows.reduce((total, row) => total + row.amount, 0);
   }
 
   function yearsFromEntry() {
@@ -208,12 +189,8 @@
   }
 
   function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+    if (ui.escapeHtml) return ui.escapeHtml(value);
+    return String(value).replace(/[&<>"']/g, "");
   }
 
   function periodIdToMonth(periodId) {
@@ -465,8 +442,16 @@
     $("prevStepBtn").disabled = currentStep === 1;
     const nextBtn = $("nextStepBtn");
     nextBtn.style.display = currentStep === TOTAL_STEPS ? "none" : "inline-flex";
-    // Disable Next if on step 1 and no convention has been actively chosen (maxReached still 1)
-    nextBtn.disabled = (currentStep === 1 && maxReachedStep < 2);
+    // Disable Next based on step:
+    // - Step 1: require a convention to be selected
+    // - Step 2: require worker data to be filled
+    if (currentStep === 1) {
+      nextBtn.disabled = !isStep1Valid();
+    } else if (currentStep === 2) {
+      nextBtn.disabled = !isStep2Valid();
+    } else {
+      nextBtn.disabled = false;
+    }
     $("stepStatus").textContent = `Paso ${currentStep} de ${TOTAL_STEPS}`;
     renderReview();
     syncLeiaContext();
@@ -475,8 +460,47 @@
   // Track the highest step the user has legitimately reached
   let maxReachedStep = 1;
 
+  function isStep1Valid() {
+    return str("convention", "").trim().length > 0;
+  }
+
+  function isStep2Valid() {
+    const name = str("employeeName", "").trim();
+    const cuil = str("employeeCuil", "").trim();
+    const entry = str("entryDate", "").trim();
+    return name.length > 0 && cuil.length > 0 && entry.length > 0;
+  }
+
+  function showStep2Error() {
+    const errorEl = document.getElementById("step2ValidationError");
+    if (errorEl) errorEl.classList.add("visible");
+    ["employeeName", "employeeCuil", "entryDate"].forEach((id) => {
+      const el = $(id);
+      if (el && !el.value.trim()) {
+        el.classList.add("field-error");
+        el.addEventListener("input", function onInput() {
+          el.classList.remove("field-error");
+          if (isStep2Valid()) {
+            const err = document.getElementById("step2ValidationError");
+            if (err) err.classList.remove("visible");
+          }
+          el.removeEventListener("input", onInput);
+        });
+      }
+    });
+  }
+
   function goToStep(step) {
     const target = Math.min(TOTAL_STEPS, Math.max(1, step));
+    // Validar paso 1 antes de avanzar al paso 2 o posterior
+    if (target >= 2 && currentStep === 1 && !isStep1Valid()) {
+      return;
+    }
+    // Validar paso 2 antes de avanzar al paso 3 o posterior
+    if (target >= 3 && currentStep === 2 && !isStep2Valid()) {
+      showStep2Error();
+      return;
+    }
     // Only allow going to steps already visited (backward) or one step forward
     if (target <= maxReachedStep || target === currentStep + 1) {
       currentStep = target;
@@ -1547,218 +1571,6 @@
     };
   }
 
-  function authUser() {
-    const user = window.eSueldosAuth?.getStoredUser?.() || null;
-    if (!user || !user.email || !user.role || !window.eSueldosAuth?.getStoredToken?.()) return null;
-    return user;
-  }
-
-  function setAuthStatus(message = "", tone = "") {
-    const status = $("authStatus");
-    if (!status) return;
-    status.textContent = message;
-    status.className = `auth-status ${tone}`.trim();
-  }
-
-  function renderAuthState() {
-    const user = authUser();
-    const avatar = $("authAvatarBtn");
-    const sessionBox = $("authSessionBox");
-    const loginForm = $("authLoginForm");
-    const name = $("authSessionName");
-    const role = $("authSessionRole");
-    const adminBox = $("userAdminBox");
-    if (avatar) {
-      avatar.textContent = user?.name
-        ? user.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()
-        : "?";
-      avatar.title = user ? `${user.name} (${user.role})` : "Iniciar sesion";
-    }
-    if (sessionBox && loginForm) {
-      sessionBox.hidden = !user;
-      loginForm.hidden = !!user;
-    }
-    if (name) name.textContent = user?.name || "Usuario";
-    if (role) role.textContent = user?.role || "";
-    if (adminBox) {
-      adminBox.hidden = user?.role !== "admin";
-      if (user?.role === "admin") loadUsers();
-    }
-  }
-
-  async function refreshAuthStatus() {
-    const notice = $("authModeNotice");
-    const bootstrap = $("authBootstrapBtn");
-    const login = $("authLoginBtn");
-    const title = $("authModalTitle");
-    const copy = $("authModalCopy");
-    try {
-      const status = await fetchJson("/api/auth/status");
-      if (status.hasUsers) {
-        if (title) title.textContent = "Iniciar sesion";
-        if (copy) copy.textContent = "Ya hay usuarios creados. Ingresá con un usuario admin, auditor u operador.";
-        if (notice) {
-          notice.className = "auth-mode-notice info";
-          notice.innerHTML = "Ya existe al menos un usuario. Si no recordás la contraseña del admin, hay que resetearla desde MongoDB.";
-        }
-        if (bootstrap) bootstrap.hidden = true;
-        if (login) {
-          login.textContent = "Iniciar sesion";
-          login.hidden = false;
-        }
-      } else {
-        if (title) title.textContent = "Primer acceso";
-        if (copy) copy.textContent = "Todavía no hay usuarios. Creá el primer administrador con email y contraseña.";
-        if (notice) {
-          notice.className = "auth-mode-notice setup";
-          notice.innerHTML = "No hay usuarios en la tabla <strong>users</strong>. Usá este formulario para crear el primer admin.";
-        }
-        if (bootstrap) {
-          bootstrap.hidden = false;
-          bootstrap.textContent = "Crear primer admin";
-        }
-        if (login) {
-          login.textContent = "Crear primer admin";
-          login.hidden = true;
-        }
-      }
-    } catch (error) {
-      if (notice) {
-        notice.className = "auth-mode-notice bad";
-        notice.textContent = "No pude consultar el estado de usuarios. Verificá que el backend esté iniciado.";
-      }
-      if (bootstrap) bootstrap.hidden = true;
-      if (login) login.hidden = false;
-    }
-  }
-
-  function openAuthModal() {
-    renderAuthState();
-    setAuthStatus("");
-    refreshAuthStatus();
-    const modal = $("authModal");
-    if (modal) modal.style.display = "flex";
-  }
-
-  function closeAuthModal() {
-    const modal = $("authModal");
-    if (modal) modal.style.display = "none";
-  }
-
-  async function submitAuth(path, successMessage) {
-    const email = str("authEmail").trim();
-    const password = str("authPassword");
-    if (!email || !password) {
-      setAuthStatus("Completá email y contraseña.", "bad");
-      return;
-    }
-    setAuthStatus("Validando credenciales...");
-    try {
-      const payload = await fetchJson(path, {
-        method: "POST",
-        body: JSON.stringify({ email, password, name: email.split("@")[0] })
-      });
-      window.eSueldosAuth?.storeToken?.(payload.token);
-      window.eSueldosAuth?.storeUser?.(payload.user);
-      renderAuthState();
-      setAuthStatus(successMessage, "ok");
-      window.setTimeout(closeAuthModal, 800);
-    } catch (error) {
-      if (path.includes("bootstrap-admin") && /Ya existen usuarios/i.test(error.message || "")) {
-        await refreshAuthStatus();
-      }
-      setAuthStatus(error.message || "No se pudo iniciar sesion.", "bad");
-    }
-  }
-
-  function renderUsers(users = []) {
-    const target = $("usersList");
-    if (!target) return;
-    if (!users.length) {
-      target.className = "users-list empty-state";
-      target.innerHTML = "Todavia no hay usuarios para mostrar.";
-      return;
-    }
-    target.className = "users-list";
-    target.innerHTML = `<table class="users-table">
-      <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th></tr></thead>
-      <tbody>${users.map((user) => `<tr>
-        <td>${escapeHtml(user.name || "-")}</td>
-        <td>${escapeHtml(user.email || "-")}</td>
-        <td>${escapeHtml(user.role || "-")}</td>
-        <td>${user.active === false ? "Inactivo" : "Activo"}</td>
-      </tr>`).join("")}</tbody>
-    </table>`;
-  }
-
-  async function loadUsers() {
-    if (authUser()?.role !== "admin") return;
-    try {
-      renderUsers(await fetchJson("/api/users"));
-    } catch (error) {
-      const target = $("usersList");
-      if (target) {
-        target.className = "users-list empty-state";
-        target.innerHTML = escapeHtml(error.message || "No se pudieron cargar usuarios.");
-      }
-    }
-  }
-
-  async function createUser(event) {
-    event.preventDefault();
-    const payload = {
-      name: str("newUserName").trim() || str("newUserEmail").split("@")[0],
-      email: str("newUserEmail").trim(),
-      password: str("newUserPassword"),
-      role: str("newUserRole", "operator")
-    };
-    if (!payload.email || !payload.password) {
-      setAuthStatus("Completá email y contraseña del nuevo usuario.", "bad");
-      return;
-    }
-    try {
-      await fetchJson("/api/users", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      $("createUserForm")?.reset();
-      setAuthStatus("Usuario creado en la tabla users.", "ok");
-      await loadUsers();
-    } catch (error) {
-      setAuthStatus(error.message || "No se pudo crear el usuario.", "bad");
-    }
-  }
-
-  function setupAuthUi() {
-    renderAuthState();
-    $("authAvatarBtn")?.addEventListener("click", openAuthModal);
-    $("authMenuBtn")?.addEventListener("click", openAuthModal);
-    $("closeAuthModal")?.addEventListener("click", closeAuthModal);
-    $("authModal")?.addEventListener("click", (event) => {
-      if (event.target.id === "authModal") closeAuthModal();
-    });
-    $("authLoginForm")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const isFirstAccess = !$("authBootstrapBtn")?.hidden;
-      submitAuth(
-        isFirstAccess ? "/api/auth/bootstrap-admin" : "/api/auth/login",
-        isFirstAccess ? "Primer admin creado." : "Sesion iniciada."
-      );
-    });
-    $("authBootstrapBtn")?.addEventListener("click", () => {
-      submitAuth("/api/auth/bootstrap-admin", "Primer admin creado.");
-    });
-    $("authLogoutBtn")?.addEventListener("click", () => {
-      window.eSueldosAuth?.clearToken?.();
-      window.eSueldosAuth?.storeUser?.(null);
-      renderAuthState();
-      setAuthStatus("Sesion cerrada.", "ok");
-      refreshAuthStatus();
-    });
-    $("refreshUsersBtn")?.addEventListener("click", loadUsers);
-    $("createUserForm")?.addEventListener("submit", createUser);
-  }
-
   function normalizeBackendResult(payload) {
     const conv = DATA.conventions[payload.conventionId] || payload.conv || getConvention();
     return {
@@ -1780,7 +1592,7 @@
 
   async function calculate() {
     try {
-      const response = await authFetch("/api/liquidations/calculate", {
+      const response = await fetch(apiUrl("/api/liquidations/calculate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildBackendCalculationPayload())
@@ -3037,7 +2849,7 @@
     const auditTimeout = setTimeout(() => controller.abort(), 18000);
     try {
       await refreshActiveScaleContext();
-      const response = await authFetch("/api/leia/audit-liquidation", {
+      const response = await fetch(apiUrl("/api/leia/audit-liquidation"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -3149,8 +2961,6 @@
   async function fetchJson(path, options = {}) {
     if (window.eSueldosApiClient?.json) return window.eSueldosApiClient.json(path, options);
     const headers = new Headers(options.headers || {});
-    const token = window.eSueldosAuth?.getStoredToken?.();
-    if (token) headers.set("Authorization", `Bearer ${token}`);
     const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
@@ -3479,7 +3289,7 @@
     if (button) button.disabled = true;
     setScaleStatus("Subiendo PDF y consultando a leIA...", "");
     try {
-      const response = await authFetch("/api/scales/upload", {
+      const response = await fetch(apiUrl("/api/scales/upload"), {
         method: "POST",
         body: formData
       });
@@ -3879,7 +3689,7 @@
     if (button) button.disabled = true;
     setConventionBuilderStatus("leIA esta estructurando el convenio en JSON ejecutable...", "");
     try {
-      const response = await authFetch("/api/convention-drafts/upload", {
+      const response = await fetch(apiUrl("/api/convention-drafts/upload"), {
         method: "POST",
         body: formData
       });
@@ -4406,7 +4216,7 @@
     setLeiaLoading(true);
 
     try {
-      const response = await authFetch("/api/leia/chat", {
+      const response = await fetch(apiUrl("/api/leia/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4792,6 +4602,15 @@
 
     $("prevStepBtn").addEventListener("click", () => goToStep(currentStep - 1));
     $("nextStepBtn").addEventListener("click", () => goToStep(currentStep + 1));
+
+    // Actualizar boton Siguiente dinamicamente al escribir en campos del trabajador (paso 2)
+    ["employeeName", "employeeCuil", "entryDate"].forEach((id) => {
+      const el = $(id);
+      if (el) {
+        el.addEventListener("input", () => { if (currentStep === 2) renderWizard(); });
+        el.addEventListener("change", () => { if (currentStep === 2) renderWizard(); });
+      }
+    });
     $("liquidateBtn").addEventListener("click", () => {
       const btn = $("liquidateBtn");
       const originalText = btn.textContent;
@@ -4835,7 +4654,6 @@
     if (exportBtn) exportBtn.addEventListener("click", exportJson);
     if (saveBtn) saveBtn.addEventListener("click", saveLiquidation);
     if (auditBtn) auditBtn.addEventListener("click", runLiquidationAudit);
-    setupAuthUi();
     setupScaleDashboard();
     setupConventionBuilder();
     setupLeia();
@@ -4905,7 +4723,7 @@
     };
 
     try {
-      const response = await authFetch("/api/liquidations", {
+      const response = await fetch(apiUrl("/api/liquidations"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -4931,15 +4749,17 @@
 
   async function fetchEmployees() {
     try {
-      const [resEmp, resLiq] = await Promise.all([
-        fetchJson("/api/employees"),
-        fetchJson("/api/liquidations?limit=1000")
-      ]);
+      const resEmp = await fetchJson("/api/employees");
+      const resLiq = await fetchJson("/api/liquidations?limit=1000").catch(() => []);
       employees = resEmp;
       liquidationsList = resLiq;
       renderEmployeeTable();
     } catch (error) {
       console.error("Error fetching employees/liquidations:", error);
+      const body = $("employeeTableBody");
+      if (body) {
+        body.innerHTML = `<tr><td colspan="7">No se pudieron cargar empleados: ${escapeHtml(error.message || "error de red")}</td></tr>`;
+      }
     }
   }
 
@@ -5142,7 +4962,7 @@
       const method = id ? "PUT" : "POST";
       const response = await fetch(url, {
         method,
-        headers: authHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       if (response.ok) {
