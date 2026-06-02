@@ -1,3 +1,5 @@
+const { geminiModelList } = require("./gemini-config");
+
 class GeminiConventionError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
     super(message);
@@ -10,14 +12,6 @@ class GeminiConventionError extends Error {
 }
 
 const UNIVERSAL_CONVENTION_TEMPLATE = require("../convenio-universal-template.json");
-
-function modelList(primaryModel, fallbackModels = []) {
-  return [primaryModel, ...fallbackModels]
-    .filter(Boolean)
-    .map((item) => String(item).trim())
-    .filter(Boolean)
-    .filter((item, index, list) => list.indexOf(item) === index);
-}
 
 function isRetryable(error) {
   const message = String(error.message || "").toLowerCase();
@@ -586,7 +580,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
     console.error("Error al guardar archivos debug de convenio:", err.message);
   }
 
-  const models = modelList(model, fallbackModels);
+  const models = geminiModelList(model, fallbackModels);
   const errors = [];
   for (const currentModel of models) {
     try {

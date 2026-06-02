@@ -21,6 +21,12 @@ const { createHealthRouter } = require("./routes/health.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
 const { createScalesRouter } = require("./routes/scales.routes");
 const { parseOrThrow } = require("./domain/schemas");
+const {
+  geminiPrimaryModel,
+  geminiScaleModel,
+  geminiConventionModel,
+  geminiFallbackModels
+} = require("./gemini-config");
 
 const app = express();
 const port = Number(process.env.PORT || 4100);
@@ -89,13 +95,6 @@ let db;
 
 function getDbInstance() {
   return db;
-}
-
-function geminiFallbackModels() {
-  return String(process.env.GEMINI_FALLBACK_MODELS)
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs) {
@@ -493,6 +492,7 @@ app.use(createScalesRouter({
   scaleUpload,
   extractScalesFromPdf,
   geminiFallbackModels,
+  geminiScaleModel,
   getConventionOr404,
   monthTimeline,
   findActiveScale,
@@ -607,7 +607,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       try {
         const result = await extractConventionFromPdfs({
           apiKey,
-          model: process.env.GEMINI_CONVENTION_MODEL || process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL,
+          model: geminiConventionModel(),
           fallbackModels: geminiFallbackModels(),
           cctPdf,
           scalePdf,
@@ -839,7 +839,7 @@ app.post("/api/leia/chat", async (req, res, next) => {
 
     const result = await askGemini({
       apiKey,
-      model: process.env.GEMINI_MODEL,
+      model: geminiPrimaryModel(),
       fallbackModels: geminiFallbackModels(),
       systemInstruction,
       message,
@@ -897,7 +897,7 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
       try {
         const result = await askGemini({
           apiKey,
-          model: process.env.GEMINI_MODEL,
+          model: geminiPrimaryModel(),
           fallbackModels: geminiFallbackModels(),
           systemInstruction: "Sos leIA, auditora de liquidaciones de eSueldos. Respondés solamente JSON válido.",
           message: buildLiquidationAuditPrompt({ liquidation, precheck, activeScale, catalog }),

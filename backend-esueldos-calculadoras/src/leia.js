@@ -1,3 +1,5 @@
+const { geminiModelList } = require("./gemini-config");
+
 function compactConvention(convention) {
   return {
     id: convention.id,
@@ -94,14 +96,6 @@ class GeminiRequestError extends Error {
   }
 }
 
-function modelList(primaryModel, fallbackModels = []) {
-  return [primaryModel, ...fallbackModels]
-    .filter(Boolean)
-    .map((item) => String(item).trim())
-    .filter(Boolean)
-    .filter((item, index, list) => list.indexOf(item) === index);
-}
-
 function isRetryableGeminiError(error) {
   const message = String(error.message || "").toLowerCase();
   return error.status === 429
@@ -164,7 +158,7 @@ async function askGeminiOnce({ apiKey, model, systemInstruction, message, histor
 }
 
 async function askGemini({ apiKey, model, fallbackModels, systemInstruction, message, history, maxOutputTokens, temperature }) {
-  const models = modelList(model, fallbackModels);
+  const models = geminiModelList(model, fallbackModels);
   const errors = [];
 
   for (const currentModel of models) {
