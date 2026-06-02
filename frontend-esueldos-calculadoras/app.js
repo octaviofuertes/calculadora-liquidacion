@@ -717,6 +717,28 @@
       .trim();
   }
 
+  function normalizeZoneMatchText(value) {
+    const normalized = normalizeMatchText(value);
+    return [
+      "general",
+      "base",
+      "zona general",
+      "zona base",
+      "base general",
+      "general base",
+      "sin adicional",
+      "sin adicional zonal",
+      "sin adicional de zona"
+    ].includes(normalized) ? "general" : normalized;
+  }
+
+  function scaleRowMatchesZone(row, zone) {
+    const rowZone = normalizeZoneMatchText(row?.zone);
+    const zoneId = normalizeZoneMatchText(zone?.id);
+    const zoneLabel = normalizeZoneMatchText(zone?.label);
+    return Boolean(rowZone && ((zoneId && rowZone === zoneId) || (zoneLabel && rowZone === zoneLabel)));
+  }
+
   function activeScaleFor(conv) {
     const scale = scaleState.activeForPayroll;
     if (!scale || scale.status !== "APROBADA" || scale.conventionId !== conv.id) return null;
@@ -735,8 +757,8 @@
     if (!Array.isArray(rows) || !item) return null;
     const itemId = normalizeMatchText(item.id);
     const itemLabel = normalizeMatchText(item.label);
-    const zoneId = normalizeMatchText(zone?.id);
-    const zoneLabel = normalizeMatchText(zone?.label);
+    const zoneId = normalizeZoneMatchText(zone?.id);
+    const zoneLabel = normalizeZoneMatchText(zone?.label);
     const candidates = rows.filter((row) => {
       const rowId = normalizeMatchText(row.id);
       const rowLabel = normalizeMatchText(row.label);
@@ -747,7 +769,7 @@
     });
     if (!candidates.length) return null;
     const zoneMatch = candidates.find((row) => {
-      const rowZone = normalizeMatchText(row.zone);
+      const rowZone = normalizeZoneMatchText(row.zone);
       return rowZone && ((zoneId && rowZone.includes(zoneId)) || (zoneLabel && rowZone.includes(zoneLabel)));
     });
     return zoneMatch || candidates.find((row) => !row.zone) || candidates[0];
@@ -824,17 +846,29 @@
     return baseValue * ((Number(concept.percent || 0) || 0) / 100) * inputValue;
   }
 
-  function applyGenericDeductions(deductionRows, employerRows, remTotal, noRemTotal, conv) {
+  function applyGenericDeductions(deductionRows, employerRows, remTotal, noRemTotal, basic, period, conv) {
     const model = conv.liquidationModel || {};
-    const applyItems = (items, targetRows, fallbackDetail) => {
+    const applyItems = (items, targetRows, fallbackDetail, userSelectable = false, inputPrefix = "gen_deduction") => {
       (items || []).forEach((item) => {
-        const baseName = String(item.base || "remunerative");
-        const base = baseName === "gross" ? remTotal + noRemTotal : baseName === "nonRemunerative" ? noRemTotal : remTotal;
-        const amountValue = Number(item.amount || 0) || base * ((Number(item.percent || 0) || 0) / 100);
+        if (userSelectable && !checked(`${inputPrefix}_${item.id}`, item.defaultValue !== false)) return;
+        const baseName = String(item.base || "remunerative")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+        const base = ["gross", "bruto", "total haberes"].includes(baseName)
+          ? remTotal + noRemTotal
+          : ["nonremunerative", "non remunerative", "no remunerativo"].includes(baseName)
+            ? noRemTotal
+            : ["basic", "basico"].includes(baseName) ? basic : remTotal;
+        const fixedAmount = conceptPeriodAmount(item, period, ["amountByPeriod", "amountPorPeriodo"], item.amount);
+        const amountValue = fixedAmount || base * ((Number(item.percent || 0) || 0) / 100);
         addRow(targetRows, item.label, amountValue, item.detail || fallbackDetail);
       });
     };
-    applyItems(model.deductions, deductionRows, "Aporte propio del convenio");
+    applyItems(model.deductions, deductionRows, "Aporte propio del convenio", true);
+    applyItems(model.retentions, deductionRows, "Retencion propia del convenio", true, "gen_retention");
     applyItems(model.employerContributions, employerRows, "Contribucion propia del convenio");
   }
 
@@ -845,8 +879,13 @@
     const activeCatRow = scaleCategoryRow(conv, cat, zone);
     const model = conv.liquidationModel || {};
     const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
+    const activeScaleRules = activeScaleFor(conv)?.parsedScale?.nonRemunerativeRules
+      || activeScaleFor(conv)?.parsedScale?.reglasNoRemunerativas
+      || {};
+    rules.nonRemunerativeScale = { ...(rules.nonRemunerativeScale || {}), ...activeScaleRules };
     const salaryType = rules.salaryType || conv.type || "monthly";
     const zoneCoef = Number(zone?.coef || 1) || 1;
+    const scaleCoef = scaleRowMatchesZone(activeCatRow, zone) ? 1 : zoneCoef;
     const monthPct = Math.max(0, Math.min(100, num("genMonthPct", 100))) / 100;
     const monthDivisor = Number(rules.monthDivisor || 30) || 30;
     const hourDivisor = Number(rules.overtime?.divisor || rules.hourDivisor || 200) || 200;
@@ -877,9 +916,9 @@
       periodAmountValue(cat, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]),
       cat.hourly
     );
-    const categoryMonthly = (categoryMonthlyRaw || 0) * zoneCoef;
-    const categoryDay = (firstFinite(categoryDayRaw, categoryMonthly ? categoryMonthly / monthDivisor : null) || 0) * (activeCatRow?.day || cat.day ? zoneCoef : 1);
-    const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || cat.hourly ? zoneCoef : 1);
+    const categoryMonthly = (categoryMonthlyRaw || 0) * scaleCoef;
+    const categoryDay = (firstFinite(categoryDayRaw, categoryMonthly ? categoryMonthly / monthDivisor : null) || 0) * (activeCatRow?.day || cat.day ? scaleCoef : 1);
+    const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || cat.hourly ? scaleCoef : 1);
     let basic = 0;
     if (salaryType === "daily") basic = categoryDay * workUnits;
     else if (salaryType === "hourly") basic = categoryHourly * workUnits;
@@ -910,7 +949,7 @@
     addRow(remRows, "Horas extra 100%", hourValue * num("genExtra100", 0) * 2, `Base habitual / ${hourDivisor} x 2`);
 
     const noRemScaleRaw = firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(cat, period)) || 0;
-    const noRemScaleBase = noRemScaleRaw * monthPct * zoneCoef;
+    const noRemScaleBase = noRemScaleRaw * monthPct * scaleCoef;
 
     const conceptRows = Array.isArray(model.concepts) ? model.concepts : [];
     conceptRows.forEach((concept) => {
@@ -937,10 +976,15 @@
       const noRemRule = rules.nonRemunerativeScale || {};
       const noRemSeniorityPct = Number(noRemRule.seniorityPercentPerYear || 0) || 0;
       const noRemPresentismPct = Number(noRemRule.presentismPercent || 0) || 0;
-      const noRemSeniority = checked("genSeniority", seniorityRule.enabled !== false) ? noRemScaleBase * ((noRemSeniorityPct * years) / 100) : 0;
-      if (noRemSeniority) addRow(noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${years} años`);
+      const noRemYears = noRemRule.seniorityCapYears ? Math.min(years, Number(noRemRule.seniorityCapYears)) : years;
+      const applyNoRemSeniority = noRemRule.seniorityEnabled !== false
+        && checked("genSeniority", seniorityRule.enabled !== false || noRemSeniorityPct > 0);
+      const noRemSeniority = applyNoRemSeniority ? noRemScaleBase * ((noRemSeniorityPct * noRemYears) / 100) : 0;
+      if (noRemSeniority) addRow(noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${noRemYears} años`);
       const allowNoRemPresentism = !noRemRule.presentismRequiresNoUnjustifiedAbsence || absentDays === 0;
-      if (checked("genPresentism", presentismRule.enabled && noRemPresentismPct > 0) && allowNoRemPresentism) {
+      const applyNoRemPresentism = noRemRule.presentismEnabled !== false
+        && checked("genPresentism", presentismRule.enabled === true || noRemPresentismPct > 0);
+      if (applyNoRemPresentism && allowNoRemPresentism) {
         addRow(noRemRows, "Presentismo no remunerativo", (noRemScaleBase + noRemSeniority) * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
       }
     }
@@ -950,7 +994,7 @@
     const noRemTotal = sumRows(noRemRows);
     const osBase = remTotal + noRemTotal;
     applyWorkerDeductions(deductionRows, remTotal, osBase, conv);
-    applyGenericDeductions(deductionRows, employerRows, remTotal, noRemTotal, conv);
+    applyGenericDeductions(deductionRows, employerRows, remTotal, noRemTotal, basic, period, conv);
     applyEmployerContribs(employerRows, remTotal, osBase, conv, basic);
 
     addRow(details, "Basico de escala", categoryMonthly || categoryDay || categoryHourly, activeScaleDetail(conv));
@@ -1362,7 +1406,7 @@
     const cat = getCategory(conv);
     const coef = zone.coef || 1;
     const activeCatRow = scaleCategoryRow(conv, cat, zone);
-    const rowHasSpecificZone = !!(activeCatRow && activeCatRow.zone);
+    const rowHasSpecificZone = scaleRowMatchesZone(activeCatRow, zone);
     const years = yearsFromEntry();
 
     const periodDays = Math.max(1, num("camPeriodDays", 24));
@@ -1385,7 +1429,7 @@
     const items = conv.items;
     const driverFirst = conv.categories.find((item) => item.id === "conductor1") || conv.categories[0];
     const driverFirstRow = scaleCategoryRow(conv, driverFirst, zone);
-    const driverFirstHasZone = !!(driverFirstRow && driverFirstRow.zone);
+    const driverFirstHasZone = scaleRowMatchesZone(driverFirstRow, zone);
     const driverFirstMonthly = firstFinite(driverFirstRow?.monthly)
       ? firstFinite(driverFirstRow.monthly) * (driverFirstHasZone ? 1 : coef)
       : (driverFirst?.monthly || baseMonthly) * coef;
@@ -1860,6 +1904,7 @@
         </div>
       </div>
       <div class="line-total" data-receipt-section="remunerative-total"><span>Total remunerativo</span><span class="amount">${fmt(result.totals.remTotal)}</span></div>
+      <div class="line-total" data-receipt-section="nonremunerative-total"><span>Total no remunerativo</span><span class="amount">${fmt(result.totals.noRemTotal)}</span></div>
       <div class="line-total"><span>Total bruto</span><span class="amount">${fmt(result.totals.gross)}</span></div>
       <div class="line-total" data-receipt-section="deductions-total"><span>Total deducciones</span><span class="amount">${fmt(result.totals.deductions)}</span></div>
       <div class="line-total net-total" data-receipt-section="net"><span>Neto a cobrar</span><span class="amount">${fmt(result.totals.net)}</span></div>
@@ -2422,6 +2467,12 @@
     const seniority = rules.seniority || {};
     const presentism = rules.presentism || {};
     const nonRem = rules.nonRemunerativeScale || {};
+    const nonRemDetail = [
+      `OS: ${summaryValue(nonRem.subjectToHealthInsurance, "segun JSON")}`,
+      `sindicato: ${summaryValue(nonRem.subjectToUnion, "segun JSON")}`,
+      Number(nonRem.seniorityPercentPerYear || 0) ? `antiguedad NR ${nonRem.seniorityPercentPerYear}% por año` : "",
+      Number(nonRem.presentismPercent || 0) ? `presentismo NR ${nonRem.presentismPercent}%` : ""
+    ].filter(Boolean).join("; ");
     const overtime = rules.overtime || {};
     const legal = conv.legalFramework || {};
     const sources = summaryArray(legal.primarySources).map((source) => `${source.title || source.type || "Fuente"}${source.fileName ? ` - ${source.fileName}` : ""}`);
@@ -2453,6 +2504,18 @@
       item.base || "remunerative",
       item.detail || item.appliesWhen || ""
     ]);
+    const retentionRows = summaryArray(model.retentions || conv.retentions).map((item) => [
+      item.label || item.id,
+      item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
+      item.base || "remunerative",
+      item.detail || item.appliesWhen || ""
+    ]);
+    const extractedRuleRows = summaryArray(conv.extractedRules).map((item) => [
+      item.label || item.id,
+      summaryValue(item.value),
+      item.evidence || "-",
+      item.sourceFileName || item.source || "-"
+    ]);
     const employerRows = summaryArray(model.employerContributions || conv.employerContributions).map((item) => [
       item.label || item.id,
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
@@ -2466,7 +2529,7 @@
     return `
       <section class="summary-section summary-highlight">
         <h3>Lectura contable</h3>
-        <p>Este convenio fue estructurado en JSON ejecutable. El motor generico usa categoria, periodo, zona, escala vigente, reglas de proporcionalidad, antiguedad, presentismo, no remunerativos, conceptos variables, deducciones propias y contribuciones propias definidas por leIA y aprobadas por auditoria humana.</p>
+        <p>Este convenio fue estructurado en JSON ejecutable. El motor generico usa categoria, periodo, zona, escala vigente, reglas de proporcionalidad, antiguedad, presentismo, no remunerativos, conceptos variables, deducciones, retenciones y contribuciones propias definidas por leIA y aprobadas por auditoria humana.</p>
       </section>
       ${renderSummaryCards([
         { label: "Tipo de sueldo", value: rules.salaryType || conv.type || "monthly", detail: "Define si la base se prorratea mensual, diaria u horaria." },
@@ -2484,7 +2547,7 @@
       ${renderSummarySection("Reglas automaticas", [
         { label: "Antiguedad", value: seniority.enabled === false ? "No aplica" : `${summaryValue(seniority.percentPerYear, 0)}% por año`, detail: `Base: ${summaryValue(seniority.base, "basic")}${seniority.capYears ? `; tope ${seniority.capYears} años` : "; sin tope informado"}` },
         { label: "Presentismo", value: presentism.enabled ? `${summaryValue(presentism.percent, 0)}%` : "No aplica", detail: presentism.requiresNoUnjustifiedAbsence === false ? "No exige ausencia cero" : "Exige controlar inasistencias injustificadas." },
-        { label: "No remunerativo escala", value: nonRem.enabled === false ? "No aplica" : "Activo", detail: `OS: ${summaryValue(nonRem.subjectToHealthInsurance, "segun JSON")}; sindicato: ${summaryValue(nonRem.subjectToUnion, "segun JSON")}` },
+        { label: "No remunerativo escala", value: nonRem.enabled === false ? "No aplica" : "Activo", detail: nonRemDetail },
         { label: "Horas extra", value: overtime.enabled === false ? "No aplica" : `50% x${summaryValue(overtime.rate50, 1.5)} / 100% x${summaryValue(overtime.rate100, 2)}`, detail: `Divisor ${summaryValue(overtime.divisor || rules.hourDivisor, 200)}` },
         { label: "Categoria actual", value: category?.label || "-", detail: `Periodo ${monthLabel(periodIdToMonth(period) || period)} - zona ${zone?.label || "-"}` }
       ])}
@@ -2497,7 +2560,9 @@
       ${renderSummaryTable("Descuentos convencionales variables", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], deductionConceptRows)}
       ${renderSummaryTable("Otros conceptos del motor JSON", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], otherConceptRows)}
       ${renderSummaryTable("Deducciones propias", ["Concepto", "Valor", "Base", "Detalle"], deductionRows)}
+      ${renderSummaryTable("Retenciones propias", ["Concepto", "Valor", "Base", "Detalle"], retentionRows)}
       ${renderSummaryTable("Contribuciones propias empleador", ["Concepto", "Valor", "Base", "Detalle"], employerRows)}
+      ${renderSummaryTable("Reglas extraidas de documentos", ["Regla", "Valor", "Evidencia", "Fuente"], extractedRuleRows)}
       ${renderSummaryTable("Categorias de escala", ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], (conv.categories || []).map((cat) => {
         const row = scaleCategoryRow(conv, cat, zone);
         return [
@@ -3146,7 +3211,7 @@
         <div><span>Lectura IA</span><strong>${escapeHtml(scale.aiStatus || "-")}</strong></div>
         <div><span>Confianza</span><strong>${Number(parsed.confidence || 0)}%</strong></div>
         <div><span>Aprobada</span><strong>${escapeHtml(shortDate(scale.approvedAt))}</strong></div>
-        <div><span>PDF</span><strong>${scale.sourceFileUrl ? `<a href="${escapeHtml(apiUrl(scale.sourceFileUrl))}" target="_blank" rel="noreferrer">Abrir</a>` : "-"}</strong></div>
+        <div><span>Archivo</span><strong>${scale.sourceFileUrl ? `<a href="${escapeHtml(apiUrl(scale.sourceFileUrl))}" target="_blank" rel="noreferrer">Abrir</a>` : "-"}</strong></div>
       </div>
       ${parsed.sourceSummary ? `<p class="scale-summary">${escapeHtml(parsed.sourceSummary)}</p>` : ""}
       ${warnings.length ? `<div class="scale-warning">${warnings.map(escapeHtml).join("<br>")}</div>` : ""}
@@ -3253,7 +3318,7 @@
     list.innerHTML = items.map((scale) => `<button class="scale-audit-item ${scaleState.selected?.id === scale.id ? "active" : ""}" type="button" data-scale-id="${escapeHtml(scale.id)}">
       <span>
         <strong>${escapeHtml(scale.periodLabel || monthLabel(scale.period))}</strong>
-        <small>${escapeHtml(scale.sourceFileName || "PDF de escala")}</small>
+        <small>${escapeHtml(scale.sourceFileName || "Archivo de escala")}</small>
       </span>
       <em class="${scale.status === "APROBADA" ? "ok" : scale.status === "RECHAZADA" ? "bad" : ""}">${escapeHtml(statusLabel(scale.status))}</em>
     </button>`).join("");
@@ -3504,7 +3569,7 @@
     const conventionId = $("scaleConvention")?.value || str("convention", "uocra");
     const period = $("scalePeriod")?.value || selectedPeriodMonth();
     if (!file) {
-      setScaleStatus("Selecciona un PDF para analizar.", "bad");
+      setScaleStatus("Selecciona un documento o imagen para analizar.", "bad");
       return;
     }
     const formData = new FormData();
@@ -3515,7 +3580,7 @@
 
     const button = $("uploadScaleBtn");
     if (button) button.disabled = true;
-    setScaleStatus("Subiendo PDF y consultando a leIA...", "");
+    setScaleStatus("Subiendo documento y consultando a leIA...", "");
     try {
       const response = await authFetch("/api/scales/upload", {
         method: "POST",
@@ -3882,7 +3947,7 @@
     const cctFile = $("builderCctPdf")?.files?.[0];
     const scaleFile = $("builderScalePdf")?.files?.[0];
     if (!cctFile && !scaleFile) {
-      setConventionBuilderStatus("Subi al menos un PDF de CCT o escala.", "bad");
+      setConventionBuilderStatus("Subi al menos un documento o imagen de CCT o escala.", "bad");
       return;
     }
     const formData = new FormData();
@@ -4250,6 +4315,9 @@
     (conv.liquidationModel?.deductions || []).forEach((item) => {
       rows.push(`- **${item.label}**: ${item.percent ? `${item.percent}%` : moneyOrDash(item.amount)} sobre ${item.base || "remunerativo"}`);
     });
+    (conv.liquidationModel?.retentions || []).forEach((item) => {
+      rows.push(`- **Retencion ${item.label}**: ${item.percent ? `${item.percent}%` : moneyOrDash(item.amount)} sobre ${item.base || "remunerativo"}`);
+    });
     if (conv.id === "camioneros") {
       rows.push("- Camioneros: cuota sindical, contribucion solidaria y seguro de sepelio segun parametros activos.");
     }
@@ -4479,6 +4547,20 @@
             : `<label class="check-row"><input id="gen_${escapeHtml(concept.id)}" type="checkbox" ${concept.defaultValue ? "checked" : ""}><span>${escapeHtml(concept.label)}</span></label>`
           ).join("")}
         </div>`).join("");
+      const deductionHtml = (model.deductions || []).length ? `
+        <div class="generic-section-title">Descuentos del convenio</div>
+        <div class="check-grid generic-checks">
+          ${model.deductions.map((item) => `
+            <label class="check-row"><input id="gen_deduction_${escapeHtml(item.id)}" type="checkbox" ${item.defaultValue === false ? "" : "checked"}><span>${escapeHtml(item.label)}</span></label>
+          `).join("")}
+        </div>` : "";
+      const retentionHtml = (model.retentions || []).length ? `
+        <div class="generic-section-title">Retenciones del convenio</div>
+        <div class="check-grid generic-checks">
+          ${model.retentions.map((item) => `
+            <label class="check-row"><input id="gen_retention_${escapeHtml(item.id)}" type="checkbox" ${item.defaultValue === false ? "" : "checked"}><span>${escapeHtml(item.label)}</span></label>
+          `).join("")}
+        </div>` : "";
 
       $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card">
         <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
@@ -4489,11 +4571,13 @@
           <label class="field"><span>Hs extra 100%</span><input id="genExtra100" type="number" min="0" step="0.01" value="0"></label>
         </div>
         <div class="check-grid generic-checks">
-          <label class="check-row"><input id="genSeniority" type="checkbox" ${rules.seniority?.enabled === false ? "" : "checked"}><span>Antiguedad segun JSON</span></label>
-          <label class="check-row"><input id="genPresentism" type="checkbox" ${rules.presentism?.enabled ? "checked" : ""}><span>Presentismo segun JSON</span></label>
+          <label class="check-row"><input id="genSeniority" type="checkbox" ${rules.seniority?.enabled !== false || (rules.nonRemunerativeScale?.seniorityEnabled !== false && Number(rules.nonRemunerativeScale?.seniorityPercentPerYear || 0) > 0) ? "checked" : ""}><span>Antiguedad segun JSON</span></label>
+          <label class="check-row"><input id="genPresentism" type="checkbox" ${rules.presentism?.enabled || (rules.nonRemunerativeScale?.presentismEnabled !== false && Number(rules.nonRemunerativeScale?.presentismPercent || 0) > 0) ? "checked" : ""}><span>Presentismo segun JSON</span></label>
           <label class="check-row"><input id="genNonRemScale" type="checkbox" ${rules.nonRemunerativeScale?.enabled === false ? "" : "checked"}><span>No remunerativo de escala</span></label>
         </div>
         ${conceptHtml || `<p class="generic-note">Este convenio no tiene conceptos variables adicionales. Pod&eacute;s editarlos desde Convenios IA.</p>`}
+        ${deductionHtml}
+        ${retentionHtml}
         <p class="generic-note">
           <strong>Motor JSON leIA:</strong> usa reglas aprobadas del convenio, escala vigente si existe, conceptos variables y auditoria automatica del recibo.
         </p>

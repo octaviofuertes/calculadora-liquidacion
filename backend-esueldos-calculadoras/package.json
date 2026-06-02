@@ -8,7 +8,7 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "seed": "node src/seed.js",
-    "test": "node --test test/payroll-engine.test.js test/api.test.js"
+    "test": "node --test test/payroll-engine.test.js test/api.test.js test/convention-pipeline.test.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -9,10 +9,11 @@ const { getDb, closeDb } = require("./db");
 const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
-const { extractConventionFromPdfs, tryBuildLocalConventionFallback, normalizeConvention, GeminiConventionError } = require("./convention-ai");
+const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
 const { configureSecurity } = require("./middleware/security");
 const { escapeRegex } = require("./middleware/validate");
 const { calculatePayroll } = require("./domain/payroll-engine");
+const { analyzeConventionDocuments, applyConventionArchitecture, conventionFingerprint, isSupportedConventionDocument, validateStructuredConvention } = require("./domain/convention-pipeline");
 const { authMiddleware, requireAuth, requireAuthWhenEnabled, requireRole } = require("./middleware/auth");
 const { authenticateUser, createUser, ensureUserIndexes } = require("./services/auth-service");
 const { calculationInputSchema, employeeWriteSchema, liquidationResultSchema, loginSchema, savedLiquidationSchema, userCreateSchema, userUpdateSchema, parseOrThrow } = require("./domain/schemas");
@@ -48,11 +49,11 @@ const scaleUpload = multer({
   }),
   limits: { fileSize: scaleUploadMaxBytes },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "application/pdf" || /\.pdf$/i.test(file.originalname)) {
+    if (isSupportedConventionDocument(file)) {
       cb(null, true);
       return;
     }
-    cb(new Error("Solo se aceptan archivos PDF de escala salarial."));
+    cb(new Error("Solo se aceptan PDF o imagenes JPG, PNG y WEBP de escala salarial."));
   }
 });
 
@@ -68,11 +69,11 @@ const conventionUpload = multer({
   }),
   limits: { fileSize: conventionUploadMaxBytes, files: 2 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "application/pdf" || /\.pdf$/i.test(file.originalname)) {
+    if (isSupportedConventionDocument(file)) {
       cb(null, true);
       return;
     }
-    cb(new Error("Solo se aceptan archivos PDF para estructurar convenios."));
+    cb(new Error("Solo se aceptan PDF o imagenes JPG, PNG y WEBP para estructurar convenios."));
   }
 });
 
@@ -96,7 +97,7 @@ function toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs) {
 
   conventionDocs.forEach((doc) => {
     const { _id: mongoId, order, updatedAt: conventionUpdatedAt, ...convention } = doc;
-    conventions[convention.id] = convention;
+    conventions[convention.id] = sanitizeGenericConventionCategories(convention);
   });
 
   return {
@@ -129,6 +130,7 @@ async function ensureScaleIndexes() {
   await db.collection("salaryScales").createIndex({ createdAt: -1 });
   await db.collection("conventionDrafts").createIndex({ status: 1, createdAt: -1 });
   await db.collection("conventionDrafts").createIndex({ "parsedConvention.id": 1 });
+  await db.collection("conventionVersions").createIndex({ conventionId: 1, version: -1 });
   await db.collection("liquidationAudits").createIndex({ createdAt: -1 });
   await db.collection("liquidationAudits").createIndex({ conventionId: 1, period: 1, createdAt: -1 });
   await db.collection("employees").createIndex({ legajo: 1 }, { unique: true });
@@ -165,6 +167,71 @@ function currentPeriod() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function conventionZoneId(value) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return [
+    "general",
+    "base",
+    "zona-general",
+    "zona-base",
+    "base-general",
+    "general-base",
+    "sin-adicional",
+    "sin-adicional-zonal",
+    "sin-adicional-de-zona"
+  ].includes(normalized) ? "general" : normalized;
+}
+
+function normalizeConventionZone(zone = {}) {
+  const { coefficient, coeficiente, name, zona, ...payload } = zone;
+  const id = conventionZoneId(zone.id || zone.label || zone.name || zone.zona);
+  const rawCoef = zone.coef ?? zone.coefficient ?? zone.coeficiente;
+  const numericCoef = rawCoef === null || rawCoef === undefined || rawCoef === "" ? null : Number(rawCoef);
+  return {
+    ...payload,
+    id,
+    label: id === "general" ? "General" : (zone.label || zone.name || zone.zona || id),
+    coef: Number.isFinite(numericCoef) ? numericCoef : (id === "general" ? 1 : null)
+  };
+}
+
+function mergeConventionZones(conventionZones = [], scaleZones = []) {
+  const byId = new Map();
+  [...conventionZones, ...scaleZones].forEach((zone) => {
+    const normalized = normalizeConventionZone(zone);
+    if (!normalized.id) return;
+    byId.set(normalized.id, { ...(byId.get(normalized.id) || {}), ...normalized });
+  });
+  return Array.from(byId.values());
+}
+
+function mergeConventionNonRemunerativeRules(conventionRules = {}, scaleRules = {}) {
+  const merged = { ...conventionRules };
+  [
+    "enabled",
+    "seniorityEnabled",
+    "seniorityPercentPerYear",
+    "seniorityCapYears",
+    "presentismEnabled",
+    "presentismPercent",
+    "presentismRequiresNoUnjustifiedAbsence",
+    "subjectToHealthInsurance",
+    "subjectToUnion"
+  ].forEach((key) => {
+    if (scaleRules[key] !== undefined && scaleRules[key] !== null) merged[key] = scaleRules[key];
+  });
+  ["legalReferences", "notes"].forEach((key) => {
+    if (!Array.isArray(scaleRules[key]) || !scaleRules[key].length) return;
+    merged[key] = Array.from(new Set([...(Array.isArray(merged[key]) ? merged[key] : []), ...scaleRules[key]]));
+  });
+  return merged;
+}
+
 function serializeScale(doc) {
   if (!doc) return null;
   const { _id, filePath, ...payload } = doc;
@@ -191,6 +258,11 @@ function serializeConventionDraft(doc) {
       url: file.storedFileName ? `/uploads/conventions/${file.storedFileName}` : null
     }))
   };
+}
+
+function updatedDocument(result) {
+  if (!result) return null;
+  return Object.prototype.hasOwnProperty.call(result, "value") ? result.value : result;
 }
 
 async function getConventionOr404(conventionId) {
@@ -587,11 +659,12 @@ app.patch("/api/users/:id", requireRole("admin"), async (req, res, next) => {
       { $set: { ...payload, updatedAt: new Date() } },
       { returnDocument: "after", projection: { passwordHash: 0 } }
     );
-    if (!result) {
+    const updatedUser = updatedDocument(result);
+    if (!updatedUser) {
       res.status(404).json({ error: "Usuario no encontrado" });
       return;
     }
-    const { _id, ...doc } = result;
+    const { _id, ...doc } = updatedUser;
     res.json({ id: _id.toString(), ...doc });
   } catch (error) {
     next(error);
@@ -646,7 +719,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
     const cctFile = req.files?.cctPdf?.[0] || null;
     const scaleFile = req.files?.scalePdf?.[0] || null;
     if (!cctFile && !scaleFile) {
-      res.status(400).json({ error: "Subi al menos el PDF del CCT o una escala salarial." });
+      res.status(400).json({ error: "Subi al menos el documento o imagen del CCT o una escala salarial." });
       return;
     }
 
@@ -660,30 +733,25 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
     let aiModelsTried = [];
     let parsedConvention = normalizeConvention({
       convention: {
-        name: draftName,
-        shortName: draftName.slice(0, 42),
+        name: "",
+        shortName: "",
         source: cctFile?.originalname || scaleFile?.originalname || "",
         periods: [],
-        zones: [{ id: "general", label: "General", coef: 1 }],
+        zones: [],
         categories: [],
         liquidationModel: {
-          rules: {
-            salaryType: "monthly",
-            monthDivisor: 30,
-            hourDivisor: 200,
-            weeklyHours: 48,
-            seniority: { enabled: true, percentPerYear: 1, capYears: 0, base: "basic" },
-            presentism: { enabled: true, percent: 0, requiresNoUnjustifiedAbsence: true },
-            nonRemunerativeScale: { enabled: true },
-            overtime: { enabled: true, divisor: 200 }
-          },
+          rules: {},
           concepts: [],
           deductions: [],
+          retentions: [],
           employerContributions: []
         },
         warnings: ["Carga pendiente de lectura por IA."]
       }
-    }, { fallbackName: draftName });
+    }, {
+      fallbackName: "Convenio pendiente de identificacion documental",
+      useFallbackDefaults: false
+    });
 
     const cctPdf = cctFile ? {
       buffer: await fs.promises.readFile(cctFile.path),
@@ -695,22 +763,12 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       mimeType: scaleFile.mimetype,
       sourceFileName: scaleFile.originalname
     } : null;
+    const processingPipeline = analyzeConventionDocuments([
+      cctPdf && { ...cctPdf, field: "cctPdf" },
+      scalePdf && { ...scalePdf, field: "scalePdf" }
+    ]);
 
-    const localFirst = await tryBuildLocalConventionFallback({
-      cctPdf,
-      scalePdf,
-      draftName,
-      notes,
-      aiError: null,
-      allowGeneric: false
-    });
-    if (localFirst?.parsedConvention?.categories?.length) {
-      parsedConvention = localFirst.parsedConvention;
-      aiStatus = "ESTRUCTURADO_POR_LECTURA_LOCAL";
-      aiError = null;
-      aiModel = localFirst.model;
-      aiModelsTried = localFirst.modelsTried || [];
-    } else if (apiKey) {
+    if (apiKey) {
       try {
         const result = await extractConventionFromPdfs({
           apiKey,
@@ -734,23 +792,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       }
     }
 
-    if (!parsedConvention.categories?.length || aiStatus === "ERROR_IA" || aiStatus === "SIN_API_KEY") {
-      const fallback = await tryBuildLocalConventionFallback({
-        cctPdf,
-        scalePdf,
-        draftName,
-        notes,
-        aiError,
-        allowGeneric: true
-      });
-      if (fallback?.parsedConvention?.categories?.length) {
-        parsedConvention = fallback.parsedConvention;
-        aiStatus = "ESTRUCTURADO_POR_LECTURA_LOCAL";
-        aiError = null;
-        aiModel = fallback.model;
-        aiModelsTried = Array.from(new Set([...(aiModelsTried || []), ...(fallback.modelsTried || [])]));
-      }
-    }
+    parsedConvention = sanitizeGenericConventionCategories(applyConventionArchitecture(parsedConvention, processingPipeline));
 
     const files = [cctFile, scaleFile].filter(Boolean).map((file) => ({
       field: file.fieldname,
@@ -769,6 +811,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       aiModel,
       aiModelsTried,
       parsedConvention,
+      processingPipeline,
       auditNote: notes,
       files,
       createdAt: now,
@@ -789,7 +832,10 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
     }
     const update = { updatedAt: new Date() };
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedConvention")) {
-      update.parsedConvention = normalizeConvention({ convention: req.body.parsedConvention }, { fallbackName: req.body.parsedConvention?.name });
+      update.parsedConvention = normalizeConvention({ convention: req.body.parsedConvention }, {
+        fallbackName: req.body.parsedConvention?.name || "Convenio pendiente de identificacion documental",
+        useFallbackDefaults: false
+      });
       update.humanEdited = true;
       update.humanEditedAt = new Date();
     }
@@ -801,11 +847,12 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
       { $set: update },
       { returnDocument: "after" }
     );
-    if (!result) {
+    const updatedDraft = updatedDocument(result);
+    if (!updatedDraft) {
       res.status(404).json({ error: "Borrador no encontrado" });
       return;
     }
-    res.json(serializeConventionDraft(result));
+    res.json(serializeConventionDraft(updatedDraft));
   } catch (error) {
     next(error);
   }
@@ -826,13 +873,36 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
     const now = new Date();
     const convention = normalizeConvention({
       convention: req.body?.parsedConvention || draft.parsedConvention
-    }, { fallbackName: draft.name });
+    }, {
+      fallbackName: "Convenio pendiente de identificacion documental",
+      useFallbackDefaults: false
+    });
     if (!convention.categories.length) {
       res.status(400).json({ error: "El JSON no tiene categorias con importes. Revisalo antes de aprobar." });
       return;
     }
 
-    const existing = await db.collection("conventions").findOne({ id: convention.id });
+    const enrichedConvention = sanitizeGenericConventionCategories(applyConventionArchitecture(convention, draft.processingPipeline));
+    const structureValidation = validateStructuredConvention(enrichedConvention);
+    if (!structureValidation.valid) {
+      res.status(400).json({ error: `El convenio no cumple el molde estructural: ${structureValidation.blocking.join(", ")}.` });
+      return;
+    }
+    const existing = await db.collection("conventions").findOne({ id: enrichedConvention.id });
+    const changed = !existing || conventionFingerprint(existing) !== conventionFingerprint(enrichedConvention);
+    const previousVersion = Number(existing?.metadata?.version || 0);
+    const version = existing && changed ? (previousVersion ? (previousVersion + 0.1).toFixed(1) : "1.1") : (existing?.metadata?.version || "1.0");
+    enrichedConvention.metadata = { ...(enrichedConvention.metadata || {}), version, status: "vigente" };
+    enrichedConvention.structuredModel.metadata = { ...enrichedConvention.structuredModel.metadata, version, estado: "vigente" };
+    if (existing && changed) {
+      await db.collection("conventionVersions").insertOne({
+        conventionId: existing.id,
+        version: existing.metadata?.version || "1.0",
+        status: "archivado",
+        convention: existing,
+        archivedAt: now
+      });
+    }
     const maxOrderDoc = await db.collection("conventions").find({}).sort({ order: -1 }).limit(1).next();
     const order = existing?.order || ((maxOrderDoc?.order || 0) + 1);
     await db.collection("conventions").replaceOne(
@@ -840,20 +910,20 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       {
         _id: existing?._id || convention.id,
         order,
-        ...convention,
+        ...enrichedConvention,
         sourceDraftId: draft._id.toString(),
         approvedAt: now,
         updatedAt: now
       },
       { upsert: true }
     );
-    const updatedDraft = await db.collection("conventionDrafts").findOneAndUpdate(
+    const updatedDraftResult = await db.collection("conventionDrafts").findOneAndUpdate(
       { _id: draft._id },
       {
         $set: {
           status: "APROBADO",
-          parsedConvention: convention,
-          approvedConventionId: convention.id,
+          parsedConvention: enrichedConvention,
+          approvedConventionId: enrichedConvention.id,
           reviewedAt: now,
           reviewedBy: req.body?.reviewedBy || "Auditoria humana",
           reviewNote: req.body?.note || "",
@@ -863,8 +933,9 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       { returnDocument: "after" }
     );
     res.json({
-      draft: serializeConventionDraft(updatedDraft),
-      convention
+      draft: serializeConventionDraft(updatedDocument(updatedDraftResult)),
+      convention: enrichedConvention,
+      versioning: { version, changed, archivedPreviousVersion: Boolean(existing && changed) }
     });
   } catch (error) {
     next(error);
@@ -891,11 +962,12 @@ app.post("/api/convention-drafts/:id/reject", async (req, res, next) => {
       },
       { returnDocument: "after" }
     );
-    if (!result) {
+    const updatedDraft = updatedDocument(result);
+    if (!updatedDraft) {
       res.status(404).json({ error: "Borrador no encontrado" });
       return;
     }
-    res.json(serializeConventionDraft(result));
+    res.json(serializeConventionDraft(updatedDraft));
   } catch (error) {
     next(error);
   }
@@ -999,7 +1071,7 @@ app.get("/api/scales/:id", async (req, res, next) => {
 app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next) => {
   try {
     if (!req.file) {
-      res.status(400).json({ error: "Selecciona un PDF de escala salarial." });
+      res.status(400).json({ error: "Selecciona un documento o imagen de escala salarial." });
       return;
     }
 
@@ -1050,7 +1122,7 @@ app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next)
         aiModelsTried = result.modelsTried;
       } catch (error) {
         aiStatus = "ERROR_IA";
-        aiError = error.message || "No se pudo leer el PDF con leIA.";
+        aiError = error.message || "No se pudo leer el documento con leIA.";
         aiModel = error.model || null;
         aiModelsTried = error.modelsTried || [];
         parsedScales[0].warnings = [aiError];
@@ -1121,11 +1193,12 @@ app.patch("/api/scales/:id", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    if (!result) {
+    const updatedScale = updatedDocument(result);
+    if (!updatedScale) {
       res.status(404).json({ error: "Escala no encontrada" });
       return;
     }
-    res.json(serializeScale(result));
+    res.json(serializeScale(updatedScale));
   } catch (error) {
     next(error);
   }
@@ -1159,11 +1232,33 @@ app.post("/api/scales/:id/approve", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    if (!result) {
+    const updatedScale = updatedDocument(result);
+    if (!updatedScale) {
       res.status(404).json({ error: "Escala no encontrada" });
       return;
     }
-    res.json(serializeScale(result));
+    const scaleZones = updatedScale.parsedScale?.zones || [];
+    const scaleNonRemunerativeRules = updatedScale.parsedScale?.nonRemunerativeRules
+      || updatedScale.parsedScale?.reglasNoRemunerativas
+      || {};
+    if (scaleZones.length || Object.keys(scaleNonRemunerativeRules).length) {
+      const convention = await db.collection("conventions").findOne({ id: updatedScale.conventionId });
+      if (convention) {
+        const conventionUpdate = { updatedAt: now };
+        if (scaleZones.length) conventionUpdate.zones = mergeConventionZones(convention.zones, scaleZones);
+        if (Object.keys(scaleNonRemunerativeRules).length) {
+          conventionUpdate["liquidationModel.rules.nonRemunerativeScale"] = mergeConventionNonRemunerativeRules(
+            convention.liquidationModel?.rules?.nonRemunerativeScale,
+            scaleNonRemunerativeRules
+          );
+        }
+        await db.collection("conventions").updateOne(
+          { id: updatedScale.conventionId },
+          { $set: conventionUpdate }
+        );
+      }
+    }
+    res.json(serializeScale(updatedScale));
   } catch (error) {
     next(error);
   }
@@ -1192,11 +1287,12 @@ app.post("/api/scales/:id/reject", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    if (!result) {
+    const updatedScale = updatedDocument(result);
+    if (!updatedScale) {
       res.status(404).json({ error: "Escala no encontrada" });
       return;
     }
-    res.json(serializeScale(result));
+    res.json(serializeScale(updatedScale));
   } catch (error) {
     next(error);
   }
@@ -1349,7 +1445,7 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
 app.get("/api/conventions", async (req, res, next) => {
   try {
     const conventions = await db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray();
-    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => convention));
+    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => sanitizeGenericConventionCategories(convention)));
   } catch (error) {
     next(error);
   }
@@ -1363,7 +1459,7 @@ app.get("/api/conventions/:id", async (req, res, next) => {
       return;
     }
     const { _id, order, updatedAt, ...payload } = convention;
-    res.json(payload);
+    res.json(sanitizeGenericConventionCategories(payload));
   } catch (error) {
     next(error);
   }
@@ -1580,11 +1676,12 @@ app.put("/api/employees/:id", async (req, res, next) => {
       { returnDocument: "after" }
     );
 
-    if (!result) {
+    const updatedEmployee = updatedDocument(result);
+    if (!updatedEmployee) {
       res.status(404).json({ error: "Empleado no encontrado" });
       return;
     }
-    const { _id: mongoId, ...updatedDoc } = result;
+    const { _id: mongoId, ...updatedDoc } = updatedEmployee;
     res.json({ id: mongoId.toString(), ...updatedDoc });
   } catch (error) {
     next(error);
@@ -1683,6 +1780,8 @@ if (require.main === module) {
 
 module.exports = {
   app,
+  mergeConventionNonRemunerativeRules,
+  mergeConventionZones,
   setDbForTest,
   start
 };
