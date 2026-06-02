@@ -64,6 +64,50 @@ function normalizeText(value) {
     .slice(0, 70);
 }
 
+function isGeneralZone(value) {
+  const normalized = normalizeText(value);
+  return [
+    "general",
+    "base",
+    "zona-general",
+    "zona-base",
+    "base-general",
+    "general-base",
+    "sin-adicional",
+    "sin-adicional-zonal",
+    "sin-adicional-de-zona"
+  ].includes(normalized);
+}
+
+function normalizeZoneId(value) {
+  const normalized = normalizeText(value);
+  return isGeneralZone(normalized) ? "general" : normalized;
+}
+
+function normalizeConventionZones(rawZones, categories, { useFallbackDefaults = true } = {}) {
+  const byId = new Map();
+  (Array.isArray(rawZones) ? rawZones : []).forEach((zone, index) => {
+    const rawId = zone.id || zone.label || zone.name || zone.zona || `zona-${index + 1}`;
+    const id = normalizeZoneId(rawId);
+    const general = id === "general" || isGeneralZone(zone.label || zone.name || zone.zona);
+    const normalized = {
+      id: general ? "general" : id,
+      label: general ? "General" : (zone.label || zone.name || zone.zona || `Zona ${index + 1}`),
+      coef: zone.coef ?? zone.coefficient ?? zone.coeficiente ?? (general || useFallbackDefaults ? 1 : null)
+    };
+    if (normalized.id && normalized.label) byId.set(normalized.id, { ...(byId.get(normalized.id) || {}), ...normalized });
+  });
+  const hasDocumentaryGeneral = categories.some((category) => category.zone === "general")
+    || (byId.size > 0 && categories.some((category) => !category.zone));
+  if (!byId.has("general") && hasDocumentaryGeneral) {
+    byId.set("general", { id: "general", label: "General", coef: 1 });
+  }
+  if (!byId.size && useFallbackDefaults) {
+    byId.set("general", { id: "general", label: "General", coef: 1 });
+  }
+  return Array.from(byId.values());
+}
+
 function normalizeMoney(value) {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -150,6 +194,7 @@ function normalizeRows(rows, periodIds = []) {
         label: String(label),
         group: row.group || row.grupo || "",
         description: row.description || row.descripcion || "",
+        zone: normalizeZoneId(row.zone || row.zona),
         monthly: normalizeMoney(row.monthly ?? row.sueldoMensual ?? row.basicoMensual),
         day: normalizeMoney(row.day ?? row.jornal ?? row.valorDia),
         hourly: normalizeMoney(row.hourly ?? row.hora ?? row.valorHora),
@@ -175,15 +220,14 @@ function normalizeRows(rows, periodIds = []) {
     ));
 }
 
-function normalizeConcepts(concepts) {
+function normalizeConcepts(concepts, { useFallbackDefaults = true } = {}) {
   if (!Array.isArray(concepts)) return [];
   return concepts
     .map((concept, index) => {
       const label = concept.label || concept.name || `Concepto ${index + 1}`;
-      const inputType = ["checkbox", "number"].includes(concept.inputType) ? concept.inputType : (concept.type === "number" ? "number" : "checkbox");
-      const rowType = ["remunerative", "nonRemunerative", "deduction"].includes(concept.rowType) ? concept.rowType : "remunerative";
-      const rawCalculation = concept.calculation === "percentOfBase" ? "percent" : concept.calculation;
-      const calculation = ["fixed", "percent", "amountPerUnit"].includes(rawCalculation) ? rawCalculation : "percent";
+      const inputType = ["checkbox", "number"].includes(concept.inputType) ? concept.inputType : (concept.type === "number" ? "number" : (useFallbackDefaults ? "checkbox" : ""));
+      const rowType = ["remunerative", "nonRemunerative", "deduction"].includes(concept.rowType) ? concept.rowType : (useFallbackDefaults ? "remunerative" : "");
+      const calculation = ["fixed", "percentOfBase", "amountPerUnit"].includes(concept.calculation) ? concept.calculation : (useFallbackDefaults ? "percentOfBase" : "");
       const normalized = {
         id: normalizeText(concept.id || label || `concepto-${index + 1}`),
         label: String(label),
@@ -191,22 +235,22 @@ function normalizeConcepts(concepts) {
         inputType,
         rowType,
         calculation,
-        defaultValue: concept.defaultValue ?? (inputType === "checkbox" ? false : 0),
+        defaultValue: concept.defaultValue ?? (useFallbackDefaults ? (inputType === "checkbox" ? false : 0) : null),
         amount: normalizeMoney(concept.amount),
         amountByPeriod: normalizeMoneyMap(concept.amountByPeriod || concept.amountPorPeriodo),
         unitAmount: normalizeMoney(concept.unitAmount),
         unitAmountByPeriod: normalizeMoneyMap(concept.unitAmountByPeriod || concept.valorUnidadPorPeriodo),
         percent: Number(concept.percent ?? concept.pct ?? 0) || 0,
-        base: concept.base || "basic",
+        base: concept.base || (useFallbackDefaults ? "basic" : ""),
         detail: concept.detail || concept.legalReference || "",
-        subjectToSocialSecurity: concept.subjectToSocialSecurity !== false,
-        subjectToHealthInsurance: concept.subjectToHealthInsurance !== false,
-        subjectToART: concept.subjectToART !== false,
-        taxableIncome: concept.taxableIncome === true,
+        subjectToSocialSecurity: concept.subjectToSocialSecurity === undefined ? (useFallbackDefaults ? true : null) : concept.subjectToSocialSecurity !== false,
+        subjectToHealthInsurance: concept.subjectToHealthInsurance === undefined ? (useFallbackDefaults ? true : null) : concept.subjectToHealthInsurance !== false,
+        subjectToART: concept.subjectToART === undefined ? (useFallbackDefaults ? true : null) : concept.subjectToART !== false,
+        taxableIncome: concept.taxableIncome === undefined ? (useFallbackDefaults ? false : null) : concept.taxableIncome === true,
         requiresHumanValidation: concept.requiresHumanValidation === true,
         notes: Array.isArray(concept.notes) ? concept.notes.filter(Boolean).map(String) : []
       };
-      ["conditions", "proration", "rounding", "legalReferences", "audit", "ui", "tags"].forEach((key) => {
+      ["conditions", "proration", "rounding", "legalReferences", "audit", "ui", "tags", "source", "sourceFiles"].forEach((key) => {
         if (concept[key] !== undefined) normalized[key] = concept[key];
       });
       return dropNullishKeys(normalized, ["amount", "unitAmount"]);
@@ -214,27 +258,36 @@ function normalizeConcepts(concepts) {
     .filter((concept) => concept.id && concept.label);
 }
 
-function normalizeDeductions(deductions) {
+function normalizeDeductions(deductions, { idPrefix = "deduccion", labelPrefix = "Deduccion", defaultValue = true, useFallbackDefaults = true } = {}) {
   if (!Array.isArray(deductions)) return [];
   return deductions
     .map((item, index) => {
       const normalized = {
-        id: normalizeText(item.id || item.label || `deduccion-${index + 1}`),
-        label: item.label || item.name || `Deduccion ${index + 1}`,
+        id: normalizeText(item.id || item.label || `${idPrefix}-${index + 1}`),
+        label: item.label || item.name || `${labelPrefix} ${index + 1}`,
+        calculation: item.calculation || ((item.amount !== undefined && item.amount !== null) ? "fixed" : (useFallbackDefaults ? "percentOfBase" : "")),
         percent: Number(item.percent ?? item.pct ?? 0) || 0,
         amount: normalizeMoney(item.amount),
         amountByPeriod: normalizeMoneyMap(item.amountByPeriod || item.amountPorPeriodo),
-        base: item.base || "remunerative",
+        base: item.base || (useFallbackDefaults ? "remunerative" : ""),
+        defaultValue: item.defaultValue === undefined ? (useFallbackDefaults ? defaultValue : false) : item.defaultValue !== false,
         appliesWhen: item.appliesWhen || "",
         detail: item.detail || item.legalReference || "",
         requiresHumanValidation: item.requiresHumanValidation === true
       };
-      ["conditions", "legalReferences", "audit", "ui", "tags"].forEach((key) => {
+      ["conditions", "legalReferences", "audit", "ui", "tags", "source", "sourceFiles"].forEach((key) => {
         if (item[key] !== undefined) normalized[key] = item[key];
       });
       return normalized;
     })
-    .filter((item) => item.id && item.label && (item.percent || item.amount || Object.values(item.amountByPeriod || {}).some(Boolean)));
+    .filter((item) => item.id && item.label && (
+      item.percent
+      || item.amount
+      || Object.values(item.amountByPeriod || {}).some(Boolean)
+      || item.requiresHumanValidation
+      || item.detail
+      || item.appliesWhen
+    ));
 }
 
 function scoreConvention(parsed) {
@@ -248,6 +301,7 @@ function scoreConvention(parsed) {
   if (parsed.liquidationModel?.rules) score += 10;
   if ((parsed.liquidationModel?.concepts || []).length) score += 8;
   if ((parsed.liquidationModel?.deductions || []).length) score += 5;
+  if ((parsed.liquidationModel?.retentions || []).length) score += 4;
   if ((parsed.auditChecklist || []).length) score += 6;
   score -= Math.min(18, (parsed.warnings || []).length * 4);
   const aiScore = Number(parsed.confidence || 0) || 0;
@@ -270,7 +324,7 @@ function polishConventionWarnings(parsed) {
   return parsed;
 }
 
-function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA" } = {}) {
+function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA", useFallbackDefaults = true } = {}) {
   const source = parsed.convention || parsed.convenio || parsed;
   const name = source.name || source.nombre || fallbackName;
   const id = normalizeText(source.id || source.shortName || name);
@@ -283,31 +337,96 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
       return normalized ? { id: normalized, label: (typeof period === "object" && period.label) || monthLabel(normalized) || String(value) } : null;
     })
     .filter(Boolean);
-  if (!periods.length) {
+  if (!periods.length && useFallbackDefaults) {
     const current = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
     periods.push({ id: current, label: monthLabel(current) });
   }
   const periodIds = periods.map((period) => period.id);
-  const zones = Array.isArray(source.zones || source.zonas)
-    ? (source.zones || source.zonas).map((zone, index) => ({
-      id: normalizeText(zone.id || zone.label || zone.name || `zona-${index + 1}`),
-      label: zone.label || zone.name || zone.zona || `Zona ${index + 1}`,
-      coef: Number(zone.coef ?? zone.coefficient ?? zone.coeficiente ?? 1) || 1
-    })).filter((zone) => zone.id && zone.label)
-    : [];
-  if (!zones.length) zones.push({ id: "general", label: "General", coef: 1 });
-
   const categories = normalizeRows(source.categories || source.categorias || source.rows, periodIds);
-  const concepts = normalizeConcepts(source.liquidationModel?.concepts || source.concepts || source.conceptos);
-  const deductions = normalizeDeductions(source.liquidationModel?.deductions || source.deductions || source.aportesTrabajador);
-  const employerContributions = normalizeDeductions(source.liquidationModel?.employerContributions || source.employerContributions || source.contribucionesEmpleador);
+  const zones = normalizeConventionZones(source.zones || source.zonas, categories, { useFallbackDefaults });
+  const concepts = normalizeConcepts(source.liquidationModel?.concepts || source.concepts || source.conceptos, { useFallbackDefaults });
+  const deductions = normalizeDeductions(source.liquidationModel?.deductions || source.deductions || source.aportesTrabajador, { useFallbackDefaults });
+  const retentions = normalizeDeductions(source.liquidationModel?.retentions || source.retentions || source.retenciones, {
+    idPrefix: "retencion",
+    labelPrefix: "Retencion",
+    defaultValue: false,
+    useFallbackDefaults
+  });
+  const employerContributions = normalizeDeductions(source.liquidationModel?.employerContributions || source.employerContributions || source.contribucionesEmpleador, { useFallbackDefaults });
   const warnings = Array.isArray(source.warnings || source.alertas)
     ? (source.warnings || source.alertas).filter(Boolean).map(String)
     : [];
 
   if (!categories.length) warnings.push("No se detectaron categorias con importes. Completar antes de aprobar.");
+  if (!periods.length) warnings.push("No se detectaron periodos vigentes. Completar antes de aprobar.");
 
-  const salaryType = source.type || source.liquidationModel?.rules?.salaryType || (categories.some((cat) => cat.day) ? "daily" : "monthly");
+  const inferredSalaryType = categories.some((cat) => cat.day || Object.keys(cat.dayByPeriod || {}).length)
+    ? "daily"
+    : (categories.some((cat) => cat.hourly || Object.keys(cat.hourlyByPeriod || {}).length)
+      ? "hourly"
+      : (categories.some((cat) => cat.monthly || Object.keys(cat.monthlyByPeriod || {}).length) ? "monthly" : ""));
+  const salaryType = source.type || source.liquidationModel?.rules?.salaryType || inferredSalaryType || (useFallbackDefaults ? "monthly" : "");
+  const rawNonRemunerativeScaleRules = source.liquidationModel?.rules?.nonRemunerativeScale
+    || source.nonRemunerativeRules
+    || source.reglasNoRemunerativas
+    || source.rules?.nonRemunerativeScale
+    || {};
+  const normalizedNonRemunerativeScaleRules = {
+    ...(rawNonRemunerativeScaleRules && typeof rawNonRemunerativeScaleRules === "object" ? rawNonRemunerativeScaleRules : {})
+  };
+  if (normalizedNonRemunerativeScaleRules.seniorityPercentPerYear == null && normalizedNonRemunerativeScaleRules.porcentajeAntiguedadPorAnio != null) {
+    normalizedNonRemunerativeScaleRules.seniorityPercentPerYear = normalizeMoney(String(normalizedNonRemunerativeScaleRules.porcentajeAntiguedadPorAnio).replace("%", ""));
+  }
+  if (normalizedNonRemunerativeScaleRules.presentismPercent == null && normalizedNonRemunerativeScaleRules.porcentajePresentismo != null) {
+    normalizedNonRemunerativeScaleRules.presentismPercent = normalizeMoney(String(normalizedNonRemunerativeScaleRules.porcentajePresentismo).replace("%", ""));
+  }
+  if (normalizedNonRemunerativeScaleRules.seniorityPercentPerYear != null && normalizedNonRemunerativeScaleRules.seniorityEnabled == null) {
+    normalizedNonRemunerativeScaleRules.seniorityEnabled = true;
+  }
+  if (normalizedNonRemunerativeScaleRules.presentismPercent != null && normalizedNonRemunerativeScaleRules.presentismEnabled == null) {
+    normalizedNonRemunerativeScaleRules.presentismEnabled = true;
+  }
+  const rules = useFallbackDefaults ? {
+    ...(source.rules && typeof source.rules === "object" ? source.rules : {}),
+    monthDivisor: Number(source.rules?.monthDivisor ?? source.liquidationModel?.rules?.monthDivisor ?? 30) || 30,
+    hourDivisor: Number(source.rules?.hourDivisor ?? source.liquidationModel?.rules?.hourDivisor ?? 200) || 200,
+    weeklyHours: Number(source.rules?.weeklyHours ?? source.liquidationModel?.rules?.weeklyHours ?? 48) || 48
+  } : {
+    ...(source.rules && typeof source.rules === "object" ? source.rules : {})
+  };
+  const liquidationRules = useFallbackDefaults ? {
+    ...(source.liquidationModel?.rules && typeof source.liquidationModel.rules === "object" ? source.liquidationModel.rules : {}),
+    salaryType,
+    monthDivisor: Number(source.liquidationModel?.rules?.monthDivisor ?? source.rules?.monthDivisor ?? 30) || 30,
+    hourDivisor: Number(source.liquidationModel?.rules?.hourDivisor ?? source.rules?.hourDivisor ?? 200) || 200,
+    weeklyHours: Number(source.liquidationModel?.rules?.weeklyHours ?? source.rules?.weeklyHours ?? 48) || 48,
+    seniority: {
+      ...(source.liquidationModel?.rules?.seniority && typeof source.liquidationModel.rules.seniority === "object" ? source.liquidationModel.rules.seniority : {}),
+      enabled: source.liquidationModel?.rules?.seniority?.enabled !== false,
+      percentPerYear: Number(source.liquidationModel?.rules?.seniority?.percentPerYear ?? 1) || 0,
+      capYears: Number(source.liquidationModel?.rules?.seniority?.capYears ?? 0) || 0,
+      base: source.liquidationModel?.rules?.seniority?.base || "basic"
+    },
+    presentism: {
+      ...(source.liquidationModel?.rules?.presentism && typeof source.liquidationModel.rules.presentism === "object" ? source.liquidationModel.rules.presentism : {}),
+      enabled: source.liquidationModel?.rules?.presentism?.enabled !== false,
+      percent: Number(source.liquidationModel?.rules?.presentism?.percent ?? 0) || 0,
+      requiresNoUnjustifiedAbsence: source.liquidationModel?.rules?.presentism?.requiresNoUnjustifiedAbsence !== false
+    },
+    nonRemunerativeScale: {
+      ...normalizedNonRemunerativeScaleRules,
+      enabled: normalizedNonRemunerativeScaleRules.enabled !== false
+    },
+    overtime: {
+      ...(source.liquidationModel?.rules?.overtime && typeof source.liquidationModel.rules.overtime === "object" ? source.liquidationModel.rules.overtime : {}),
+      enabled: source.liquidationModel?.rules?.overtime?.enabled !== false,
+      divisor: Number(source.liquidationModel?.rules?.overtime?.divisor ?? source.rules?.hourDivisor ?? 200) || 200
+    }
+  } : {
+    ...(source.liquidationModel?.rules && typeof source.liquidationModel.rules === "object" ? source.liquidationModel.rules : {}),
+    ...(Object.keys(normalizedNonRemunerativeScaleRules).length ? { nonRemunerativeScale: normalizedNonRemunerativeScaleRules } : {}),
+    ...(salaryType ? { salaryType } : {})
+  };
   const normalized = {
     schemaVersion: source.schemaVersion || "esueldos-convenio-universal-v1",
     id,
@@ -321,45 +440,13 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
     zones,
     categories,
     additionals: source.additionals && typeof source.additionals === "object" ? source.additionals : {},
-    rules: {
-      ...(source.rules && typeof source.rules === "object" ? source.rules : {}),
-      monthDivisor: Number(source.rules?.monthDivisor ?? source.liquidationModel?.rules?.monthDivisor ?? 30) || 30,
-      hourDivisor: Number(source.rules?.hourDivisor ?? source.liquidationModel?.rules?.hourDivisor ?? 200) || 200,
-      weeklyHours: Number(source.rules?.weeklyHours ?? source.liquidationModel?.rules?.weeklyHours ?? 48) || 48
-    },
+    rules,
     liquidationModel: {
       version: "generic-v1",
-      rules: {
-        ...(source.liquidationModel?.rules && typeof source.liquidationModel.rules === "object" ? source.liquidationModel.rules : {}),
-        salaryType,
-        monthDivisor: Number(source.liquidationModel?.rules?.monthDivisor ?? source.rules?.monthDivisor ?? 30) || 30,
-        hourDivisor: Number(source.liquidationModel?.rules?.hourDivisor ?? source.rules?.hourDivisor ?? 200) || 200,
-        weeklyHours: Number(source.liquidationModel?.rules?.weeklyHours ?? source.rules?.weeklyHours ?? 48) || 48,
-        seniority: {
-          ...(source.liquidationModel?.rules?.seniority && typeof source.liquidationModel.rules.seniority === "object" ? source.liquidationModel.rules.seniority : {}),
-          enabled: source.liquidationModel?.rules?.seniority?.enabled !== false,
-          percentPerYear: Number(source.liquidationModel?.rules?.seniority?.percentPerYear ?? 1) || 0,
-          capYears: Number(source.liquidationModel?.rules?.seniority?.capYears ?? 0) || 0,
-          base: source.liquidationModel?.rules?.seniority?.base || "basic"
-        },
-        presentism: {
-          ...(source.liquidationModel?.rules?.presentism && typeof source.liquidationModel.rules.presentism === "object" ? source.liquidationModel.rules.presentism : {}),
-          enabled: source.liquidationModel?.rules?.presentism?.enabled !== false,
-          percent: Number(source.liquidationModel?.rules?.presentism?.percent ?? 0) || 0,
-          requiresNoUnjustifiedAbsence: source.liquidationModel?.rules?.presentism?.requiresNoUnjustifiedAbsence !== false
-        },
-        nonRemunerativeScale: {
-          ...(source.liquidationModel?.rules?.nonRemunerativeScale && typeof source.liquidationModel.rules.nonRemunerativeScale === "object" ? source.liquidationModel.rules.nonRemunerativeScale : {}),
-          enabled: source.liquidationModel?.rules?.nonRemunerativeScale?.enabled !== false
-        },
-        overtime: {
-          ...(source.liquidationModel?.rules?.overtime && typeof source.liquidationModel.rules.overtime === "object" ? source.liquidationModel.rules.overtime : {}),
-          enabled: source.liquidationModel?.rules?.overtime?.enabled !== false,
-          divisor: Number(source.liquidationModel?.rules?.overtime?.divisor ?? source.rules?.hourDivisor ?? 200) || 200
-        }
-      },
+      rules: liquidationRules,
       concepts,
       deductions,
+      retentions,
       employerContributions
     },
     auditChecklist: Array.isArray(source.auditChecklist) ? source.auditChecklist.filter(Boolean).map(String) : [],
@@ -378,6 +465,7 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
     "employeeRequirements",
     "employerObligations",
     "validation",
+    "extractedRules",
     "automationHints",
     "ui",
     "extraction"
@@ -395,31 +483,220 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
   return normalized;
 }
 
-function universalConventionTemplateForPrompt(draftName) {
+function universalConventionTemplateForPrompt() {
   const template = JSON.parse(JSON.stringify(UNIVERSAL_CONVENTION_TEMPLATE));
-  template.id = "slug-corto-sin-acentos";
-  template.name = draftName || "Nombre del convenio - CCT";
-  template.shortName = "Nombre corto";
-  template.metadata.status = "draft";
-  template.extraction.extractedAt = new Date().toISOString();
   return { convention: template };
+}
+
+function conventionExtractionContractForPrompt() {
+  return {
+    convention: {
+      identification: {
+        id: "string slug estable extraido del documento",
+        name: "string nombre legal o actividad extraida",
+        shortName: "string",
+        source: "string CCT, acta o resolucion detectada",
+        type: "monthly | daily | hourly | empty"
+      },
+      periods: [{
+        id: "string YYYY-MM",
+        label: "string",
+        effectiveFrom: "string fecha o empty",
+        effectiveTo: "string fecha o empty",
+        sourceFileName: "string"
+      }],
+      zones: [{
+        id: "string",
+        label: "string",
+        coef: "number | null",
+        description: "string"
+      }],
+      categories: [{
+        id: "string",
+        label: "string categoria laboral",
+        group: "string agrupador o jornada",
+        description: "string",
+        zone: "string id zona o empty",
+        monthly: "number | null",
+        day: "number | null",
+        hourly: "number | null",
+        monthlyByPeriod: { "YYYY-MM": "number" },
+        dayByPeriod: { "YYYY-MM": "number" },
+        hourlyByPeriod: { "YYYY-MM": "number" },
+        nonRem: { "YYYY-MM": "number" },
+        normalWeeklyHours: "number | null",
+        normalDailyHours: "number | null",
+        legalReferences: ["string"],
+        notes: ["string"]
+      }],
+      rules: {
+        salaryType: "monthly | daily | hourly | empty",
+        monthDivisor: "number | null",
+        dayDivisor: "number | null",
+        hourDivisor: "number | null",
+        weeklyHours: "number | null",
+        vacationDivisor: "number | null",
+        licenses: ["object con regla extraida y evidencia"],
+        legalReferences: ["string"]
+      },
+      liquidationModel: {
+        rules: {
+          seniority: {
+            enabled: "boolean | null",
+            mode: "string",
+            percentPerYear: "number | null",
+            capYears: "number | null",
+            base: "string",
+            legalReferences: ["string"]
+          },
+          presentism: {
+            enabled: "boolean | null",
+            percent: "number | null",
+            base: "string",
+            requiresNoUnjustifiedAbsence: "boolean | null",
+            legalReferences: ["string"]
+          },
+          nonRemunerativeScale: {
+            enabled: "boolean | null",
+            seniorityEnabled: "boolean | null",
+            seniorityPercentPerYear: "number | null",
+            seniorityCapYears: "number | null",
+            presentismEnabled: "boolean | null",
+            presentismPercent: "number | null",
+            presentismRequiresNoUnjustifiedAbsence: "boolean | null",
+            subjectToHealthInsurance: "boolean | null",
+            subjectToUnion: "boolean | null",
+            legalReferences: ["string"]
+          },
+          overtime: {
+            enabled: "boolean | null",
+            divisor: "number | null",
+            rate50: "number | null",
+            rate100: "number | null",
+            legalReferences: ["string"]
+          }
+        },
+        concepts: [{
+          id: "string",
+          label: "string",
+          group: "string",
+          inputType: "checkbox | number",
+          rowType: "remunerative | nonRemunerative",
+          calculation: "fixed | percentOfBase | amountPerUnit",
+          percent: "number | null",
+          amount: "number | null",
+          amountByPeriod: { "YYYY-MM": "number" },
+          unitAmount: "number | null",
+          unitAmountByPeriod: { "YYYY-MM": "number" },
+          base: "string",
+          defaultValue: "boolean | number",
+          requiresHumanValidation: "boolean",
+          legalReferences: ["string"],
+          sourceFiles: ["string"],
+          detail: "string evidencia",
+          notes: ["string"]
+        }],
+        deductions: [{
+          id: "string",
+          label: "string descuento del trabajador",
+          calculation: "fixed | percentOfBase",
+          percent: "number | null",
+          amount: "number | null",
+          amountByPeriod: { "YYYY-MM": "number" },
+          base: "string",
+          defaultValue: "boolean",
+          appliesWhen: "string",
+          requiresHumanValidation: "boolean",
+          legalReferences: ["string"],
+          sourceFiles: ["string"],
+          detail: "string evidencia"
+        }],
+        retentions: [{
+          id: "string",
+          label: "string retencion",
+          calculation: "fixed | percentOfBase",
+          percent: "number | null",
+          amount: "number | null",
+          amountByPeriod: { "YYYY-MM": "number" },
+          base: "string",
+          defaultValue: "boolean",
+          appliesWhen: "string",
+          requiresHumanValidation: "boolean",
+          legalReferences: ["string"],
+          sourceFiles: ["string"],
+          detail: "string evidencia"
+        }]
+      }
+    }
+  };
 }
 
 function buildConventionPrompt({ draftName, notes }) {
   return [
     "Sos leIA, contadora laboral senior de Argentina e ingeniera de sistemas especialista en liquidacion de sueldos multiconvenio.",
-    "Tu tarea es leer el CCT y la escala salarial adjunta para generar un JSON de convenio COMPLETO, auditable y ejecutable por eSueldos.",
-    "No escribas explicaciones fuera del JSON. No inventes montos, porcentajes ni articulos. Si un dato no esta claro, usa null/0, marca requiresHumanValidation=true y deja una warning bloqueante solo si impide aprobar.",
+    "Estructura el convenio desde cero. Usa exclusivamente el contenido de los archivos adjuntos como fuente factual. No uses catalogos, convenios precargados, borradores previos, versiones archivadas ni rastros de convenios eliminados.",
+    "La plantilla incluida al final es solo un contrato de campos vacios: no contiene valores legales ni contables. No completes campos por analogia con otros convenios. Si un dato no aparece en los adjuntos, dejalo vacio o null y registralo en warnings cuando requiera revision.",
+    "Tu tarea es leer por separado el CCT y la escala salarial adjunta para generar un JSON de convenio COMPLETO, auditable y ejecutable por eSueldos. No limites la extraccion de conceptos a la escala: el CCT tambien puede definir haberes remunerativos y no remunerativos.",
+    "No escribas explicaciones fuera del JSON. No inventes montos, porcentajes ni articulos. Si un dato numerico no esta claro, usa null, marca requiresHumanValidation=true y agrega una warning. Usa 0 solamente cuando el documento indique expresamente cero.",
+    "METODO OBLIGATORIO: primero recorre todas las paginas de cada adjunto. Despues extrae por separado el CCT y la escala. Finalmente concilia ambos resultados en un unico JSON. No devuelvas arrays vacios si existen filas, importes, porcentajes o reglas legibles en cualquiera de los archivos.",
+    "DEL CCT O ACTA extrae: identificacion legal, actividad, alcance, vigencia, categorias si aparecen, jornada, divisores, antiguedad, presentismo, horas extra, licencias, adicionales, haberes remunerativos, haberes no remunerativos, descuentos del trabajador, retenciones, contribuciones del empleador, condiciones de aplicacion y referencias de articulo.",
+    "DE LA ESCALA SALARIAL extrae: periodos, zonas, jornadas, categorias laborales, basicos mensuales, jornales, valores hora, importes no remunerativos por categoria y periodo, y tablas separadas de adicionales. Lee encabezados combinados y conserva la relacion correcta entre fila, columna, zona y mes.",
+    "REGLA CRITICA DE NO REMUNERATIVOS: si el CCT, acta o escala indica que una suma no remunerativa genera antiguedad no remunerativa o presentismo no remunerativo, registra sus reglas separadas en liquidationModel.rules.nonRemunerativeScale: seniorityEnabled, seniorityPercentPerYear, seniorityCapYears, presentismEnabled, presentismPercent y presentismRequiresNoUnjustifiedAbsence. No las mezcles con antiguedad o presentismo remunerativos. Conserva evidencia y referencias legales.",
+    "REGLA CRITICA DE ZONA GENERAL: si una tabla salarial muestra General, Base, Zona general, Zona base o Sin adicional zonal, registrala siempre en zones como { id: \"general\", label: \"General\", coef: 1 }. No la omitas aunque el coeficiente 1 sea implicito. Vincula sus filas con zone: \"general\".",
+    "CONCILIACION: categories contiene exclusivamente categorias laborales con su escala basica. Los adicionales, pluses, viaticos, kilometrajes, premios, sumas fijas y porcentajes van en liquidationModel.concepts aunque provengan de una tabla separada de la escala. No conviertas adicionales en categorias.",
     "El JSON debe servir para mensual, jornal, hora, zonas, coeficientes, categorias, escalas por periodo, no remunerativos, antiguedad, presentismo, horas extra, feriados, vacaciones, adicionales, aportes del trabajador, contribuciones del empleador y auditoria humana.",
     "Usa schemaVersion esueldos-convenio-universal-v1 y calculationMode generic-v1. Los periodos deben ser YYYY-MM. Los ids deben ser estables, sin espacios ni acentos.",
     "Toda categoria debe traer monthly, day u hourly, y si la escala trae varios meses usa monthlyByPeriod/dayByPeriod/hourlyByPeriod y nonRem por periodo.",
-    "Todo concepto variable debe ir en liquidationModel.concepts con inputType checkbox/number, rowType remunerative/nonRemunerative/deduction, calculation fixed/percentOfBase/amountPerUnit, base, tratamiento de aportes, condiciones, referencias legales y detalle.",
-    "Las deducciones propias del trabajador van en liquidationModel.deductions. Las contribuciones propias del empleador van en liquidationModel.employerContributions. No agregues Jubilacion/PAMI/Obra Social/Ganancias generales porque eSueldos ya las calcula.",
+    "Contrato de categories: cada fila puede incluir id, label, group, description, monthly, day, hourly, monthlyByPeriod, dayByPeriod, hourlyByPeriod, nonRem, zone, normalWeeklyHours, normalDailyHours, legalReferences y notes. Inclui solo campos respaldados por los adjuntos.",
+    "Todo concepto variable detectado en el CCT o en la escala debe ir en liquidationModel.concepts con inputType checkbox/number, rowType remunerative/nonRemunerative/deduction, calculation fixed/percentOfBase/amountPerUnit, base, tratamiento de aportes, condiciones, referencias legales, procedencia documental y detalle.",
+    "Contrato de conceptos, deducciones y retenciones: cada fila puede incluir id, label, group, inputType, rowType, calculation, percent, amount, amountByPeriod, unitAmount, unitAmountByPeriod, base, defaultValue, appliesWhen, requiresHumanValidation, conditions, legalReferences, source, sourceFiles, detail y notes. Inclui solo campos respaldados por los adjuntos.",
+    "Las deducciones propias del trabajador van en liquidationModel.deductions y se muestran como novedades del mes. Las retenciones propias del convenio, embargos u otras retenciones identificadas van en liquidationModel.retentions: no las mezcles con haberes ni contribuciones del empleador. Usa defaultValue true si normalmente aplican y false si son eventuales. Las contribuciones propias del empleador van en liquidationModel.employerContributions. No agregues Jubilacion/PAMI/Obra Social/Ganancias generales porque eSueldos ya las calcula.",
+    "Extrae las reglas de liquidacion con su evidencia: jornada, divisores, antiguedad, presentismo, horas extra, feriados, licencias, vacaciones, bases de calculo, condiciones y reglas de validacion. Guarda reglas generales en rules y reglas ejecutables detalladas en liquidationModel.rules. No inventes una regla a partir de texto ambiguo: conserva el texto en notes o warnings y marca requiresHumanValidation.",
     "Inclui auditChecklist, validation, employeeRequirements y notes para que el liquidador humano pueda auditar el convenio antes de aprobarlo.",
+    "Si los adjuntos son imagenes o contienen tablas representadas visualmente, interpretalos directamente como agente IA multimodal: observa encabezados, filas, columnas, notas y relaciones espaciales antes de estructurar. Clasifica los bloques en identificacion y alcance, categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, descuentos, retenciones, jornada laboral, licencias y reglas de validacion.",
+    "Cuando la escala traiga una tabla separada de adicionales, no mezcles sus filas con categories. Lleva cada adicional a liquidationModel.concepts indicando rowType, calculation fixed/percentOfBase/amountPerUnit, base, importe o porcentaje, unidad y tratamiento remunerativo.",
+    "El backend construira ademas structuredModel como molde auditable del convenio, preservando los campos ejecutables de esta plantilla.",
+    "CONTRATO DE TIPOS PARA COMPLETAR. Es una descripcion, no copies literalmente sus textos:",
+    JSON.stringify(conventionExtractionContractForPrompt(), null, 2),
     "Devolve JSON valido con esta forma exacta y completa:",
-    JSON.stringify(universalConventionTemplateForPrompt(draftName), null, 2),
-    notes ? `Notas del usuario: ${notes}` : "Notas del usuario: sin notas."
+    JSON.stringify(universalConventionTemplateForPrompt(), null, 2),
+    draftName ? `Etiqueta informativa escrita por el usuario: ${draftName}. No la uses como evidencia legal ni como reemplazo de la identificacion extraida de los adjuntos.` : "Etiqueta informativa escrita por el usuario: sin etiqueta.",
+    notes ? `Notas informativas del usuario: ${notes}. No las uses como reemplazo de evidencia documental.` : "Notas informativas del usuario: sin notas."
   ].join("\n");
+}
+
+function conventionAttachmentParts({ cctPdf, scalePdf } = {}) {
+  const parts = [];
+
+  if (cctPdf) {
+    parts.push({
+      text: `ARCHIVO 1 - CCT, ACTA O DOCUMENTO PRINCIPAL. Nombre: ${cctPdf.sourceFileName || "archivo"}`
+    });
+    parts.push({
+      inlineData: {
+        type: "attachment",
+        mimeType: cctPdf.mimeType || "application/octet-stream",
+        fileName: cctPdf.sourceFileName || "cct",
+        data: Buffer.isBuffer(cctPdf.buffer) ? cctPdf.buffer.toString("base64") : Buffer.from(cctPdf.buffer || "").toString("base64")
+      }
+    });
+  }
+
+  if (scalePdf) {
+    parts.push({
+      text: `ARCHIVO 2 - ESCALA SALARIAL. Nombre: ${scalePdf.sourceFileName || "archivo"}`
+    });
+    parts.push({
+      inlineData: {
+        type: "attachment",
+        mimeType: scalePdf.mimeType || "application/octet-stream",
+        fileName: scalePdf.sourceFileName || "scale",
+        data: Buffer.isBuffer(scalePdf.buffer) ? scalePdf.buffer.toString("base64") : Buffer.from(scalePdf.buffer || "").toString("base64")
+      }
+    });
+  }
+
+  return parts;
 }
 
 function convertRawTextToMarkdown(text) {
@@ -528,10 +805,7 @@ async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown
   if (!text) {
     throw new GeminiConventionError("Gemini no devolvio texto para el convenio.", { status: 502, model });
   }
-  return {
-    parsedConvention: normalizeConvention(parseGeminiJson(text), { fallbackName: draftName }),
-    tokenUsage: usage
-  };
+  return normalizeConvention(parseGeminiJson(text), { fallbackName: draftName });
 }
 
 async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes }) {
@@ -602,7 +876,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         notes
       });
       return {
-        parsedConvention: result.parsedConvention,
+        parsedConvention: result.parsedConvention || result,
         tokenUsage: result.tokenUsage,
         model: currentModel,
         modelsTried: [...errors.map((item) => item.model), currentModel]
@@ -641,6 +915,34 @@ async function extractPdfTextLocal(pdfFile) {
   if (!pdfFile?.buffer) return "";
   const pdfParse = require("pdf-parse");
   const data = await pdfParse(pdfFile.buffer);
+  return String(data.text || "");
+}
+
+async function extractPdfLayoutTextLocal(pdfFile) {
+  if (!pdfFile?.buffer) return "";
+  const pdfParse = require("pdf-parse");
+  const data = await pdfParse(pdfFile.buffer, {
+    pagerender: async (pageData) => {
+      const content = await pageData.getTextContent({
+        normalizeWhitespace: false,
+        disableCombineTextItems: false
+      });
+      const rows = [];
+      content.items.forEach((item) => {
+        const y = Math.round(item.transform[5]);
+        let row = rows.find((candidate) => Math.abs(candidate.y - y) <= 1);
+        if (!row) {
+          row = { y, items: [] };
+          rows.push(row);
+        }
+        row.items.push({ x: item.transform[4], text: item.str });
+      });
+      return rows
+        .sort((left, right) => right.y - left.y)
+        .map((row) => row.items.sort((left, right) => left.x - right.x).map((item) => item.text).join(""))
+        .join("\n");
+    }
+  });
   return String(data.text || "");
 }
 
@@ -777,6 +1079,8 @@ function parseCommerceCategories(scaleText) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+  const compactCategories = parseCompactCommerceCategories(lines);
+  if (compactCategories.categories.length) return compactCategories;
   const categories = [];
   const warnings = [];
 
@@ -817,8 +1121,136 @@ function parseCommerceCategories(scaleText) {
   return { categories, warnings };
 }
 
+const COMMERCE_PERIOD_MONTHS = {
+  ENE: "01",
+  ENERO: "01",
+  FEB: "02",
+  FEBRERO: "02",
+  MAR: "03",
+  MARZO: "03",
+  ABR: "04",
+  ABRIL: "04",
+  MAY: "05",
+  MAYO: "05",
+  JUN: "06",
+  JUNIO: "06",
+  JUL: "07",
+  JULIO: "07",
+  AGO: "08",
+  AGOSTO: "08",
+  SEP: "09",
+  SEPTIEMBRE: "09",
+  SET: "09",
+  SETIEMBRE: "09",
+  OCT: "10",
+  OCTUBRE: "10",
+  NOV: "11",
+  NOVIEMBRE: "11",
+  DIC: "12",
+  DICIEMBRE: "12"
+};
+
+function commercePeriodsFromLines(lines) {
+  for (const line of lines) {
+    const periods = [...asciiFold(line).matchAll(/\b(ENE(?:RO)?|FEB(?:RERO)?|MAR(?:ZO)?|ABR(?:IL)?|MAY(?:O)?|JUN(?:IO)?|JUL(?:IO)?|AGO(?:STO)?|SEP(?:TIEMBRE)?|SET(?:IEMBRE)?|OCT(?:UBRE)?|NOV(?:IEMBRE)?|DIC(?:IEMBRE)?)\s*\/?\s*(20)?(\d{2})\b/g)]
+      .map((match) => `${match[2] || "20"}${match[3]}-${COMMERCE_PERIOD_MONTHS[match[1]]}`)
+      .filter(Boolean);
+    if (periods.length === 3 && new Set(periods).size === 3) return periods;
+  }
+  const year = String(lines.join(" ").match(/PARITARIAS?\s+(20\d{2})/i)?.[1] || new Date().getFullYear());
+  return [`${year}-04`, `${year}-05`, `${year}-06`];
+}
+
+function compactCommerceCategoryRow(line, periods) {
+  const match = String(line || "").match(/^(.+?)(?=\d{1,3}(?:\.\s*\d{3})+)/);
+  if (!match) return null;
+  const rawLabel = match[1].replace(/["“”]/g, "").replace(/\s+/g, " ").trim();
+  const foldedLabel = asciiFold(rawLabel);
+  if (!/(MAESTRANZA|ADMINISTR|CAJER|AUXILIAR|VENDEDOR)/.test(foldedLabel)) return null;
+  let rest = String(line).slice(match[1].length);
+  const values = [];
+  for (let index = 0; index < periods.length * 4; index += 1) {
+    const parsed = takeCommerceAmount(rest);
+    if (!parsed.value || parsed.rest === rest) return null;
+    values.push(parsed.value);
+    rest = parsed.rest;
+  }
+  const label = commerceTitle(rawLabel).replace(/Administratativo/gi, "Administrativo");
+  const group = normalizeCommerceGroup(label.replace(/\s+[A-F]$/i, ""));
+  const monthlyByPeriod = {};
+  const nonRem = {};
+  periods.forEach((period, index) => {
+    const offset = index * 4;
+    monthlyByPeriod[period] = values[offset];
+    nonRem[period] = values[offset + 1] + values[offset + 2] + values[offset + 3];
+  });
+  const lastPeriod = periods[periods.length - 1];
+  return {
+    id: normalizeText(label),
+    label,
+    group,
+    monthly: monthlyByPeriod[lastPeriod],
+    monthlyByPeriod,
+    nonRem,
+    notes: ["Basico remunerativo y sumas fijas no remunerativas tomados de escala FAECYS."]
+  };
+}
+
+function parseCompactCommerceCategories(lines) {
+  const periods = commercePeriodsFromLines(lines);
+  const categories = lines.map((line) => compactCommerceCategoryRow(line, periods)).filter(Boolean);
+  const warnings = [];
+  if (categories.length && categories.length < 21) {
+    warnings.push(`La escala de Comercio se reconstruyo parcialmente: se detectaron ${categories.length} de 21 categorias esperadas.`);
+  }
+  return { categories, warnings, periods };
+}
+
+const COMMERCE_ADDITIONAL_ROWS = [
+  { test: /^ART\.?\s*23\s+ARMADO DE VIDRIERA/i, id: "adicional-armado-vidriera", label: "Adicional Armado de Vidriera" },
+  { test: /^ART\.?\s*30\s+CAJEROS?\s+["“]?A["”]?\s+Y\s+["“]?C["”]?/i, id: "compensacion-faltantes-caja-cajeros-a-c", label: "Compensacion Faltantes de Caja (Cajeros A y C)" },
+  { test: /^ART\.?\s*30\s+CAJEROS?\s+["“]?B["”]?/i, id: "compensacion-faltantes-caja-cajero-b", label: "Compensacion Faltantes de Caja (Cajero B)" },
+  { test: /^ART\.?\s*18\s+AC\.?\s*JUN\/11/i, id: "adicional-art-18-ac-jun-11", label: "Adicional Art. 18 Ac. Jun/11" },
+  { test: /^ART\.?\s*36\s+AYUD\.?\s*CHOF\.?\s*1/i, id: "adicional-ayudante-chofer-hasta-100-km", label: "Adicional Ayudante Chofer (hasta 100 Km)", amountPerUnit: true },
+  { test: /^ART\.?\s*36\s+AYUD\.?\s*CHOF\.?\s*\+/i, id: "adicional-ayudante-chofer-mas-100-km", label: "Adicional Ayudante Chofer (mas de 100 Km)", amountPerUnit: true },
+  { test: /^ART\.?\s*36\s+CHOFER\s*1/i, id: "adicional-chofer-hasta-100-km", label: "Adicional Chofer (hasta 100 Km)", amountPerUnit: true },
+  { test: /^ART\.?\s*36\s+CHOFER\s*\+/i, id: "adicional-chofer-mas-100-km", label: "Adicional Chofer (mas de 100 Km)", amountPerUnit: true }
+];
+
+function parseCommerceScaleAdditionals(scaleText, periods) {
+  const lines = String(scaleText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const concepts = [];
+  COMMERCE_ADDITIONAL_ROWS.forEach((definition) => {
+    const line = lines.find((candidate) => definition.test.test(asciiFold(candidate)));
+    if (!line) return;
+    const values = moneyValuesFromText(line).slice(0, periods.length);
+    if (values.length !== periods.length) return;
+    const amountByPeriod = Object.fromEntries(periods.map((period, index) => [period, values[index]]));
+    const amount = amountByPeriod[periods[periods.length - 1]];
+    concepts.push({
+      id: definition.id,
+      label: definition.label,
+      group: "Adicionales de escala",
+      inputType: definition.amountPerUnit ? "number" : "checkbox",
+      rowType: "remunerative",
+      calculation: definition.amountPerUnit ? "amountPerUnit" : "fixed",
+      amount: definition.amountPerUnit ? null : amount,
+      amountByPeriod: definition.amountPerUnit ? {} : amountByPeriod,
+      unitAmount: definition.amountPerUnit ? amount : null,
+      unitAmountByPeriod: definition.amountPerUnit ? amountByPeriod : {},
+      base: "",
+      defaultValue: 0,
+      detail: "Detectado en tabla separada de adicionales de la escala FAECYS. Validar tratamiento antes de aprobar.",
+      subjectToSocialSecurity: true,
+      requiresHumanValidation: true
+    });
+  });
+  return concepts;
+}
+
 function moneyValuesFromText(value) {
-  return [...String(value || "").matchAll(/\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{1,3},\d{2}/g)].map((match) => parseArgMoney(match[0]));
+  const normalized = String(value || "").replace(/\.\s+(?=\d{3}(?:\D|$))/g, ".");
+  return [...normalized.matchAll(/\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{1,3},\d{2}/g)].map((match) => parseArgMoney(match[0]));
 }
 
 function looksLikePharmacyMendoza({ draftName, notes, cctText, scaleText, cctPdf, scalePdf }) {
@@ -1075,6 +1507,460 @@ function isUsefulCategoryLabel(label) {
   return !/(ESCALA|REMUNERACION|VIGENCIA|CATEGORIA|CLASIFICACION|BASICO|COMISION|TOTAL|SUMA|APORTE|CONTRIBUCION|SINDICAL|OBRA SOCIAL|CONVENIO|ARTICULO|GARANTIZAD|PRODUCTIVIDAD)/i.test(folded);
 }
 
+function isNumericOnlyScaleLabel(label) {
+  return /^[\s$%.,\d-]+$/.test(String(label || "").trim());
+}
+
+function isLikelyAdditionalGroup(group) {
+  const folded = asciiFold(group).replace(/\s+/g, " ").trim();
+  return /(ADICIONAL|COMPLEMENTARIA|ART\.?\s*\d+|AYUD\.?\s*CHOF|CHOFER|KILOMETR|\bKM\b|VIATIC|PERNOCT|COMIDA|PLUS|PREMIO|BONIFIC|PRESENTISMO|ANTIGUEDAD|TITULO|QUEBRANTO|FALLA DE CAJA|MOVILIDAD|REFRIGERIO)/i.test(folded);
+}
+
+function isLikelySalaryCategoryLabel(label, group = "") {
+  if (!isUsefulCategoryLabel(label)) return false;
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  if (isNumericOnlyScaleLabel(label) || isLikelyAdditionalGroup(group)) return false;
+  return !/(POR LOS PRIMEROS|MAS DE\s+\d+\s*KM|KILOMETR|\bKM\b|VIATIC|PERNOCT|COMIDA|SEGURO|CUOTA|HORAS?\s+EXTRA|ADICIONAL|PRESENTISMO|ANTIGUEDAD|ART\.?\s*\d+|CCT\s*\d+|^\w*BLECIDA\b)/i.test(folded);
+}
+
+function isAdditionalSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  return /(ADICIONALES?|VIATICOS?|ITEMS?|CONCEPTOS? NO REMUNERATIVOS?|OTROS CONCEPTOS)/i.test(folded)
+    && !moneyValuesFromText(line).length;
+}
+
+function conceptSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  if (!folded || moneyValuesFromText(line).length || /\d+(?:[.,]\d+)?\s*%/.test(line)) return null;
+  if (/^(HABERES?|CONCEPTOS?|ADICIONALES?|SUMAS?)\s+NO\s+REMUNERATIV(?:OS|AS)?\s*:?$/.test(folded)) {
+    return { group: line.replace(/\s+/g, " ").trim(), rowType: "nonRemunerative" };
+  }
+  if (/^(HABERES?|CONCEPTOS?|ADICIONALES?|SUMAS?)\s+REMUNERATIV(?:OS|AS)?\s*:?$/.test(folded)) {
+    return { group: line.replace(/\s+/g, " ").trim(), rowType: "remunerative" };
+  }
+  if (/^(ADICIONALES?|OTROS CONCEPTOS?)\s*:?$/.test(folded)) {
+    return { group: line.replace(/\s+/g, " ").trim(), rowType: null };
+  }
+  return null;
+}
+
+function isNonConceptSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  if (!folded || moneyValuesFromText(line).length || /\d+(?:[.,]\d+)?\s*%/.test(line)) return false;
+  return /(CATEGORIAS?|ESCALA SALARIAL|BASICOS?|SALARIOS? BASICOS?|DESCUENTOS?|DEDUCCIONES?|RETENCIONES?|APORTES?|CONTRIBUCIONES?|JORNADA|LICENCIAS?|VACACIONES?)/i.test(folded);
+}
+
+function isSalarySectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  return /(CATEGORIAS?|ESCALA SALARIAL|BASICOS?|SALARIOS? BASICOS?)/i.test(folded)
+    && !moneyValuesFromText(line).length;
+}
+
+function isLikelyAdditionalLabel(label) {
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  return /(ADICIONAL|PLUS|PREMIO|BONIFIC|VIATIC|PERNOCT|COMIDA|KILOMETR|\bKM\b|HORAS?\s+EXTRA|PRESENTISMO|ANTIGUEDAD|TITULO|QUEBRANTO|FALLA DE CAJA|MOVILIDAD|REFRIGERIO|SEGURO|POR LOS PRIMEROS|MAS DE\s+\d+)/i.test(folded);
+}
+
+function conceptLabelBeforeValue(line) {
+  return labelBeforeFirstAmount(line)
+    .replace(/\s*[-:]?\s*\d+(?:[.,]\d+)?\s*%.*$/i, "")
+    .replace(/\s*\$$/, "")
+    .trim();
+}
+
+function scaleAdditionalConcept({ label, rawText = label, values, period, group = "Adicionales de escala", rowType, detail, source, sourceFiles }) {
+  const folded = asciiFold(`${label} ${rawText}`);
+  const percent = Number(String(rawText).match(/(\d+(?:[.,]\d+)?)\s*%/)?.[1]?.replace(",", ".")) || 0;
+  const amount = Math.max(...(values || []).map(Number).filter((value) => Number.isFinite(value) && value > 0), 0);
+  const amountPerUnit = /(POR LOS PRIMEROS|MAS DE\s+\d+|KILOMETR|\bKM\b|POR DIA|DIARIO|POR HORA|HORAS?\s+EXTRA|PERNOCT|COMIDA|VIATIC)/i.test(folded);
+  const inferredRowType = rowType || (/(VIATIC|PERNOCT|COMIDA|MOVILIDAD|REFRIGERIO|NO REMUNERATIV)/i.test(folded) ? "nonRemunerative" : "remunerative");
+  const id = normalizeText(label);
+  if (!id || (!percent && !amount)) return null;
+  return {
+    id,
+    label,
+    group,
+    inputType: amountPerUnit ? "number" : "checkbox",
+    rowType: inferredRowType,
+    calculation: percent ? "percentOfBase" : amountPerUnit ? "amountPerUnit" : "fixed",
+    percent,
+    amount: !percent && !amountPerUnit ? amount : null,
+    amountByPeriod: !percent && !amountPerUnit ? { [period]: amount } : {},
+    unitAmount: !percent && amountPerUnit ? amount : null,
+    unitAmountByPeriod: !percent && amountPerUnit ? { [period]: amount } : {},
+    base: percent ? "basic" : "",
+    defaultValue: 0,
+    detail: detail || "Detectado en tabla separada de adicionales de la escala. Validar tratamiento y base antes de aprobar.",
+    source: source || "",
+    sourceFiles: sourceFiles || [],
+    subjectToSocialSecurity: inferredRowType !== "nonRemunerative",
+    requiresHumanValidation: true
+  };
+}
+
+function parseGenericDocumentConcepts(documentText, period, { sourceType = "documento", sourceFileName = "" } = {}) {
+  const lines = String(documentText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const concepts = [];
+  const seen = new Set();
+  let inConceptSection = false;
+  let currentGroup = sourceType === "cct" ? "Conceptos del CCT" : "Adicionales de escala";
+  let sectionRowType = null;
+  let skipImplicitConcepts = false;
+  for (const line of lines) {
+    if (isSalarySectionHeader(line)) {
+      inConceptSection = false;
+      sectionRowType = null;
+      skipImplicitConcepts = false;
+      continue;
+    }
+    const section = conceptSectionHeader(line);
+    if (section) {
+      inConceptSection = true;
+      currentGroup = section.group;
+      sectionRowType = section.rowType;
+      skipImplicitConcepts = false;
+      continue;
+    }
+    if (isNonConceptSectionHeader(line)) {
+      inConceptSection = false;
+      sectionRowType = null;
+      skipImplicitConcepts = true;
+      continue;
+    }
+    const values = moneyValuesFromText(line);
+    if (!values.length && !/\d+(?:[.,]\d+)?\s*%/.test(line)) continue;
+    const label = conceptLabelBeforeValue(line);
+    if (!label || label.length < 3 || label.length > 95) continue;
+    if (!inConceptSection && (sourceType === "cct" || skipImplicitConcepts || !isLikelyAdditionalLabel(label))) continue;
+    const origin = sourceType === "cct" ? "CCT" : sourceType === "salaryScale" ? "escala salarial" : sourceType;
+    const concept = scaleAdditionalConcept({
+      label,
+      rawText: line,
+      values,
+      period,
+      group: currentGroup,
+      rowType: sectionRowType,
+      detail: `Detectado en ${origin}${sourceFileName ? ` (${sourceFileName})` : ""}. Validar tratamiento y base antes de aprobar.`,
+      source: origin,
+      sourceFiles: sourceFileName ? [sourceFileName] : []
+    });
+    if (!concept || seen.has(concept.id)) continue;
+    seen.add(concept.id);
+    concepts.push(concept);
+  }
+  return concepts;
+}
+
+function financialDocumentSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").replace(/:$/, "").trim();
+  if (/^(?:DESCUENTOS?|DEDUCCIONES?)(?: DEL TRABAJADOR| CONVENCIONALES?)?$/.test(folded)) return "deduction";
+  if (/^APORTES?(?: DEL TRABAJADOR| CONVENCIONALES?)?$/.test(folded)) return "deduction";
+  if (/^RETENCIONES?(?: DEL TRABAJADOR| CONVENCIONALES?)?$/.test(folded)) return "retention";
+  if (/^(?:APORTES? Y RETENCIONES?|EMBARGOS?(?: JUDICIALES?)?)$/.test(folded)) return "retention";
+  return null;
+}
+
+function isGeneralStatutoryDeduction(label) {
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  return /(JUBILACION|SIPA|PAMI|LEY\s*19\.?032|OBRA SOCIAL|GANANCIAS)/.test(folded);
+}
+
+function documentFinancialItem({ label, rawText, values, period, kind, sourceFileName }) {
+  if (isGeneralStatutoryDeduction(label)) return null;
+  const percent = Number(String(rawText).match(/(\d+(?:[.,]\d+)?)\s*%/)?.[1]?.replace(",", ".")) || 0;
+  const amount = percent ? null : Math.max(...(values || []).map(Number).filter((value) => Number.isFinite(value) && value > 0), 0);
+  if (!percent && !amount) return null;
+  const folded = asciiFold(rawText);
+  const base = /NO\s+REMUNERATIV/.test(folded)
+    ? "nonRemunerative"
+    : /BRUTO|TOTAL\s+HABERES/.test(folded)
+      ? "gross"
+      : /BASIC/.test(folded) ? "basic" : "remunerative";
+  return {
+    id: normalizeText(label),
+    label,
+    percent,
+    amount,
+    amountByPeriod: amount ? { [period]: amount } : {},
+    base,
+    defaultValue: kind === "retention" ? false : true,
+    appliesWhen: kind === "retention" ? "Segun legajo y documentacion respaldatoria" : "Segun alcance del convenio",
+    detail: `Detectado en CCT${sourceFileName ? ` (${sourceFileName})` : ""}. Validar alcance, base y vigencia antes de aprobar.`,
+    source: "CCT",
+    sourceFiles: sourceFileName ? [sourceFileName] : [],
+    requiresHumanValidation: true
+  };
+}
+
+function parseGenericDocumentDeductions(documentText, period, { sourceFileName = "" } = {}) {
+  const lines = String(documentText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const deductions = [];
+  const retentions = [];
+  const seen = { deduction: new Set(), retention: new Set() };
+  let section = null;
+  for (const line of lines) {
+    const nextSection = financialDocumentSectionHeader(line);
+    if (nextSection) {
+      section = nextSection;
+      continue;
+    }
+    if (conceptSectionHeader(line) || isSalarySectionHeader(line) || isNonConceptSectionHeader(line)) {
+      section = null;
+      continue;
+    }
+    if (/^(REGLAS?|CONDICIONES?|VALIDACIONES?)(?:\s+DE\s+LIQUIDACION)?\s*:?$/i.test(line)) {
+      section = null;
+      continue;
+    }
+    if (!section) continue;
+    const values = moneyValuesFromText(line);
+    if (!values.length && !/\d+(?:[.,]\d+)?\s*%/.test(line)) continue;
+    const label = conceptLabelBeforeValue(line);
+    if (!label || label.length < 3 || label.length > 95) continue;
+    const item = documentFinancialItem({ label, rawText: line, values, period, kind: section, sourceFileName });
+    if (!item || seen[section].has(item.id)) continue;
+    seen[section].add(item.id);
+    (section === "retention" ? retentions : deductions).push(item);
+  }
+  return { deductions, retentions };
+}
+
+function decimalRuleValue(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function findDocumentRule(lines, pattern) {
+  for (const line of lines) {
+    const match = asciiFold(line).replace(/\s+/g, " ").match(pattern);
+    const value = decimalRuleValue(match?.[1]);
+    if (value !== null) return { value, evidence: line.replace(/\s+/g, " ").trim() };
+  }
+  return null;
+}
+
+function findJoinedDocumentRule(lines, pattern) {
+  const text = asciiFold(lines.join(" ")).replace(/\s+/g, " ");
+  const match = text.match(pattern);
+  const value = decimalRuleValue(match?.[1]);
+  if (value === null) return null;
+  let evidence = match[0].trim();
+  const assignmentIndex = evidence.lastIndexOf("ASIGNACION COMPLEMENTARIA");
+  if (assignmentIndex > 0 && evidence.includes("PRESENTISMO")) {
+    evidence = `PRESENTISMO: ${evidence.slice(assignmentIndex)}`;
+  }
+  if (evidence.includes("(") && !evidence.includes(")")) evidence += ")";
+  return { value, evidence: evidence.slice(0, 260).trim() };
+}
+
+function parseGenericDocumentRules(documentText, { sourceFileName = "", sourceType = "CCT" } = {}) {
+  const lines = String(documentText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const rules = {};
+  const liquidationRules = {};
+  const evidence = [];
+  const register = (id, label, parsed, apply) => {
+    if (!parsed) return;
+    apply(parsed.value);
+    evidence.push({
+      id,
+      label,
+      value: parsed.value,
+      evidence: parsed.evidence,
+      source: sourceType,
+      sourceFileName,
+      requiresHumanValidation: true
+    });
+  };
+
+  register("jornada-semanal", "Jornada semanal", findDocumentRule(lines, /\bJORNADA\b[^.\n]{0,120}?(\d{1,2}(?:[.,]\d+)?)\s*(?:HS|HORAS?)\s+SEMANALES?\b/), (value) => {
+    rules.weeklyHours = value;
+    liquidationRules.weeklyHours = value;
+  });
+  register("divisor-mensual", "Divisor mensual", findDocumentRule(lines, /\bDIVISOR\s+(?:MENSUAL|DE\s+INASISTENCIAS?|SUELDO)[^\d\n]{0,30}(\d{2,3})\b/), (value) => {
+    rules.monthDivisor = value;
+    rules.dayDivisor = value;
+    liquidationRules.monthDivisor = value;
+  });
+  register("divisor-vacaciones", "Divisor vacaciones", findDocumentRule(lines, /\bDIVISOR\s+(?:DE\s+)?VACACIONES?[^\d\n]{0,30}(\d{2,3})\b/), (value) => {
+    rules.vacationDivisor = value;
+  });
+  register("divisor-horas-extra", "Divisor horas extra", findDocumentRule(lines, /\bDIVISOR\s+(?:DE\s+)?HORAS?(?:\s+EXTRAS?)?[^\d\n]{0,30}(\d{2,3})\b/), (value) => {
+    rules.hourDivisor = value;
+    liquidationRules.hourDivisor = value;
+    liquidationRules.overtime = { ...(liquidationRules.overtime || {}), divisor: value };
+  });
+  register("antiguedad", "Antiguedad", findDocumentRule(lines, /\bANTIGUEDAD\b[^.\n]{0,160}?(\d+(?:[.,]\d+)?)\s*%\s*(?:POR|X)\s+(?:CADA\s+)?ANO\b/), (value) => {
+    liquidationRules.seniority = { enabled: true, percentPerYear: value };
+  });
+  register("presentismo", "Presentismo", findDocumentRule(lines, /\bPRESENTISMO\b[^.\n]{0,160}?(\d+(?:[.,]\d+)?)\s*%/)
+    || findJoinedDocumentRule(lines, /\bPRESENTISMO\b.{0,500}?(\d+(?:[.,]\d+)?)\s*%/), (value) => {
+    liquidationRules.presentism = { enabled: true, percent: value };
+  });
+
+  const joinedText = asciiFold(lines.join(" ")).replace(/\s+/g, " ");
+  const sharedNonRemApplication = /\bANTIGUEDAD\b.{0,180}\bPRESENTISMO\b.{0,220}\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?\b/.test(joinedText)
+    || /\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?\b.{0,220}\bANTIGUEDAD\b.{0,180}\bPRESENTISMO\b/.test(joinedText);
+  const noRemSeniority = findJoinedDocumentRule(lines, /\bANTIGUEDAD(?:\s+NO\s+REMUNERATIVA|.{0,160}\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?)\b.{0,100}?(\d+(?:[.,]\d+)?)\s*%/);
+  const noRemPresentism = findJoinedDocumentRule(lines, /\bPRESENTISMO(?:\s+NO\s+REMUNERATIVO|.{0,160}\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?)\b.{0,100}?(\d+(?:[.,]\d+)?)\s*%/);
+  const nonRemunerativeScale = {};
+  const nonRemSeniorityValue = noRemSeniority?.value ?? (sharedNonRemApplication ? liquidationRules.seniority?.percentPerYear : null);
+  const nonRemPresentismValue = noRemPresentism?.value ?? (sharedNonRemApplication ? liquidationRules.presentism?.percent : null);
+  if (nonRemSeniorityValue != null) {
+    nonRemunerativeScale.enabled = true;
+    nonRemunerativeScale.seniorityEnabled = true;
+    nonRemunerativeScale.seniorityPercentPerYear = nonRemSeniorityValue;
+    evidence.push({
+      id: "antiguedad-no-remunerativa",
+      label: "Antiguedad no remunerativa",
+      value: nonRemSeniorityValue,
+      evidence: noRemSeniority?.evidence || "El documento indica que la antiguedad aplica tambien sobre sumas no remunerativas.",
+      source: sourceType,
+      sourceFileName,
+      requiresHumanValidation: true
+    });
+  }
+  if (nonRemPresentismValue != null) {
+    nonRemunerativeScale.enabled = true;
+    nonRemunerativeScale.presentismEnabled = true;
+    nonRemunerativeScale.presentismPercent = nonRemPresentismValue;
+    evidence.push({
+      id: "presentismo-no-remunerativo",
+      label: "Presentismo no remunerativo",
+      value: nonRemPresentismValue,
+      evidence: noRemPresentism?.evidence || "El documento indica que el presentismo aplica tambien sobre sumas no remunerativas.",
+      source: sourceType,
+      sourceFileName,
+      requiresHumanValidation: true
+    });
+  }
+  if (Object.keys(nonRemunerativeScale).length) liquidationRules.nonRemunerativeScale = nonRemunerativeScale;
+
+  return { rules, liquidationRules, evidence };
+}
+
+function mergeFinancialItems(...groups) {
+  const items = new Map();
+  groups.flat().filter(Boolean).forEach((item) => {
+    const id = normalizeText(item.id || item.label);
+    if (!id) return;
+    const existing = items.get(id);
+    items.set(id, existing ? {
+      ...existing,
+      ...item,
+      id,
+      amountByPeriod: { ...(existing.amountByPeriod || {}), ...(item.amountByPeriod || {}) },
+      sourceFiles: Array.from(new Set([...(existing.sourceFiles || []), ...(item.sourceFiles || [])].filter(Boolean)))
+    } : { ...item, id });
+  });
+  return Array.from(items.values());
+}
+
+function mergeRuleObjects(base, extra) {
+  const merged = { ...(base || {}) };
+  Object.entries(extra || {}).forEach(([key, value]) => {
+    merged[key] = value && typeof value === "object" && !Array.isArray(value)
+      ? mergeRuleObjects(merged[key], value)
+      : value;
+  });
+  return merged;
+}
+
+function parseGenericScaleAdditionals(scaleText, period) {
+  const lines = String(scaleText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const concepts = [];
+  const seen = new Set();
+  let inAdditionalSection = false;
+  let currentGroup = "Adicionales de escala";
+  for (const line of lines) {
+    if (isSalarySectionHeader(line)) {
+      inAdditionalSection = false;
+      continue;
+    }
+    if (isAdditionalSectionHeader(line)) {
+      inAdditionalSection = true;
+      currentGroup = line.replace(/\s+/g, " ").trim();
+      continue;
+    }
+    const values = moneyValuesFromText(line);
+    if (!values.length && !/\d+(?:[.,]\d+)?\s*%/.test(line)) continue;
+    const label = labelBeforeFirstAmount(line);
+    if (!label || label.length < 3 || label.length > 95) continue;
+    if (!inAdditionalSection && !isLikelyAdditionalLabel(label)) continue;
+    const concept = scaleAdditionalConcept({ label, values, period, group: currentGroup });
+    if (!concept || seen.has(concept.id)) continue;
+    seen.add(concept.id);
+    concepts.push(concept);
+  }
+  return concepts;
+}
+
+function mergeGenericConcepts(...groups) {
+  const concepts = new Map();
+  groups.flat().filter(Boolean).forEach((concept) => {
+    const id = normalizeText(concept.id || concept.label);
+    if (!id) return;
+    const existing = concepts.get(id);
+    if (!existing) {
+      concepts.set(id, { ...concept, id });
+      return;
+    }
+    const details = Array.from(new Set([existing.detail, concept.detail].filter(Boolean)));
+    const sourceFiles = Array.from(new Set([...(existing.sourceFiles || []), ...(concept.sourceFiles || [])].filter(Boolean)));
+    concepts.set(id, {
+      ...existing,
+      ...concept,
+      id,
+      amountByPeriod: { ...(existing.amountByPeriod || {}), ...(concept.amountByPeriod || {}) },
+      unitAmountByPeriod: { ...(existing.unitAmountByPeriod || {}), ...(concept.unitAmountByPeriod || {}) },
+      detail: details.join(" "),
+      source: Array.from(new Set([existing.source, concept.source].filter(Boolean))).join(" + "),
+      sourceFiles
+    });
+  });
+  return Array.from(concepts.values());
+}
+
+function enrichConventionWithDocumentConcepts(convention, { cctText = "", cctPdf, scaleText = "", scalePdf } = {}) {
+  if (!convention) return convention;
+  const period = convention.periods?.[0]?.id || detectMainPeriodFromText({
+    text: cctText,
+    fileName: cctPdf?.sourceFileName
+  });
+  const cctConcepts = parseGenericDocumentConcepts(cctText, period, {
+    sourceType: "cct",
+    sourceFileName: cctPdf?.sourceFileName || ""
+  });
+  const cctFinancialItems = parseGenericDocumentDeductions(cctText, period, {
+    sourceFileName: cctPdf?.sourceFileName || ""
+  });
+  const cctRules = parseGenericDocumentRules(cctText, {
+    sourceFileName: cctPdf?.sourceFileName || ""
+  });
+  const scaleRules = parseGenericDocumentRules(scaleText, {
+    sourceFileName: scalePdf?.sourceFileName || "",
+    sourceType: "escala salarial"
+  });
+  const extractedRules = {
+    rules: mergeRuleObjects(cctRules.rules, scaleRules.rules),
+    liquidationRules: mergeRuleObjects(cctRules.liquidationRules, scaleRules.liquidationRules),
+    evidence: mergeFinancialItems(cctRules.evidence, scaleRules.evidence)
+  };
+  if (!cctConcepts.length && !cctFinancialItems.deductions.length && !cctFinancialItems.retentions.length && !extractedRules.evidence.length) return convention;
+  return {
+    ...convention,
+    rules: mergeRuleObjects(convention.rules, extractedRules.rules),
+    extractedRules: mergeFinancialItems(convention.extractedRules || [], extractedRules.evidence),
+    liquidationModel: {
+      ...(convention.liquidationModel || {}),
+      rules: mergeRuleObjects(convention.liquidationModel?.rules, extractedRules.liquidationRules),
+      concepts: mergeGenericConcepts(convention.liquidationModel?.concepts || [], cctConcepts),
+      deductions: mergeFinancialItems(convention.liquidationModel?.deductions || [], cctFinancialItems.deductions),
+      retentions: mergeFinancialItems(convention.liquidationModel?.retentions || [], cctFinancialItems.retentions)
+    }
+  };
+}
+
 function parseGenericScaleCategories(scaleText, period, { stopAtTotals = false } = {}) {
   const lines = String(scaleText || "")
     .split(/\r?\n/)
@@ -1083,10 +1969,21 @@ function parseGenericScaleCategories(scaleText, period, { stopAtTotals = false }
   const categories = [];
   const seen = new Set();
   let currentGroup = "Escala";
+  let inAdditionalSection = false;
 
   for (const line of lines) {
     const folded = asciiFold(line);
     if (stopAtTotals && /(TOTAL A ABONAR|LA SUMA FIJA|LOS ADICIONALES EXTRAORDINARIOS)/i.test(folded)) break;
+    if (isSalarySectionHeader(line)) {
+      inAdditionalSection = false;
+      currentGroup = line.replace(/\s+/g, " ").trim();
+      continue;
+    }
+    if (isAdditionalSectionHeader(line)) {
+      inAdditionalSection = true;
+      continue;
+    }
+    if (inAdditionalSection) continue;
     if (isUsefulScaleHeader(line)) {
       currentGroup = line.replace(/\s+/g, " ").trim();
       continue;
@@ -1094,7 +1991,7 @@ function parseGenericScaleCategories(scaleText, period, { stopAtTotals = false }
     const values = moneyValuesFromText(line);
     if (!values.length) continue;
     const label = labelBeforeFirstAmount(line);
-    if (!isUsefulCategoryLabel(label)) continue;
+    if (!isLikelySalaryCategoryLabel(label, currentGroup)) continue;
     const amounts = inferSalaryAmounts(values);
     if (!amounts?.monthly) continue;
     const id = normalizeText(label);
@@ -1115,6 +2012,73 @@ function parseGenericScaleCategories(scaleText, period, { stopAtTotals = false }
   return categories;
 }
 
+function sanitizeGenericConventionCategories(convention) {
+  const shouldSanitize = convention?.extraction?.model === "local-pdf-parse/generic-scale-parser"
+    || (convention?.generatedByLeia === true && convention?.calculationMode === "generic-v1");
+  if (!shouldSanitize) return convention;
+  const originalCategories = convention.categories || [];
+  const categories = originalCategories.filter((category) => isLikelySalaryCategoryLabel(category.label || category.id, category.group));
+  const period = convention.periods?.[0]?.id || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const promotedConcepts = originalCategories
+    .filter((category) => !isLikelySalaryCategoryLabel(category.label || category.id, category.group))
+    .map((category) => {
+      const label = String(category.label || category.id || "").trim();
+      const group = String(category.group || "").trim();
+      const recoverableGroup = isLikelyAdditionalGroup(group);
+      const recoveredLabel = recoverableGroup
+        ? (/^[a-z]/.test(label) && /[a-z]$/i.test(group) ? `${group}${label}` : `${group} - ${label}`)
+        : label;
+      if (!recoverableGroup && !isLikelyAdditionalLabel(label)) return null;
+      return scaleAdditionalConcept({
+      label: recoveredLabel,
+      values: [category.monthly, category.day, category.hourly],
+      period,
+      group: category.group || "Adicionales recuperados de escala"
+      });
+    })
+    .filter(Boolean);
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const concepts = [...(convention.liquidationModel?.concepts || [])];
+  promotedConcepts.forEach((concept) => {
+    if (!concepts.some((item) => item.id === concept.id)) concepts.push(concept);
+  });
+  const structuredConcepts = convention.structuredModel?.conceptos;
+  const promotedStructuredConcepts = promotedConcepts.map((concept) => ({
+    codigo: concept.id,
+    nombre: concept.label,
+    tipo_calculo: concept.calculation,
+    valor: concept.percent || concept.amount || concept.unitAmount || 0,
+    base_calculo: concept.base || "",
+    condiciones: [],
+    fuente: "Tabla separada de adicionales de escala"
+  }));
+  const structuredRemunerative = [...(structuredConcepts?.haberes_remunerativos || [])];
+  const structuredNonRemunerative = [...(structuredConcepts?.haberes_no_remunerativos || [])];
+  promotedConcepts.forEach((concept, index) => {
+    const target = concept.rowType === "nonRemunerative" ? structuredNonRemunerative : structuredRemunerative;
+    if (!target.some((item) => item.codigo === concept.id)) target.push(promotedStructuredConcepts[index]);
+  });
+  return {
+    ...convention,
+    categories,
+    warnings: originalCategories.length === categories.length ? convention.warnings : Array.from(new Set([
+      ...(convention.warnings || []),
+      "Se reclasificaron filas fragmentadas de tablas complementarias para evitar tratarlas como categorias salariales."
+    ])),
+    liquidationModel: { ...(convention.liquidationModel || {}), concepts },
+    structuredModel: convention.structuredModel ? {
+      ...convention.structuredModel,
+      categorias: (convention.structuredModel.categorias || []).filter((category) => categoryIds.has(category.codigo)),
+      escalas_salariales: (convention.structuredModel.escalas_salariales || []).filter((scale) => categoryIds.has(scale.categoria)),
+      conceptos: structuredConcepts ? {
+        ...structuredConcepts,
+        haberes_remunerativos: structuredRemunerative,
+        haberes_no_remunerativos: structuredNonRemunerative
+      } : structuredConcepts
+    } : convention.structuredModel
+  };
+}
+
 function looksLikeHairdressers730({ draftName, notes, cctText, scaleText, cctPdf, scalePdf }) {
   const haystack = asciiFold([
     draftName,
@@ -1124,11 +2088,16 @@ function looksLikeHairdressers730({ draftName, notes, cctText, scaleText, cctPdf
     cctText.slice(0, 12000),
     scaleText.slice(0, 5000)
   ].join(" "));
-  return haystack.includes("730/15")
+  const hasCct = haystack.includes("730/15")
     || haystack.includes("730-15")
-    || haystack.includes("PELUQUER")
-    || haystack.includes("FENTPEA")
-    || haystack.includes("TRABAJADORES DE PELUQUERIA");
+    || haystack.includes("CCT 730");
+  const specificSignals = [
+    "FENTPEA",
+    "TRABAJADORES DE PELUQUERIA",
+    "FEDERACION NACIONAL DE TRABAJADORES DE PELUQUERIA",
+    "PELUQUERIAS, ESTETICA Y ACTIVIDADES AFINES"
+  ].filter((signal) => haystack.includes(signal));
+  return hasCct || specificSignals.length >= 2;
 }
 
 function parseHairdressersScale(scaleText, scalePdf) {
@@ -1274,12 +2243,16 @@ function buildHairdressersConvention({ draftName, notes, cctPdf, scalePdf, cctTe
   }, { fallbackName: draftName || "Peluqueros - CCT 730/15" });
 }
 
-function buildGenericConventionFromScale({ draftName, notes, cctPdf, scalePdf, scaleText, aiError }) {
+function buildGenericConventionFromScale({ draftName, notes, cctPdf, scalePdf, cctText, scaleText, aiError }) {
   const period = detectMainPeriodFromText({
     text: scaleText,
     fileName: scalePdf?.sourceFileName
   });
   const categories = parseGenericScaleCategories(scaleText, period);
+  const documentConcepts = mergeGenericConcepts(
+    parseGenericDocumentConcepts(cctText, period, { sourceType: "cct", sourceFileName: cctPdf?.sourceFileName || "" }),
+    parseGenericScaleAdditionals(scaleText, period, { sourceFileName: scalePdf?.sourceFileName || "" })
+  );
   if (categories.length < 2) return null;
   const safeName = draftName || "Convenio estructurado por leIA";
   return normalizeConvention({
@@ -1322,6 +2295,7 @@ function buildGenericConventionFromScale({ draftName, notes, cctPdf, scalePdf, s
           overtime: { enabled: true, divisor: 200 }
         },
         concepts: [
+          ...documentConcepts,
           { id: "adicional-remunerativo-manual", label: "Adicional remunerativo manual", group: "Ajustes auditables", inputType: "number", rowType: "remunerative", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Usar solo con respaldo del CCT/acta o auditoria humana.", subjectToSocialSecurity: true, requiresHumanValidation: true },
           { id: "adicional-no-remunerativo-manual", label: "Adicional no remunerativo manual", group: "Ajustes auditables", inputType: "number", rowType: "nonRemunerative", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Usar solo con respaldo del CCT/acta o auditoria humana.", subjectToSocialSecurity: false, requiresHumanValidation: true },
           { id: "descuento-convencional-manual", label: "Descuento convencional manual", group: "Ajustes auditables", inputType: "number", rowType: "deduction", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Usar solo con respaldo del CCT/acta o auditoria humana.", requiresHumanValidation: true }
@@ -1361,10 +2335,14 @@ function buildCommerceConvention({ draftName, notes, cctPdf, scalePdf, cctText, 
   if (!parsedScale.categories.length) return null;
   const periodIds = Array.from(new Set(parsedScale.categories.flatMap((category) => Object.keys(category.monthlyByPeriod || {})))).sort();
   const periods = periodIds.map((period) => ({ id: period, label: monthLabel(period) }));
-  const warnings = parsedScale.warnings;
+  const commerceAdditionals = parseCommerceScaleAdditionals(scaleText, periodIds);
+  const warnings = [...parsedScale.warnings];
+  if (commerceAdditionals.length && commerceAdditionals.length < COMMERCE_ADDITIONAL_ROWS.length) {
+    warnings.push(`La tabla separada de adicionales de Comercio se reconstruyo parcialmente: se detectaron ${commerceAdditionals.length} de ${COMMERCE_ADDITIONAL_ROWS.length} filas esperadas.`);
+  }
   const notesList = [
     "Estructurado con lector local de PDF para CCT 130/75 cuando Gemini no entrego JSON valido.",
-    "La circular FAECYS 04/2026 informa basico remunerativo y sumas no remunerativas para abril, mayo, junio y julio 2026.",
+    "La circular FAECYS 04/2026 informa basico remunerativo y sumas no remunerativas para abril, mayo y junio 2026.",
     "La antiguedad y el presentismo se aplican tambien sobre sumas no remunerativas segun la propia circular.",
     notes
   ].filter(Boolean);
@@ -1435,7 +2413,8 @@ function buildCommerceConvention({ draftName, notes, cctPdf, scalePdf, cctText, 
             base: "basic",
             detail: "Usar solo para diferencias aprobadas por auditoria humana.",
             subjectToSocialSecurity: false
-          }
+          },
+          ...commerceAdditionals
         ],
         deductions: [],
         employerContributions: []
@@ -1456,92 +2435,22 @@ function buildCommerceConvention({ draftName, notes, cctPdf, scalePdf, cctText, 
   }, { fallbackName: draftName || "Empleados de Comercio - CCT 130/75" });
 }
 
-async function tryBuildLocalConventionFallback({ cctPdf, scalePdf, draftName, notes, aiError, allowGeneric = false }) {
-  const [cctText, scaleText] = await Promise.all([
-    extractPdfTextLocal(cctPdf).catch(() => ""),
-    extractPdfTextLocal(scalePdf).catch(() => "")
-  ]);
-
-  if (looksLikePharmacyMendoza({ draftName, notes, cctText, scaleText, cctPdf, scalePdf })) {
-    const pharmacyConvention = buildPharmacyConvention({
-      draftName,
-      notes,
-      cctPdf,
-      scalePdf,
-      scaleText
-    });
-    if (pharmacyConvention?.categories?.length) {
-      return {
-        parsedConvention: pharmacyConvention,
-        model: "local-pdf-parse/farmacia-mendoza-cct-429-05",
-        modelsTried: ["local-pdf-parse/farmacia-mendoza-cct-429-05"]
-      };
-    }
-  }
-
-  if (looksLikeCommerce130({ draftName, notes, cctText, scaleText, cctPdf, scalePdf })) {
-    const parsedConvention = buildCommerceConvention({
-      draftName,
-      notes,
-      cctPdf,
-      scalePdf,
-      cctText,
-      scaleText,
-      aiError
-    });
-    if (parsedConvention?.categories?.length) {
-      return {
-        parsedConvention,
-        model: "local-pdf-parse/comercio-cct-130-75",
-        modelsTried: ["local-pdf-parse/comercio-cct-130-75"]
-      };
-    }
-  }
-
-  if (looksLikeHairdressers730({ draftName, notes, cctText, scaleText, cctPdf, scalePdf })) {
-    const hairConvention = buildHairdressersConvention({
-      draftName,
-      notes,
-      cctPdf,
-      scalePdf,
-      cctText,
-      scaleText
-    });
-    if (hairConvention?.categories?.length) {
-      return {
-        parsedConvention: hairConvention,
-        model: "local-pdf-parse/peluqueros-cct-730-15",
-        modelsTried: ["local-pdf-parse/peluqueros-cct-730-15"]
-      };
-    }
-  }
-
-  if (allowGeneric) {
-    const genericConvention = buildGenericConventionFromScale({
-      draftName,
-      notes,
-      cctPdf,
-      scalePdf,
-      scaleText,
-      aiError
-    });
-    if (genericConvention?.categories?.length) {
-      return {
-        parsedConvention: genericConvention,
-        model: "local-pdf-parse/generic-scale-parser",
-        modelsTried: ["local-pdf-parse/generic-scale-parser"]
-      };
-    }
-  }
-
-  return null;
-}
-
 module.exports = {
   GeminiConventionError,
   extractConventionFromPdfs,
-  tryBuildLocalConventionFallback,
   normalizeConvention,
   buildConventionPrompt,
+  conventionAttachmentParts,
+  looksLikeHairdressers730,
+  isLikelySalaryCategoryLabel,
+  parseGenericDocumentConcepts,
+  parseGenericDocumentDeductions,
+  parseGenericDocumentRules,
+  parseGenericScaleAdditionals,
+  parseGenericScaleCategories,
+  parseCommerceCategories,
+  parseCommerceScaleAdditionals,
+  enrichConventionWithDocumentConcepts,
+  sanitizeGenericConventionCategories,
   UNIVERSAL_CONVENTION_TEMPLATE
 };

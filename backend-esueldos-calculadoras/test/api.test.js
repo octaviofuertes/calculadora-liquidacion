@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { app, setDbForTest } = require("../src/server");
+const { app, mergeConventionNonRemunerativeRules, mergeConventionZones, setDbForTest } = require("../src/server");
 const { loadCatalogFromBackend, normalizeCatalog } = require("../src/catalog-loader");
 const fixtures = require("./fixtures/liquidation-payloads");
 
@@ -73,5 +73,39 @@ test("POST /api/liquidations/calculate calcula desde API", async () => {
     const payload = await response.json();
     assert.equal(payload.conventionId, "camioneros");
     assert.ok(payload.totals.gross > 0);
+  });
+});
+
+test("sincroniza zonas aprobadas de escala y canoniza Base como General", () => {
+  const zones = mergeConventionZones(
+    [{ id: "patagonica", label: "Patagonica", coef: 1.2 }],
+    [{ id: "base", label: "Base" }, { id: "austral", label: "Austral", coefficient: 1.4 }]
+  );
+  assert.deepEqual(zones, [
+    { id: "patagonica", label: "Patagonica", coef: 1.2 },
+    { id: "general", label: "General", coef: 1 },
+    { id: "austral", label: "Austral", coef: 1.4 }
+  ]);
+});
+
+test("sincroniza reglas no remunerativas detectadas en una escala aprobada", () => {
+  const rules = mergeConventionNonRemunerativeRules(
+    { enabled: true, subjectToHealthInsurance: true, legalReferences: ["CCT"] },
+    {
+      seniorityEnabled: true,
+      seniorityPercentPerYear: 1,
+      presentismEnabled: true,
+      presentismPercent: 8.33,
+      legalReferences: ["Acta salarial"]
+    }
+  );
+  assert.deepEqual(rules, {
+    enabled: true,
+    subjectToHealthInsurance: true,
+    legalReferences: ["CCT", "Acta salarial"],
+    seniorityEnabled: true,
+    seniorityPercentPerYear: 1,
+    presentismEnabled: true,
+    presentismPercent: 8.33
   });
 });
