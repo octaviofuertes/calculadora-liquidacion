@@ -2963,9 +2963,7 @@ body {
   gap: 10px;
 }
 
-.top-icon-btn,
-.avatar-btn,
-.chevron-btn {
+.top-icon-btn {
   display: grid;
   place-items: center;
   border: 0;
@@ -2980,8 +2978,7 @@ body {
   height: 34px;
 }
 
-.top-icon-btn svg,
-.chevron-btn svg {
+.top-icon-btn svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -3004,22 +3001,6 @@ body {
   color: #fff;
   font-size: 10px;
   font-weight: 900;
-}
-
-.avatar-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #327eff, #3553db);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 900;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.24);
-}
-
-.chevron-btn {
-  width: 24px;
-  height: 34px;
 }
 
 .page-shell {
@@ -3519,16 +3500,8 @@ body {
   gap: 22px;
 }
 
-.top-icon-btn,
-.avatar-btn,
-.chevron-btn {
+.top-icon-btn {
   height: 30px;
-}
-
-.avatar-btn {
-  width: 30px;
-  height: 30px;
-  font-size: 11px;
 }
 
 .page-shell {
@@ -3931,14 +3904,7 @@ body {
     gap: 14px;
   }
 
-  .top-icon-btn,
-  .avatar-btn,
-  .chevron-btn {
-    height: 34px;
-  }
-
-  .avatar-btn {
-    width: 34px;
+  .top-icon-btn {
     height: 34px;
   }
 
@@ -4488,142 +4454,9 @@ body {
   line-height: 1;
 }
 
-.auth-modal-content {
-  width: min(560px, 100%);
-}
-
-.auth-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.auth-actions .primary-action {
-  margin-top: 0;
-}
-
-.auth-status {
-  min-height: 20px;
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.auth-status.ok {
-  color: var(--green);
-}
-
-.auth-status.bad {
-  color: var(--red);
-}
-
-.auth-mode-notice {
-  margin-bottom: 14px;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: #f8fbff;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1.45;
-}
-
-.auth-mode-notice.setup {
-  border-color: rgba(5, 150, 105, 0.28);
-  background: #ecfdf5;
-  color: var(--green-dark);
-}
-
-.auth-mode-notice.info {
-  border-color: rgba(37, 99, 235, 0.22);
-  background: #eff6ff;
-  color: var(--blue-dark);
-}
-
-.auth-mode-notice.bad {
-  border-color: rgba(220, 38, 38, 0.22);
-  background: #fef2f2;
-  color: var(--red);
-}
-
-.auth-session-box {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-}
-
-#authLoginForm[hidden],
-.auth-session-box[hidden],
-.user-admin-box[hidden],
-#authBootstrapBtn[hidden],
-#authLoginBtn[hidden] {
-  display: none !important;
-}
-
-.auth-session-box strong {
-  color: var(--ink);
-  font-size: 16px;
-}
-
-.auth-session-box span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 .compact-head {
   margin-top: 18px;
   margin-bottom: 12px;
-}
-
-.user-admin-box {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.user-create-form {
-  display: grid;
-  gap: 12px;
-}
-
-.user-create-form .primary-action {
-  width: auto;
-  justify-self: start;
-  margin-top: 0;
-}
-
-.users-list {
-  margin-top: 14px;
-  overflow-x: auto;
-}
-
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.users-table th,
-.users-table td {
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
-  font-size: 12px;
-  text-align: left;
-}
-
-.users-table th {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
 }
 
 @keyframes slideUp {
@@ -5309,9 +5142,7 @@ body {
     gap: 12px;
   }
 
-  .top-icon-btn,
-  .avatar-btn,
-  .chevron-btn {
+  .top-icon-btn {
     width: 30px;
     height: 30px;
     min-height: 30px;
@@ -5320,14 +5151,6 @@ body {
     color: #fff;
   }
 
-  .avatar-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    background: #2f64e8;
-    font-size: 12px;
-    font-weight: 800;
-  }
 
   .top-icon-btn span {
     top: -2px;
@@ -7780,15 +7603,13 @@ body {
     gap: 16px !important;
   }
 
-  .top-icon-btn,
-  .chevron-btn {
+  .top-icon-btn {
     width: 42px !important;
     height: 42px !important;
     min-height: 42px !important;
   }
 
-  .top-icon-btn svg,
-  .chevron-btn svg {
+  .top-icon-btn svg {
     width: 22px !important;
     height: 22px !important;
   }
@@ -7801,12 +7622,6 @@ body {
     font-size: 11px !important;
   }
 
-  .avatar-btn {
-    width: 42px !important;
-    height: 42px !important;
-    min-height: 42px !important;
-    font-size: 14px !important;
-  }
 }
 
 /* Animated blue-to-sky page background like the target mockup. */
@@ -8882,4 +8697,72 @@ body > * {
   #receiptPane {
     display: block !important;
   }
+}
+
+/* ── Validacion paso 2: datos del trabajador ──────────────────────────── */
+
+.step-validation-error {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #fff5f5, #fff1f2);
+  color: #be123c;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  animation: slideInError 0.22s ease;
+}
+
+.step-validation-error.visible {
+  display: flex;
+}
+
+.step-validation-error svg {
+  flex-shrink: 0;
+  color: #e11d48;
+}
+
+.step-validation-error strong {
+  font-weight: 700;
+}
+
+@keyframes slideInError {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Campos con error (borde rojo + shake suave) */
+.field input.field-error,
+.field select.field-error {
+  border-color: #e11d48 !important;
+  background: #fff5f5 !important;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.12) !important;
+  animation: shakeField 0.32s ease;
+}
+
+@keyframes shakeField {
+  0%  { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+  100%{ transform: translateX(0); }
+}
+
+/* Boton Siguiente deshabilitado en paso 2 */
+#nextStepBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }

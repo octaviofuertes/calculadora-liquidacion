@@ -11,11 +11,16 @@ const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
 const { extractConventionFromPdfs, tryBuildLocalConventionFallback, normalizeConvention, GeminiConventionError } = require("./convention-ai");
 const { configureSecurity } = require("./middleware/security");
-const { escapeRegex } = require("./middleware/validate");
-const { calculatePayroll } = require("./domain/payroll-engine");
-const { authMiddleware, requireAuth, requireAuthWhenEnabled, requireRole } = require("./middleware/auth");
-const { authenticateUser, createUser, ensureUserIndexes } = require("./services/auth-service");
-const { calculationInputSchema, employeeWriteSchema, liquidationResultSchema, loginSchema, savedLiquidationSchema, userCreateSchema, userUpdateSchema, parseOrThrow } = require("./domain/schemas");
+const catalogService = require("./services/catalog-service");
+const scaleRepository = require("./repositories/scale-repository");
+const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
+const { createAdminRouter } = require("./routes/admin.routes");
+const { createCatalogRouter } = require("./routes/catalog.routes");
+const { createEmployeesRouter } = require("./routes/employees.routes");
+const { createHealthRouter } = require("./routes/health.routes");
+const { createLiquidationsRouter } = require("./routes/liquidations.routes");
+const { createScalesRouter } = require("./routes/scales.routes");
+const { parseOrThrow } = require("./domain/schemas");
 
 const app = express();
 const port = Number(process.env.PORT || 4100);
@@ -78,10 +83,13 @@ const conventionUpload = multer({
 
 configureSecurity(app);
 app.use(express.json({ limit: "2mb" }));
-app.use(authMiddleware(() => db));
 app.use("/uploads", express.static(uploadRoot));
 
 let db;
+
+function getDbInstance() {
+  return db;
+}
 
 function geminiFallbackModels() {
   return String(process.env.GEMINI_FALLBACK_MODELS || "gemini-2.5-flash-lite,gemini-2.0-flash")
@@ -114,13 +122,7 @@ async function ensureCatalogSeeded() {
 }
 
 async function getCatalogPayload() {
-  const [constantsDoc, conventionDocs, legalReferenceDocs] = await Promise.all([
-    db.collection("constants").findOne({ _id: "global" }),
-    db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray(),
-    db.collection("legalReferences").find({}).sort({ order: 1 }).toArray()
-  ]);
-
-  return toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs);
+  return catalogService.getCatalog(db);
 }
 
 async function ensureScaleIndexes() {
@@ -135,7 +137,7 @@ async function ensureScaleIndexes() {
   await db.collection("employees").createIndex({ name: "text" });
   await db.collection("employees").createIndex({ conventionId: 1, name: 1 });
   await db.collection("liquidations").createIndex({ convention: 1, period: 1, createdAt: -1 });
-  await ensureUserIndexes(db);
+  await ensureVersionIndexes(db);
 }
 
 function periodIdToMonth(periodId) {
@@ -194,28 +196,11 @@ function serializeConventionDraft(doc) {
 }
 
 async function getConventionOr404(conventionId) {
-  const convention = await db.collection("conventions").findOne({ id: conventionId });
-  if (!convention) {
-    const error = new Error("Convenio no encontrado");
-    error.status = 404;
-    throw error;
-  }
-  const { _id, order, updatedAt, ...payload } = convention;
-  return payload;
+  return catalogService.getConventionOrThrow(db, conventionId);
 }
 
 async function findActiveScale(conventionId, period) {
-  const normalized = normalizePeriod(period) || currentPeriod();
-  return db.collection("salaryScales").findOne(
-    {
-      conventionId,
-      status: "APROBADA",
-      period: { $lte: normalized }
-    },
-    {
-      sort: { period: -1, approvedAt: -1, createdAt: -1 }
-    }
-  );
+  return scaleRepository.findActiveScale(db, conventionId, period);
 }
 
 async function monthTimeline(conventionId) {
@@ -501,115 +486,22 @@ function fallbackAuditFromPrecheck(precheck, aiError = null) {
   };
 }
 
-app.get("/api/health", async (req, res) => {
-  try {
-    await db.command({ ping: 1 });
-    res.json({ ok: true, mongo: true, db: db.databaseName });
-  } catch (error) {
-    res.status(503).json({ ok: false, mongo: false, error: error.message });
-  }
-});
-
-app.post("/api/auth/bootstrap-admin", async (req, res, next) => {
-  try {
-    const count = await db.collection("users").countDocuments();
-    if (count > 0) {
-      res.status(409).json({ error: "Ya existen usuarios. Crea nuevos usuarios con un admin autenticado." });
-      return;
-    }
-    const payload = parseOrThrow(userCreateSchema.extend({ role: userCreateSchema.shape.role.default("admin") }), {
-      ...req.body,
-      role: "admin"
-    }, "Usuario admin invalido");
-    const user = await createUser(db, payload);
-    const login = await authenticateUser(db, { email: payload.email, password: payload.password });
-    res.status(201).json({ user: login.user || { id: user._id.toString(), email: user.email, name: user.name, role: user.role }, token: login.token });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/auth/status", async (req, res, next) => {
-  try {
-    const usersCount = await db.collection("users").countDocuments();
-    res.json({
-      hasUsers: usersCount > 0,
-      authRequired: process.env.AUTH_REQUIRED === "true"
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/auth/login", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(loginSchema, req.body, "Credenciales invalidas");
-    res.json(await authenticateUser(db, payload));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/auth/me", requireAuth, async (req, res) => {
-  res.json({ user: req.user });
-});
-
-app.get("/api/users", requireRole("admin"), async (req, res, next) => {
-  try {
-    const docs = await db.collection("users").find({}, {
-      projection: { passwordHash: 0 }
-    }).sort({ createdAt: -1 }).limit(200).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/users", requireRole("admin"), async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(userCreateSchema, req.body, "Usuario invalido");
-    const user = await createUser(db, payload);
-    res.status(201).json({ id: user._id.toString(), email: user.email, name: user.name, role: user.role, active: user.active });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/users/:id", requireRole("admin"), async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const payload = parseOrThrow(userUpdateSchema, req.body, "Usuario invalido");
-    const result = await db.collection("users").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { ...payload, updatedAt: new Date() } },
-      { returnDocument: "after", projection: { passwordHash: 0 } }
-    );
-    if (!result) {
-      res.status(404).json({ error: "Usuario no encontrado" });
-      return;
-    }
-    const { _id, ...doc } = result;
-    res.json({ id: _id.toString(), ...doc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.use("/api", (req, res, next) => {
-  if (req.method === "GET" || req.path.startsWith("/auth/")) return next();
-  return requireAuthWhenEnabled(req, res, next);
-});
-
-app.get("/api/catalog", async (req, res, next) => {
-  try {
-    res.json(await getCatalogPayload());
-  } catch (error) {
-    next(error);
-  }
-});
+app.use(createHealthRouter({ getDb: getDbInstance }));
+app.use(createCatalogRouter({ getDb: getDbInstance }));
+app.use(createScalesRouter({
+  getDb: getDbInstance,
+  scaleUpload,
+  extractScalesFromPdf,
+  geminiFallbackModels,
+  getConventionOr404,
+  monthTimeline,
+  findActiveScale,
+  normalizePeriod,
+  currentPeriod,
+  monthLabel,
+  serializeScale,
+  safeFileName
+}));
 
 app.get("/api/convention-drafts", async (req, res, next) => {
   try {
@@ -831,29 +723,26 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       res.status(400).json({ error: "El JSON no tiene categorias con importes. Revisalo antes de aprobar." });
       return;
     }
+    const validatedConvention = catalogService.validateConvention(convention);
 
-    const existing = await db.collection("conventions").findOne({ id: convention.id });
-    const maxOrderDoc = await db.collection("conventions").find({}).sort({ order: -1 }).limit(1).next();
-    const order = existing?.order || ((maxOrderDoc?.order || 0) + 1);
-    await db.collection("conventions").replaceOne(
-      { id: convention.id },
-      {
-        _id: existing?._id || convention.id,
-        order,
-        ...convention,
-        sourceDraftId: draft._id.toString(),
-        approvedAt: now,
-        updatedAt: now
-      },
-      { upsert: true }
-    );
+    const savedConvention = await catalogService.replaceValidatedConvention(db, validatedConvention, {
+      sourceDraftId: draft._id.toString(),
+      approvedAt: now,
+      updatedAt: now
+    });
+    await saveConventionVersion(db, savedConvention, {
+      approvedAt: now,
+      approvedBy: req.body?.reviewedBy || "Auditoria humana",
+      sourceDraftId: draft._id.toString(),
+      source: savedConvention.source || draft.name
+    });
     const updatedDraft = await db.collection("conventionDrafts").findOneAndUpdate(
       { _id: draft._id },
       {
         $set: {
           status: "APROBADO",
-          parsedConvention: convention,
-          approvedConventionId: convention.id,
+          parsedConvention: savedConvention,
+          approvedConventionId: savedConvention.id,
           reviewedAt: now,
           reviewedBy: req.body?.reviewedBy || "Auditoria humana",
           reviewNote: req.body?.note || "",
@@ -864,7 +753,7 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
     );
     res.json({
       draft: serializeConventionDraft(updatedDraft),
-      convention
+      convention: savedConvention
     });
   } catch (error) {
     next(error);
@@ -919,284 +808,6 @@ app.delete("/api/convention-drafts/:id", async (req, res, next) => {
     }
     await db.collection("conventionDrafts").deleteOne({ _id: id });
     res.json({ ok: true, id: req.params.id, status: draft.status });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales", async (req, res, next) => {
-  try {
-    const filter = {};
-    if (req.query.conventionId) filter.conventionId = String(req.query.conventionId);
-    if (req.query.status) filter.status = String(req.query.status);
-    if (req.query.period) {
-      const period = normalizePeriod(req.query.period);
-      if (!period) {
-        res.status(400).json({ error: "Periodo invalido. Usa formato YYYY-MM." });
-        return;
-      }
-      filter.period = period;
-    }
-
-    const limit = Math.min(Number(req.query.limit || 80), 200);
-    const docs = await db.collection("salaryScales").find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
-    res.json(docs.map(serializeScale));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales/months", async (req, res, next) => {
-  try {
-    const conventionId = String(req.query.conventionId || "");
-    if (!conventionId) {
-      res.status(400).json({ error: "Falta conventionId" });
-      return;
-    }
-    res.json(await monthTimeline(conventionId));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales/active", async (req, res, next) => {
-  try {
-    const conventionId = String(req.query.conventionId || "");
-    const period = normalizePeriod(req.query.period) || currentPeriod();
-    if (!conventionId) {
-      res.status(400).json({ error: "Falta conventionId" });
-      return;
-    }
-
-    const activeScale = await findActiveScale(conventionId, period);
-    if (!activeScale) {
-      res.status(404).json({ error: "No hay escala aprobada vigente para ese mes." });
-      return;
-    }
-    res.json(serializeScale(activeScale));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const doc = await db.collection("salaryScales").findOne({ _id: new ObjectId(req.params.id) });
-    if (!doc) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(doc));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: "Selecciona un PDF de escala salarial." });
-      return;
-    }
-
-    const conventionId = String(req.body.conventionId || "");
-    const convention = await getConventionOr404(conventionId);
-    const period = normalizePeriod(req.body.period) || currentPeriod();
-    const periodLabel = req.body.periodLabel || monthLabel(period);
-    const now = new Date();
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    let aiStatus = "SIN_API_KEY";
-    let aiError = null;
-    let aiModel = null;
-    let aiModelsTried = [];
-    let parsedScales = [{
-      period,
-      periodLabel,
-      conventionId: convention.id,
-      conventionName: convention.name,
-      cct: convention.source || "",
-      sourceFileName: req.file.originalname,
-      sourceSummary: "",
-      confidence: 0,
-      categories: [],
-      additionals: [],
-      zones: [],
-      nonRemunerative: [],
-      notes: [],
-      warnings: ["Carga pendiente de lectura por IA."]
-    }];
-
-    if (apiKey) {
-      try {
-        const pdfBuffer = await fs.promises.readFile(req.file.path);
-        const result = await extractScalesFromPdf({
-          apiKey,
-          model: process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
-          fallbackModels: geminiFallbackModels(),
-          convention,
-          period,
-          periodLabel,
-          pdfBuffer,
-          mimeType: req.file.mimetype,
-          sourceFileName: req.file.originalname
-        });
-        parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
-        aiStatus = "DETECTADA_POR_IA";
-        aiModel = result.model;
-        aiModelsTried = result.modelsTried;
-      } catch (error) {
-        aiStatus = "ERROR_IA";
-        aiError = error.message || "No se pudo leer el PDF con leIA.";
-        aiModel = error.model || null;
-        aiModelsTried = error.modelsTried || [];
-        parsedScales[0].warnings = [aiError];
-      }
-    }
-
-    const docs = parsedScales.map((parsedScale) => ({
-      conventionId: convention.id,
-      conventionName: convention.name,
-      shortName: convention.shortName || convention.name,
-      cct: convention.source || "",
-      period: normalizePeriod(parsedScale.period) || period,
-      periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
-      status: "PENDIENTE_REVISION",
-      aiStatus,
-      aiError,
-      aiModel,
-      aiModelsTried,
-      sourceFileName: req.file.originalname,
-      storedFileName: req.file.filename,
-      filePath: req.file.path,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype,
-      parsedScale: {
-        ...parsedScale,
-        period: normalizePeriod(parsedScale.period) || period,
-        periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
-      },
-      auditNote: req.body.auditNote || "",
-      uploadedBatchId: `${now.getTime()}-${safeFileName(req.file.originalname)}`,
-      createdAt: now,
-      updatedAt: now
-    }));
-
-    const insertResult = await db.collection("salaryScales").insertMany(docs);
-    const created = docs.map((doc, index) => serializeScale({ _id: insertResult.insertedIds[index], ...doc }));
-    res.status(201).json({
-      ...created[0],
-      created,
-      count: created.length,
-      detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel }))
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/scales/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-
-    const update = { updatedAt: new Date() };
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedScale")) {
-      update.parsedScale = req.body.parsedScale;
-      update.humanEdited = true;
-      update.humanEditedAt = new Date();
-    }
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "auditNote")) {
-      update.auditNote = String(req.body.auditNote || "");
-    }
-
-    const result = await db.collection("salaryScales").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: update },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(result));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/scales/:id/approve", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-
-    const now = new Date();
-    const update = {
-      status: "APROBADA",
-      approvedAt: now,
-      reviewedAt: now,
-      reviewedBy: req.body?.reviewedBy || "Auditoria humana",
-      reviewNote: req.body?.note || "",
-      updatedAt: now
-    };
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedScale")) {
-      update.parsedScale = req.body.parsedScale;
-      update.humanEdited = true;
-      update.humanEditedAt = now;
-    }
-
-    const result = await db.collection("salaryScales").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: update },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(result));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/scales/:id/reject", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-
-    const now = new Date();
-    const result = await db.collection("salaryScales").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      {
-        $set: {
-          status: "RECHAZADA",
-          rejectedAt: now,
-          reviewedAt: now,
-          reviewedBy: req.body?.reviewedBy || "Auditoria humana",
-          reviewNote: req.body?.note || "",
-          updatedAt: now
-        }
-      },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(result));
   } catch (error) {
     next(error);
   }
@@ -1346,276 +957,10 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
   }
 });
 
-app.get("/api/conventions", async (req, res, next) => {
-  try {
-    const conventions = await db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray();
-    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => convention));
-  } catch (error) {
-    next(error);
-  }
-});
+app.use(createLiquidationsRouter({ getDb: getDbInstance, serializeScale }));
 
-app.get("/api/conventions/:id", async (req, res, next) => {
-  try {
-    const convention = await db.collection("conventions").findOne({ id: req.params.id });
-    if (!convention) {
-      res.status(404).json({ error: "Convenio no encontrado" });
-      return;
-    }
-    const { _id, order, updatedAt, ...payload } = convention;
-    res.json(payload);
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete("/api/conventions/:id", async (req, res, next) => {
-  try {
-    const conventionId = String(req.params.id || "").trim();
-    if (!conventionId) {
-      res.status(400).json({ error: "Falta id de convenio" });
-      return;
-    }
-
-    const convention = await db.collection("conventions").findOne({ id: conventionId });
-    if (!convention) {
-      res.status(404).json({ error: "Convenio no encontrado" });
-      return;
-    }
-
-    const totalConventions = await db.collection("conventions").countDocuments();
-    if (totalConventions <= 1) {
-      res.status(409).json({ error: "No se puede borrar el ultimo convenio disponible." });
-      return;
-    }
-
-    const conventionResult = await db.collection("conventions").deleteOne({ id: conventionId });
-    const scalesResult = await db.collection("salaryScales").deleteMany({ conventionId });
-
-    res.json({
-      ok: true,
-      deletedConventionId: conventionId,
-      deletedScales: scalesResult.deletedCount || 0,
-      deletedCount: conventionResult.deletedCount || 0
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/liquidations", async (req, res, next) => {
-  try {
-    const limit = Math.min(Number(req.query.limit || 50), 200);
-    const docs = await db.collection("liquidations").find({}).sort({ createdAt: -1 }).limit(limit).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/liquidations/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const doc = await db.collection("liquidations").findOne({ _id: new ObjectId(req.params.id) });
-    if (!doc) {
-      res.status(404).json({ error: "Liquidacion no encontrada" });
-      return;
-    }
-    const { _id, ...payload } = doc;
-    res.json({ id: _id.toString(), ...payload });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/liquidations/calculate", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(calculationInputSchema, req.body, "Datos de liquidacion invalidos");
-    const catalog = await getCatalogPayload();
-    const activeDoc = await findActiveScale(payload.conventionId, payload.period);
-    const result = calculatePayroll({
-      catalog,
-      payload,
-      activeScale: serializeScale(activeDoc)
-    });
-    const checkedResult = parseOrThrow(liquidationResultSchema, result, "Resultado de liquidacion invalido");
-    res.json(checkedResult);
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/liquidations", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(savedLiquidationSchema, req.body, "Liquidacion invalida");
-
-    const now = new Date();
-    const doc = {
-      ...payload,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    const result = await db.collection("liquidations").insertOne(doc);
-    res.status(201).json({ id: result.insertedId.toString(), ...doc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete("/api/liquidations/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const result = await db.collection("liquidations").deleteOne({ _id: new ObjectId(req.params.id) });
-    if (result.deletedCount === 0) {
-      res.status(404).json({ error: "Liquidacion no encontrada" });
-      return;
-    }
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/next-legajo", async (req, res, next) => {
-  try {
-    const docs = await db.collection("employees").find({}, { projection: { legajo: 1 } }).toArray();
-    const max = docs.reduce((current, emp) => {
-      const num = parseInt(emp.legajo, 10);
-      return !Number.isNaN(num) && num > current ? num : current;
-    }, 0);
-    const nextLegajo = String(max + 1).padStart(3, "0");
-    res.json({ nextLegajo });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/search", async (req, res, next) => {
-  try {
-    const { q, conventionId } = req.query;
-    if (!q) {
-      res.json([]);
-      return;
-    }
-
-    const safeQuery = escapeRegex(String(q).slice(0, 80));
-    const filter = { name: { $regex: safeQuery, $options: "i" } };
-    if (conventionId && conventionId !== "null" && conventionId !== "undefined") {
-      filter.conventionId = conventionId;
-    }
-
-    const docs = await db.collection("employees").find(filter).limit(10).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees", async (req, res, next) => {
-  try {
-    const docs = await db.collection("employees").find({}).sort({ legajo: 1 }).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/:legajo", async (req, res, next) => {
-  try {
-    const doc = await db.collection("employees").findOne({ legajo: req.params.legajo });
-    if (!doc) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    const { _id, ...payload } = doc;
-    res.json({ id: _id.toString(), ...payload });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/employees", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(employeeWriteSchema, req.body, "Empleado invalido");
-
-    const existing = await db.collection("employees").findOne({ legajo: payload.legajo });
-    if (existing) {
-      res.status(400).json({ error: "El legajo ya existe" });
-      return;
-    }
-
-    const now = new Date();
-    const doc = {
-      ...payload,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    const result = await db.collection("employees").insertOne(doc);
-    res.status(201).json({ id: result.insertedId.toString(), ...doc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.put("/api/employees/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const payload = parseOrThrow(employeeWriteSchema.partial().passthrough(), req.body, "Empleado invalido");
-    const { id, _id, ...updateData } = payload;
-
-    const result = await db.collection("employees").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { ...updateData, updatedAt: new Date() } },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    const { _id: mongoId, ...updatedDoc } = result;
-    res.json({ id: mongoId.toString(), ...updatedDoc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete("/api/employees/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const result = await db.collection("employees").deleteOne({ _id: new ObjectId(req.params.id) });
-    if (result.deletedCount === 0) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/admin/seed", async (req, res, next) => {
-  try {
-    const catalog = await seedCatalog(db);
-    res.json({ ok: true, conventions: catalog.conventions.length });
-  } catch (error) {
-    next(error);
-  }
-});
+app.use(createEmployeesRouter({ getDb: getDbInstance }));
+app.use(createAdminRouter({ getDb: getDbInstance, seedCatalog }));
 
 app.use(express.static(frontendDir));
 

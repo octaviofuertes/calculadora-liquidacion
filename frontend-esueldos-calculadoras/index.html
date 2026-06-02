@@ -61,16 +61,6 @@
         </a>
       </nav>
 
-      <div class="topbar-tools" aria-label="Usuario">
-        <button class="top-icon-btn" type="button" aria-label="Notificaciones">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
-          <span>3</span>
-        </button>
-        <button class="avatar-btn" id="authAvatarBtn" type="button" aria-label="Cuenta">?</button>
-        <button class="chevron-btn" id="authMenuBtn" type="button" aria-label="Menu de cuenta">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-      </div>
     </div>
   </header>
 
@@ -394,6 +384,15 @@
                 </select>
               </label>
             </div>
+
+            <div id="step2ValidationError" class="step-validation-error" role="alert" aria-live="polite">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>Completá los campos obligatorios: <strong>Trabajador</strong>, <strong>CUIL</strong> y <strong>Fecha de ingreso</strong> antes de continuar.</span>
+            </div>
           </section>
 
           <section class="form-step" data-step="3">
@@ -583,83 +582,9 @@
     </button>
   </section>
 
-  <div id="authModal" class="modal" style="display:none">
-    <div class="modal-content panel auth-modal-content">
-      <div class="section-head">
-        <div>
-          <span class="eyebrow">Acceso</span>
-          <h3 id="authModalTitle">Iniciar sesion</h3>
-          <p id="authModalCopy">Entrá con tu usuario para habilitar acciones protegidas.</p>
-        </div>
-        <button id="closeAuthModal" type="button" class="modal-close-btn" aria-label="Cerrar">&times;</button>
-      </div>
-
-      <form id="authLoginForm">
-        <div id="authModeNotice" class="auth-mode-notice"></div>
-        <div class="grid two">
-          <label class="field">
-            <span>Email</span>
-            <input id="authEmail" type="email" autocomplete="username" required>
-          </label>
-          <label class="field">
-            <span>Contraseña</span>
-            <input id="authPassword" type="password" autocomplete="current-password" minlength="8" required>
-          </label>
-        </div>
-        <div class="auth-actions">
-          <button class="primary-action" id="authLoginBtn" type="submit">Iniciar sesion</button>
-          <button class="icon-btn" id="authBootstrapBtn" type="button">Crear primer admin</button>
-        </div>
-        <div id="authStatus" class="auth-status"></div>
-      </form>
-
-      <div id="authSessionBox" class="auth-session-box" hidden>
-        <strong id="authSessionName">Usuario</strong>
-        <span id="authSessionRole">Rol</span>
-        <button class="icon-btn" id="authLogoutBtn" type="button">Cerrar sesion</button>
-      </div>
-
-      <div id="userAdminBox" class="user-admin-box" hidden>
-        <div class="section-head compact-head">
-          <div>
-            <span class="eyebrow">Usuarios</span>
-            <h3>Tabla de usuarios</h3>
-          </div>
-          <button class="icon-btn" id="refreshUsersBtn" type="button">Actualizar</button>
-        </div>
-        <form id="createUserForm" class="user-create-form">
-          <div class="grid two">
-            <label class="field">
-              <span>Nombre</span>
-              <input id="newUserName" type="text" placeholder="Nombre">
-            </label>
-            <label class="field">
-              <span>Email</span>
-              <input id="newUserEmail" type="email" placeholder="usuario@empresa.com">
-            </label>
-            <label class="field">
-              <span>Contraseña</span>
-              <input id="newUserPassword" type="password" minlength="8" placeholder="Minimo 8 caracteres">
-            </label>
-            <label class="field">
-              <span>Rol</span>
-              <select id="newUserRole">
-                <option value="operator">Operador</option>
-                <option value="auditor">Auditor</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
-          </div>
-          <button class="primary-action" type="submit">Crear usuario</button>
-        </form>
-        <div id="usersList" class="users-list empty-state">Iniciá sesión como admin para ver usuarios.</div>
-      </div>
-    </div>
-  </div>
-
   <script src="data.js?v=6"></script>
   <script src="modules/api-client.js?v=1"></script>
-  <script src="modules/auth-client.js?v=1"></script>
+  <script src="modules/ui-utils.js?v=1"></script>
   <script src="app.js?v=8"></script>
 </body>
 </html>
