@@ -8628,3 +8628,73 @@ body > * {
     display: block !important;
   }
 }
+
+/* Token Usage Card Styling (eSueldos Aesthetic) */
+.token-usage-card {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(193, 210, 239, 0.8);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(244, 248, 255, 0.95));
+  box-shadow: 0 8px 32px rgba(44, 74, 134, 0.08);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.token-usage-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.token-usage-header h4 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.token-usage-icon {
+  font-size: 18px;
+  filter: drop-shadow(0 2px 4px rgba(44, 74, 134, 0.1));
+}
+
+.token-usage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.token-usage-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: #53617f;
+}
+
+.token-usage-row strong {
+  font-family: 'JetBrains Mono', monospace;
+  color: #1a2333;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.token-usage-divider {
+  height: 1px;
+  background: rgba(193, 210, 239, 0.6);
+  margin: 4px 0;
+}
+
+.token-usage-row.total {
+  font-weight: 900;
+  font-size: 13.5px;
+  color: #2458ff;
+}
+
+.token-usage-row.total strong {
+  color: #2458ff;
+  font-size: 14px;
+}

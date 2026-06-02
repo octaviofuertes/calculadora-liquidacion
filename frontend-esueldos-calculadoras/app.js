@@ -3324,6 +3324,7 @@
     if (!draft) {
       editor.className = "scale-editor empty-state";
       editor.innerHTML = "Seleccion&aacute; un convenio generado para revisar su JSON.";
+      updateTokenUsageUI(null);
       return;
     }
     const conv = draft.parsedConvention || {};
@@ -3373,12 +3374,33 @@
     URL.revokeObjectURL(url);
   }
 
+  function updateTokenUsageUI(usage) {
+    const card = $("conventionTokenUsageCard");
+    if (!card) return;
+    if (!usage) {
+      card.style.display = "none";
+      return;
+    }
+    const model = $("conventionTokenModel");
+    const prompt = $("conventionTokenPrompt");
+    const output = $("conventionTokenOutput");
+    const total = $("conventionTokenTotal");
+    if (model) model.textContent = usage.model || "gemini-2.5-flash";
+    if (prompt) prompt.textContent = usage.promptTokenCount ? usage.promptTokenCount.toLocaleString("es-AR") : "0";
+    const outTokens = usage.candidatesTokenCount || usage.outputTokenCount || 0;
+    if (output) output.textContent = outTokens ? outTokens.toLocaleString("es-AR") : "0";
+    const totalTokens = usage.totalTokenCount || 0;
+    if (total) total.textContent = totalTokens ? totalTokens.toLocaleString("es-AR") : "0";
+    card.style.display = "block";
+  }
+
   async function selectConventionDraft(id) {
     try {
       const draft = conventionBuilderState.drafts.find((item) => item.id === id) || await fetchJson(`/api/convention-drafts/${encodeURIComponent(id)}`);
       conventionBuilderState.selected = draft;
       renderConventionDrafts();
       renderConventionJsonEditor(draft);
+      updateTokenUsageUI(draft.tokenUsage);
     } catch (error) {
       setConventionBuilderStatus(error.message, "bad");
     }
