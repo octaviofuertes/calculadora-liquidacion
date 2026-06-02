@@ -1,0 +1,255 @@
+{
+  "id": "uocra",
+  "name": "UOCRA - CCT 76/75",
+  "shortName": "UOCRA",
+  "source": "Calculadora eSueldos_UOCRA_v5_2026",
+  "type": "hourly",
+  "periods": [
+    {
+      "id": "mar26",
+      "label": "Marzo 2026"
+    },
+    {
+      "id": "abr26",
+      "label": "Abril 2026"
+    },
+    {
+      "id": "may26",
+      "label": "Mayo 2026"
+    }
+  ],
+  "zones": [
+    {
+      "id": "A",
+      "label": "Zona A",
+      "coef": 1
+    },
+    {
+      "id": "B",
+      "label": "Zona B",
+      "coef": 1
+    },
+    {
+      "id": "C",
+      "label": "Zona C",
+      "coef": 1
+    },
+    {
+      "id": "CAustral",
+      "label": "Zona C Austral",
+      "coef": 1
+    }
+  ],
+  "categories": [
+    {
+      "id": "ofEsp",
+      "label": "Oficial especializado",
+      "monthly": false
+    },
+    {
+      "id": "oficial",
+      "label": "Oficial",
+      "monthly": false
+    },
+    {
+      "id": "mofc",
+      "label": "Medio oficial",
+      "monthly": false
+    },
+    {
+      "id": "ayud",
+      "label": "Ayudante",
+      "monthly": false
+    },
+    {
+      "id": "sereno",
+      "label": "Sereno",
+      "monthly": true
+    }
+  ],
+  "scaleKind": "Jornal diario; sereno mensual",
+  "scales": {
+    "mar26": {
+      "A": {
+        "ofEsp": 5579,
+        "oficial": 4773,
+        "mofc": 4411,
+        "ayud": 4060,
+        "sereno": 737493
+      },
+      "B": {
+        "ofEsp": 6193,
+        "oficial": 5300,
+        "mofc": 4889,
+        "ayud": 4527,
+        "sereno": 821599
+      },
+      "C": {
+        "ofEsp": 8565,
+        "oficial": 8030,
+        "mofc": 7749,
+        "ayud": 7524,
+        "sereno": 1232928
+      },
+      "CAustral": {
+        "ofEsp": 11158,
+        "oficial": 9545,
+        "mofc": 8821,
+        "ayud": 8119,
+        "sereno": 1474985
+      }
+    },
+    "abr26": {
+      "A": {
+        "ofEsp": 6011,
+        "oficial": 5142,
+        "mofc": 4752,
+        "ayud": 4374,
+        "sereno": 794575
+      },
+      "B": {
+        "ofEsp": 6672,
+        "oficial": 5711,
+        "mofc": 5267,
+        "ayud": 4877,
+        "sereno": 885191
+      },
+      "C": {
+        "ofEsp": 9228,
+        "oficial": 8652,
+        "mofc": 8349,
+        "ayud": 8107,
+        "sereno": 1328356
+      },
+      "CAustral": {
+        "ofEsp": 12022,
+        "oficial": 10284,
+        "mofc": 9504,
+        "ayud": 8747,
+        "sereno": 1589149
+      }
+    },
+    "may26": {
+      "A": {
+        "ofEsp": 6119,
+        "oficial": 5235,
+        "mofc": 4837,
+        "ayud": 4452,
+        "sereno": 808877
+      },
+      "B": {
+        "ofEsp": 6792,
+        "oficial": 5813,
+        "mofc": 5362,
+        "ayud": 4965,
+        "sereno": 901124
+      },
+      "C": {
+        "ofEsp": 9394,
+        "oficial": 8808,
+        "mofc": 8499,
+        "ayud": 8252,
+        "sereno": 1352267
+      },
+      "CAustral": {
+        "ofEsp": 12238,
+        "oficial": 10469,
+        "mofc": 9675,
+        "ayud": 8905,
+        "sereno": 1617754
+      }
+    }
+  },
+  "nonRem": {
+    "mar26": {
+      "A": {
+        "ofEsp": 147000,
+        "oficial": 134100,
+        "mofc": 123000,
+        "ayud": 115500,
+        "sereno": 115500
+      },
+      "B": {
+        "ofEsp": 163200,
+        "oficial": 148900,
+        "mofc": 136500,
+        "ayud": 128300,
+        "sereno": 128300
+      },
+      "C": {
+        "ofEsp": 225700,
+        "oficial": 206000,
+        "mofc": 188800,
+        "ayud": 177300,
+        "sereno": 177300
+      },
+      "CAustral": {
+        "ofEsp": 294000,
+        "oficial": 268200,
+        "mofc": 246000,
+        "ayud": 231000,
+        "sereno": 231000
+      }
+    },
+    "abr26": {
+      "A": {
+        "ofEsp": 99800,
+        "oficial": 91000,
+        "mofc": 83500,
+        "ayud": 78400,
+        "sereno": 78400
+      },
+      "B": {
+        "ofEsp": 110800,
+        "oficial": 101100,
+        "mofc": 92700,
+        "ayud": 87100,
+        "sereno": 87100
+      },
+      "C": {
+        "ofEsp": 153200,
+        "oficial": 140000,
+        "mofc": 128200,
+        "ayud": 120400,
+        "sereno": 120400
+      },
+      "CAustral": {
+        "ofEsp": 199600,
+        "oficial": 182000,
+        "mofc": 167000,
+        "ayud": 156800,
+        "sereno": 156800
+      }
+    },
+    "may26": {
+      "A": {
+        "ofEsp": 125400,
+        "oficial": 114400,
+        "mofc": 104900,
+        "ayud": 98500,
+        "sereno": 98500
+      },
+      "B": {
+        "ofEsp": 139200,
+        "oficial": 127000,
+        "mofc": 116400,
+        "ayud": 109400,
+        "sereno": 109400
+      },
+      "C": {
+        "ofEsp": 192500,
+        "oficial": 175600,
+        "mofc": 161000,
+        "ayud": 151200,
+        "sereno": 151200
+      },
+      "CAustral": {
+        "ofEsp": 250700,
+        "oficial": 228700,
+        "mofc": 209800,
+        "ayud": 197000,
+        "sereno": 197000
+      }
+    }
+  }
+}
