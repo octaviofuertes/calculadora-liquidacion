@@ -13,15 +13,6 @@
 
 La fuente inicial versionable vive en `src/catalog`. El seed carga esos JSON a MongoDB. El frontend consume `/api/catalog` y solo usa `data.js` como fallback offline. Las liquidaciones nuevas deben calcularse con `POST /api/liquidations/calculate`.
 
-## Usuarios y roles
-
-1. Configurar `AUTH_JWT_SECRET`.
-2. Crear primer admin con `POST /api/auth/bootstrap-admin`.
-3. Iniciar sesion con `POST /api/auth/login`.
-4. Crear usuarios desde `POST /api/users` usando un token admin.
-
-Roles soportados: `admin`, `auditor`, `operator`. Con `AUTH_REQUIRED=true`, las mutaciones requieren token JWT.
-
 ## Aprobacion de convenios
 
 Un convenio generado por leIA queda como `PENDIENTE_REVISION`. Antes de aprobar:
