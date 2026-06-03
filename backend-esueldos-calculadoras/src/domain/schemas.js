@@ -187,6 +187,22 @@ const conventionSchema = z.object({
   });
 });
 
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8)
+});
+
+const userCreateSchema = loginSchema.extend({
+  name: z.string().min(1).optional(),
+  role: z.enum(["admin", "auditor", "operator"]).default("operator")
+});
+
+const userUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  role: z.enum(["admin", "auditor", "operator"]).optional(),
+  active: z.boolean().optional()
+});
+
 function parseOrThrow(schema, payload, message = "Payload invalido") {
   const result = schema.safeParse(payload);
   if (result.success) return result.data;
@@ -202,8 +218,11 @@ function parseOrThrow(schema, payload, message = "Payload invalido") {
 module.exports = {
   calculationInputSchema,
   employeeWriteSchema,
+  loginSchema,
   liquidationResultSchema,
   savedLiquidationSchema,
   conventionSchema,
+  userCreateSchema,
+  userUpdateSchema,
   parseOrThrow
 };

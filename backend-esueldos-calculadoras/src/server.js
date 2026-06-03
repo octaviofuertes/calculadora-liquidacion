@@ -19,12 +19,15 @@ const {
 const { calculatePayroll } = require("./domain/payroll-engine");
 const { configureSecurity } = require("./middleware/security");
 const catalogService = require("./services/catalog-service");
+const convenioService = require("./services/convenio-service");
+const { calculateLiquidation } = require("./services/liquidation-service");
 const scaleRepository = require("./repositories/scale-repository");
 const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
 const { createAdminRouter } = require("./routes/admin.routes");
 const { createCatalogRouter } = require("./routes/catalog.routes");
 const { createEmployeesRouter } = require("./routes/employees.routes");
 const { createHealthRouter } = require("./routes/health.routes");
+const { createConveniosRouter } = require("./routes/convenios.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
 const { createScalesRouter } = require("./routes/scales.routes");
 const { parseOrThrow, calculationInputSchema, liquidationResultSchema, savedLiquidationSchema } = require("./domain/schemas");
@@ -145,6 +148,7 @@ async function ensureScaleIndexes() {
   await db.collection("employees").createIndex({ name: "text" });
   await db.collection("employees").createIndex({ conventionId: 1, name: 1 });
   await db.collection("liquidations").createIndex({ convention: 1, period: 1, createdAt: -1 });
+  await convenioService.ensureConvenioIndexes(db);
   await ensureVersionIndexes(db);
 }
 
@@ -566,6 +570,7 @@ function fallbackAuditFromPrecheck(precheck, aiError = null) {
 
 app.use(createHealthRouter({ getDb: getDbInstance }));
 app.use(createCatalogRouter({ getDb: getDbInstance }));
+app.use(createConveniosRouter({ getDb: getDbInstance }));
 app.use(createScalesRouter({
   getDb: getDbInstance,
   scaleUpload,
@@ -1384,16 +1389,7 @@ app.get("/api/liquidations/:id", async (req, res, next) => {
 
 app.post("/api/liquidations/calculate", async (req, res, next) => {
   try {
-    const payload = parseOrThrow(calculationInputSchema, req.body, "Datos de liquidacion invalidos");
-    const catalog = await getCatalogPayload();
-    const activeDoc = await findActiveScale(payload.conventionId, payload.period);
-    const result = calculatePayroll({
-      catalog,
-      payload,
-      activeScale: serializeScale(activeDoc)
-    });
-    const checkedResult = parseOrThrow(liquidationResultSchema, result, "Resultado de liquidacion invalido");
-    res.json(checkedResult);
+    res.json(await calculateLiquidation(db, req.body, serializeScale));
   } catch (error) {
     next(error);
   }

@@ -50,7 +50,38 @@
     "retentions": [],
     "employerContributions": []
   },
-  "payrollBases": {},
+  "payrollBases": {
+    "scales": [
+      {
+        "id": "",
+        "name": "",
+        "type": "",
+        "periodFrom": "",
+        "periodTo": "",
+        "currency": "",
+        "scope": "",
+        "zone": "",
+        "values": [
+          {
+            "id": "",
+            "categoryId": "",
+            "conceptId": "",
+            "modality": "",
+            "paymentUnit": "",
+            "periodicity": "",
+            "value": null,
+            "minValue": null,
+            "maxValue": null,
+            "currency": "",
+            "scope": "",
+            "zone": "",
+            "validFrom": "",
+            "validTo": ""
+          }
+        ]
+      }
+    ]
+  },
   "employeeRequirements": {
     "requiredFields": [],
     "optionalFields": [],

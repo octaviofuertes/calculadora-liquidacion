@@ -1,4 +1,6 @@
 const { geminiModelList } = require("./gemini-config");
+const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("./models/convenio.model");
+const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
 
 class GeminiConventionError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
@@ -325,7 +327,13 @@ function polishConventionWarnings(parsed) {
 }
 
 function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA", useFallbackDefaults = true } = {}) {
+  if (parsed?.schemaVersion === UNIVERSAL_SCHEMA_VERSION || parsed?.convenio) {
+    return normalizeUniversalConvenio(parsed);
+  }
   const source = parsed.convention || parsed.convenio || parsed;
+  if (source.schemaVersion || source.categories || source.payrollBases?.scales) {
+    return normalizeUniversalConvenio(source);
+  }
   const name = source.name || source.nombre || fallbackName;
   const id = normalizeText(source.id || source.shortName || name);
   const fallbackYear = String(new Date().getFullYear());
@@ -484,8 +492,34 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
 }
 
 function universalConventionTemplateForPrompt() {
-  const template = JSON.parse(JSON.stringify(UNIVERSAL_CONVENTION_TEMPLATE));
-  return { convention: template };
+  return {
+    schemaVersion: EXCEL_SCHEMA_VERSION,
+    convenio: {
+      convenio_id: "",
+      tipo_norma: "",
+      numero: "",
+      "a\u00f1o": "",
+      denominacion: "",
+      actividad: "",
+      rama: "",
+      jurisdiccion: "",
+      organismo: "",
+      partes_sindicales: "",
+      partes_empleadoras: "",
+      fecha_homologacion: "",
+      vigencia_desde: "",
+      vigencia_hasta: "",
+      ambito_territorial: "",
+      personal_comprendido: "",
+      personal_excluido: "",
+      fuente_documento: ""
+    },
+    ambitos: [],
+    categorias: [],
+    conceptos: [],
+    escalas: [],
+    adicionales: []
+  };
 }
 
 function conventionExtractionContractForPrompt() {
@@ -634,31 +668,14 @@ function conventionExtractionContractForPrompt() {
 function buildConventionPrompt({ draftName, notes }) {
   return [
     "Sos leIA, contadora laboral senior de Argentina e ingeniera de sistemas especialista en liquidacion de sueldos multiconvenio.",
-    "Estructura el convenio desde cero. Usa exclusivamente el contenido de los archivos adjuntos como fuente factual. No uses catalogos, convenios precargados, borradores previos, versiones archivadas ni rastros de convenios eliminados.",
-    "La plantilla incluida al final es solo un contrato de campos vacios: no contiene valores legales ni contables. No completes campos por analogia con otros convenios. Si un dato no aparece en los adjuntos, dejalo vacio o null y registralo en warnings cuando requiera revision.",
-    "Tu tarea es leer por separado el CCT y la escala salarial adjunta para generar un JSON de convenio COMPLETO, auditable y ejecutable por eSueldos. No limites la extraccion de conceptos a la escala: el CCT tambien puede definir haberes remunerativos y no remunerativos.",
-    "No escribas explicaciones fuera del JSON. No inventes montos, porcentajes ni articulos. Si un dato numerico no esta claro, usa null, marca requiresHumanValidation=true y agrega una warning. Usa 0 solamente cuando el documento indique expresamente cero.",
-    "METODO OBLIGATORIO: primero recorre todas las paginas de cada adjunto. Despues extrae por separado el CCT y la escala. Finalmente concilia ambos resultados en un unico JSON. No devuelvas arrays vacios si existen filas, importes, porcentajes o reglas legibles en cualquiera de los archivos.",
-    "DEL CCT O ACTA extrae: identificacion legal, actividad, alcance, vigencia, categorias si aparecen, jornada, divisores, antiguedad, presentismo, horas extra, licencias, adicionales, haberes remunerativos, haberes no remunerativos, descuentos del trabajador, retenciones, contribuciones del empleador, condiciones de aplicacion y referencias de articulo.",
-    "DE LA ESCALA SALARIAL extrae: periodos, zonas, jornadas, categorias laborales, basicos mensuales, jornales, valores hora, importes no remunerativos por categoria y periodo, y tablas separadas de adicionales. Lee encabezados combinados y conserva la relacion correcta entre fila, columna, zona y mes.",
-    "REGLA CRITICA DE NO REMUNERATIVOS: si el CCT, acta o escala indica que una suma no remunerativa genera antiguedad no remunerativa o presentismo no remunerativo, registra sus reglas separadas en liquidationModel.rules.nonRemunerativeScale: seniorityEnabled, seniorityPercentPerYear, seniorityCapYears, presentismEnabled, presentismPercent y presentismRequiresNoUnjustifiedAbsence. No las mezcles con antiguedad o presentismo remunerativos. Conserva evidencia y referencias legales.",
-    "REGLA CRITICA DE ZONA GENERAL: si una tabla salarial muestra General, Base, Zona general, Zona base o Sin adicional zonal, registrala siempre en zones como { id: \"general\", label: \"General\", coef: 1 }. No la omitas aunque el coeficiente 1 sea implicito. Vincula sus filas con zone: \"general\".",
-    "CONCILIACION: categories contiene exclusivamente categorias laborales con su escala basica. Los adicionales, pluses, viaticos, kilometrajes, premios, sumas fijas y porcentajes van en liquidationModel.concepts aunque provengan de una tabla separada de la escala. No conviertas adicionales en categorias.",
-    "El JSON debe servir para mensual, jornal, hora, zonas, coeficientes, categorias, escalas por periodo, no remunerativos, antiguedad, presentismo, horas extra, feriados, vacaciones, adicionales, aportes del trabajador, contribuciones del empleador y auditoria humana.",
-    "Usa schemaVersion esueldos-convenio-universal-v1 y calculationMode generic-v1. Los periodos deben ser YYYY-MM. Los ids deben ser estables, sin espacios ni acentos.",
-    "Toda categoria debe traer monthly, day u hourly, y si la escala trae varios meses usa monthlyByPeriod/dayByPeriod/hourlyByPeriod y nonRem por periodo.",
-    "Contrato de categories: cada fila puede incluir id, label, group, description, monthly, day, hourly, monthlyByPeriod, dayByPeriod, hourlyByPeriod, nonRem, zone, normalWeeklyHours, normalDailyHours, legalReferences y notes. Inclui solo campos respaldados por los adjuntos.",
-    "Todo concepto variable detectado en el CCT o en la escala debe ir en liquidationModel.concepts con inputType checkbox/number, rowType remunerative/nonRemunerative/deduction, calculation fixed/percentOfBase/amountPerUnit, base, tratamiento de aportes, condiciones, referencias legales, procedencia documental y detalle.",
-    "Contrato de conceptos, deducciones y retenciones: cada fila puede incluir id, label, group, inputType, rowType, calculation, percent, amount, amountByPeriod, unitAmount, unitAmountByPeriod, base, defaultValue, appliesWhen, requiresHumanValidation, conditions, legalReferences, source, sourceFiles, detail y notes. Inclui solo campos respaldados por los adjuntos.",
-    "Las deducciones propias del trabajador van en liquidationModel.deductions y se muestran como novedades del mes. Las retenciones propias del convenio, embargos u otras retenciones identificadas van en liquidationModel.retentions: no las mezcles con haberes ni contribuciones del empleador. Usa defaultValue true si normalmente aplican y false si son eventuales. Las contribuciones propias del empleador van en liquidationModel.employerContributions. No agregues Jubilacion/PAMI/Obra Social/Ganancias generales porque eSueldos ya las calcula.",
-    "Extrae las reglas de liquidacion con su evidencia: jornada, divisores, antiguedad, presentismo, horas extra, feriados, licencias, vacaciones, bases de calculo, condiciones y reglas de validacion. Guarda reglas generales en rules y reglas ejecutables detalladas en liquidationModel.rules. No inventes una regla a partir de texto ambiguo: conserva el texto en notes o warnings y marca requiresHumanValidation.",
-    "Inclui auditChecklist, validation, employeeRequirements y notes para que el liquidador humano pueda auditar el convenio antes de aprobarlo.",
-    "Si los adjuntos son imagenes o contienen tablas representadas visualmente, interpretalos directamente como agente IA multimodal: observa encabezados, filas, columnas, notas y relaciones espaciales antes de estructurar. Clasifica los bloques en identificacion y alcance, categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, descuentos, retenciones, jornada laboral, licencias y reglas de validacion.",
-    "Cuando la escala traiga una tabla separada de adicionales, no mezcles sus filas con categories. Lleva cada adicional a liquidationModel.concepts indicando rowType, calculation fixed/percentOfBase/amountPerUnit, base, importe o porcentaje, unidad y tratamiento remunerativo.",
-    "El backend construira ademas structuredModel como molde auditable del convenio, preservando los campos ejecutables de esta plantilla.",
-    "CONTRATO DE TIPOS PARA COMPLETAR. Es una descripcion, no copies literalmente sus textos:",
-    JSON.stringify(conventionExtractionContractForPrompt(), null, 2),
-    "Devolve JSON valido con esta forma exacta y completa:",
+    "Estructura el convenio desde cero usando exclusivamente los archivos adjuntos. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
+    "La IA solo estructura datos. No calcules sueldos ni inventes importes, porcentajes, articulos o reglas. Si falta texto usa \"\"; si falta numero usa null; si falta lista usa [].",
+    "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
+    "Usa schemaVersion esueldos-cct-estructura-excel-v1 y la estructura Excel: convenio, ambitos, categorias, conceptos, escalas con valores y adicionales.",
+    "Diferencia haberes remunerativos, haberes no remunerativos, descuentos, retenciones y aportes patronales en conceptos.tipo_concepto y conceptos.naturaleza.",
+    "Las tablas separadas de adicionales deben ir en adicionales o conceptos, no como categorias.",
+    "La zona General/Base/Sin adicional debe conservarse en zona como General o general cuando aparezca.",
+    "Devolve JSON valido con esta forma exacta:",
     JSON.stringify(universalConventionTemplateForPrompt(), null, 2),
     draftName ? `Etiqueta informativa escrita por el usuario: ${draftName}. No la uses como evidencia legal ni como reemplazo de la identificacion extraida de los adjuntos.` : "Etiqueta informativa escrita por el usuario: sin etiqueta.",
     notes ? `Notas informativas del usuario: ${notes}. No las uses como reemplazo de evidencia documental.` : "Notas informativas del usuario: sin notas."
