@@ -114,6 +114,16 @@ function normalizeMoney(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function normalizeCurrencyAmount(value) {
+  const number = normalizeMoney(value);
+  if (number === null) return null;
+  if (typeof value === "number" && number > 0 && number < 10000 && String(value).includes(".")) {
+    const decimals = String(value).split(".")[1] || "";
+    if (decimals.length === 3) return Math.round(number * 1000);
+  }
+  return number;
+}
+
 function normalizeOptionalBoolean(value) {
   if (typeof value === "boolean") return value;
   if (value === null || value === undefined || value === "") return null;
@@ -169,10 +179,10 @@ function normalizeRows(rows) {
       label: row.label || row.category || row.name || "",
       group: row.group || row.grupo || row.section || row.seccion || "",
       zone: normalizeZoneId(row.zone || row.zona),
-      monthly: normalizeMoney(row.monthly ?? row.sueldoMensual ?? row.basicoMensual ?? row.baseSalary),
-      day: normalizeMoney(row.day ?? row.jornal ?? row.valorDia),
-      hourly: normalizeMoney(row.hourly ?? row.hora ?? row.valorHora),
-      nonRemunerative: normalizeMoney(row.nonRemunerative ?? row.noRemunerativo ?? row.snr),
+      monthly: normalizeCurrencyAmount(row.monthly ?? row.sueldoMensual ?? row.basicoMensual ?? row.baseSalary),
+      day: normalizeCurrencyAmount(row.day ?? row.jornal ?? row.valorDia),
+      hourly: normalizeCurrencyAmount(row.hourly ?? row.hora ?? row.valorHora),
+      nonRemunerative: normalizeCurrencyAmount(row.nonRemunerative ?? row.noRemunerativo ?? row.snr),
       notes: Array.isArray(row.notes) ? row.notes.filter(Boolean).map(String) : []
     }))
     .filter((row) => row.label || row.monthly || row.day || row.hourly || row.nonRemunerative);

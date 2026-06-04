@@ -3123,7 +3123,7 @@
         <div><span>Lectura IA</span><strong>${escapeHtml(scale.aiStatus || "-")}</strong></div>
         <div><span>Confianza</span><strong>${Number(parsed.confidence || 0)}%</strong></div>
         <div><span>Aprobada</span><strong>${escapeHtml(shortDate(scale.approvedAt))}</strong></div>
-        <div><span>Archivo</span><strong>${scale.sourceFileUrl ? `<a href="${escapeHtml(apiUrl(scale.sourceFileUrl))}" target="_blank" rel="noreferrer">Abrir</a>` : "-"}</strong></div>
+  
       </div>
       ${parsed.sourceSummary ? `<p class="scale-summary">${escapeHtml(parsed.sourceSummary)}</p>` : ""}
       ${warnings.length ? `<div class="scale-warning">${warnings.map(escapeHtml).join("<br>")}</div>` : ""}
