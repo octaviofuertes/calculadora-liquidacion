@@ -820,7 +820,7 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       },
       { upsert: true }
     );
-    const updatedDraft = await db.collection("conventionDrafts").findOneAndUpdate(
+    const result = await db.collection("conventionDrafts").findOneAndUpdate(
       { _id: draft._id },
       {
         $set: {
@@ -835,6 +835,7 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       },
       { returnDocument: "after" }
     );
+    const updatedDraft = updatedDocument(result);
     res.json({
       draft: serializeConventionDraft(updatedDraft),
       convention

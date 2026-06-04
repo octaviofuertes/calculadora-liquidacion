@@ -120,14 +120,32 @@ function normalizeMoney(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function normalizeCurrencyAmount(value) {
+  const number = normalizeMoney(value);
+  if (number === null) return null;
+  if (typeof value === "number" && number > 0 && number < 10000 && String(value).includes(".")) {
+    const decimals = String(value).split(".")[1] || "";
+    if (decimals.length === 3) return Math.round(number * 1000);
+  }
+  return number;
+}
+
 function normalizeMoneyMap(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.entries(value).reduce((acc, [key, amount]) => {
     const period = periodFromText(key) || key;
-    const normalized = normalizeMoney(amount);
+    const normalized = normalizeCurrencyAmount(amount);
     if (period && normalized !== null) acc[period] = normalized;
     return acc;
   }, {});
+}
+
+function normalizeSalaryType(value) {
+  const normalized = normalizeText(value);
+  if (["monthly", "mensual", "mensualizado", "sueldo mensual"].includes(normalized)) return "monthly";
+  if (["daily", "jornal", "jornalizado", "diario", "por dia"].includes(normalized)) return "daily";
+  if (["hourly", "hora", "horario", "por hora"].includes(normalized)) return "hourly";
+  return "";
 }
 
 function dropNullishKeys(object, keys) {
@@ -181,12 +199,12 @@ function normalizeRows(rows, periodIds = []) {
       if (rawNonRem && typeof rawNonRem === "object" && !Array.isArray(rawNonRem)) {
         Object.entries(rawNonRem).forEach(([key, value]) => {
           const period = periodFromText(key) || key;
-          nonRem[period] = normalizeMoney(value) || 0;
+          nonRem[period] = normalizeCurrencyAmount(value) || 0;
         });
       }
       if (!Object.keys(nonRem).length && row.nonRemunerative !== undefined) {
         periodIds.forEach((period) => {
-          nonRem[period] = normalizeMoney(row.nonRemunerative) || 0;
+          nonRem[period] = normalizeCurrencyAmount(row.nonRemunerative) || 0;
         });
       }
       const normalized = {
@@ -195,9 +213,9 @@ function normalizeRows(rows, periodIds = []) {
         group: row.group || row.grupo || "",
         description: row.description || row.descripcion || "",
         zone: normalizeZoneId(row.zone || row.zona),
-        monthly: normalizeMoney(row.monthly ?? row.sueldoMensual ?? row.basicoMensual),
-        day: normalizeMoney(row.day ?? row.jornal ?? row.valorDia),
-        hourly: normalizeMoney(row.hourly ?? row.hora ?? row.valorHora),
+        monthly: normalizeCurrencyAmount(row.monthly ?? row.sueldoMensual ?? row.basicoMensual),
+        day: normalizeCurrencyAmount(row.day ?? row.jornal ?? row.valorDia),
+        hourly: normalizeCurrencyAmount(row.hourly ?? row.hora ?? row.valorHora),
         monthlyByPeriod,
         dayByPeriod,
         hourlyByPeriod,
@@ -236,9 +254,9 @@ function normalizeConcepts(concepts, { useFallbackDefaults = true } = {}) {
         rowType,
         calculation,
         defaultValue: concept.defaultValue ?? (useFallbackDefaults ? (inputType === "checkbox" ? false : 0) : null),
-        amount: normalizeMoney(concept.amount),
+        amount: normalizeCurrencyAmount(concept.amount),
         amountByPeriod: normalizeMoneyMap(concept.amountByPeriod || concept.amountPorPeriodo),
-        unitAmount: normalizeMoney(concept.unitAmount),
+        unitAmount: normalizeCurrencyAmount(concept.unitAmount),
         unitAmountByPeriod: normalizeMoneyMap(concept.unitAmountByPeriod || concept.valorUnidadPorPeriodo),
         percent: Number(concept.percent ?? concept.pct ?? 0) || 0,
         base: concept.base || (useFallbackDefaults ? "basic" : ""),
@@ -267,7 +285,7 @@ function normalizeDeductions(deductions, { idPrefix = "deduccion", labelPrefix =
         label: item.label || item.name || `${labelPrefix} ${index + 1}`,
         calculation: item.calculation || ((item.amount !== undefined && item.amount !== null) ? "fixed" : (useFallbackDefaults ? "percentOfBase" : "")),
         percent: Number(item.percent ?? item.pct ?? 0) || 0,
-        amount: normalizeMoney(item.amount),
+        amount: normalizeCurrencyAmount(item.amount),
         amountByPeriod: normalizeMoneyMap(item.amountByPeriod || item.amountPorPeriodo),
         base: item.base || (useFallbackDefaults ? "remunerative" : ""),
         defaultValue: item.defaultValue === undefined ? (useFallbackDefaults ? defaultValue : false) : item.defaultValue !== false,
@@ -365,7 +383,11 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
     : (categories.some((cat) => cat.hourly || Object.keys(cat.hourlyByPeriod || {}).length)
       ? "hourly"
       : (categories.some((cat) => cat.monthly || Object.keys(cat.monthlyByPeriod || {}).length) ? "monthly" : ""));
-  const salaryType = source.type || source.liquidationModel?.rules?.salaryType || inferredSalaryType || (useFallbackDefaults ? "monthly" : "");
+  const declaredSalaryType = normalizeSalaryType(source.type || source.liquidationModel?.rules?.salaryType);
+  const salaryType = inferredSalaryType || declaredSalaryType || (useFallbackDefaults ? "monthly" : "");
+  if (declaredSalaryType && inferredSalaryType && declaredSalaryType !== inferredSalaryType) {
+    warnings.push(`Tipo de liquidacion corregido por importes detectados: IA=${declaredSalaryType}, detectado=${inferredSalaryType}.`);
+  }
   const rawNonRemunerativeScaleRules = source.liquidationModel?.rules?.nonRemunerativeScale
     || source.nonRemunerativeRules
     || source.reglasNoRemunerativas
@@ -646,6 +668,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "CONCILIACION: categories contiene exclusivamente categorias laborales con su escala basica. Los adicionales, pluses, viaticos, kilometrajes, premios, sumas fijas y porcentajes van en liquidationModel.concepts aunque provengan de una tabla separada de la escala. No conviertas adicionales en categorias.",
     "El JSON debe servir para mensual, jornal, hora, zonas, coeficientes, categorias, escalas por periodo, no remunerativos, antiguedad, presentismo, horas extra, feriados, vacaciones, adicionales, aportes del trabajador, contribuciones del empleador y auditoria humana.",
     "Usa schemaVersion esueldos-convenio-universal-v1 y calculationMode generic-v1. Los periodos deben ser YYYY-MM. Los ids deben ser estables, sin espacios ni acentos.",
+    "No uses salaryType monthly por defecto. Si el CCT o la escala habla de jornal, dia, changa, valor dia o pago por dia, usa daily y completa day/dayByPeriod. Si habla de hora o valor hora, usa hourly y completa hourly/hourlyByPeriod. Usa monthly solo cuando el basico sea mensual.",
     "Toda categoria debe traer monthly, day u hourly, y si la escala trae varios meses usa monthlyByPeriod/dayByPeriod/hourlyByPeriod y nonRem por periodo.",
     "Contrato de categories: cada fila puede incluir id, label, group, description, monthly, day, hourly, monthlyByPeriod, dayByPeriod, hourlyByPeriod, nonRem, zone, normalWeeklyHours, normalDailyHours, legalReferences y notes. Inclui solo campos respaldados por los adjuntos.",
     "Todo concepto variable detectado en el CCT o en la escala debe ir en liquidationModel.concepts con inputType checkbox/number, rowType remunerative/nonRemunerative/deduction, calculation fixed/percentOfBase/amountPerUnit, base, tratamiento de aportes, condiciones, referencias legales, procedencia documental y detalle.",
