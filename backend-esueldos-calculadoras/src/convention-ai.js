@@ -1,6 +1,7 @@
 const { geminiModelList } = require("./gemini-config");
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("./models/convenio.model");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
+const useConventionMarkdown = String(process.env.CONVENTION_USE_MARKDOWN || "true").toLowerCase() !== "false";
 
 class GeminiConventionError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
@@ -33,17 +34,95 @@ function stripJsonFences(text) {
   const raw = String(text || "").trim();
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced) return fenced[1].trim();
-  const first = raw.indexOf("{");
-  const last = raw.lastIndexOf("}");
-  if (first >= 0 && last > first) return raw.slice(first, last + 1);
-  return raw;
+  return extractBalancedJson(raw) || raw;
+}
+
+function extractBalancedJson(raw) {
+  const start = String(raw || "").indexOf("{");
+  if (start < 0) return "";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === "{") depth += 1;
+    if (char === "}") depth -= 1;
+    if (depth === 0) return raw.slice(start, index + 1);
+  }
+  return "";
+}
+
+function cleanJsonText(value) {
+  return String(value || "")
+    .replace(/^\uFEFF/, "")
+    .replace(/,\s*([}\]])/g, "$1")
+    .trim();
+}
+
+function closeTruncatedJson(value) {
+  const raw = String(value || "");
+  const start = raw.indexOf("{");
+  if (start < 0) return "";
+  const stack = [];
+  let inString = false;
+  let escaped = false;
+  let out = raw.slice(start);
+  for (let index = 0; index < out.length; index += 1) {
+    const char = out[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === "{") stack.push("}");
+    else if (char === "[") stack.push("]");
+    else if ((char === "}" || char === "]") && stack[stack.length - 1] === char) stack.pop();
+  }
+  if (inString) out += "\"";
+  out = out
+    .replace(/,\s*$/, "")
+    .replace(/,\s*([}\]])/g, "$1");
+  while (stack.length) out += stack.pop();
+  return cleanJsonText(out);
 }
 
 function parseGeminiJson(text) {
-  const jsonText = stripJsonFences(text);
+  const jsonText = cleanJsonText(stripJsonFences(text));
   try {
     return JSON.parse(jsonText);
   } catch (error) {
+    const repaired = closeTruncatedJson(jsonText);
+    if (repaired && repaired !== jsonText) {
+      try {
+        console.warn("[Gemini JSON] Respuesta truncada reparada parcialmente.");
+        return JSON.parse(repaired);
+      } catch (_) {
+        // fall through to the detailed invalid JSON error
+      }
+    }
+    console.error("[Gemini JSON invalido] inicio:", String(text || "").slice(0, 800));
+    console.error("[Gemini JSON invalido] fin:", String(text || "").slice(-800));
     throw new GeminiConventionError("Gemini no devolvio un JSON valido para el convenio.", {
       status: 502,
       code: "INVALID_JSON"
@@ -327,6 +406,12 @@ function polishConventionWarnings(parsed) {
 }
 
 function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA", useFallbackDefaults = true } = {}) {
+  if (parsed?.data && (parsed.ok === true || parsed.data.schemaVersion || parsed.data.convenio)) {
+    parsed = parsed.data;
+  }
+  if (parsed?.json_parcial) {
+    parsed = parsed.json_parcial;
+  }
   if (parsed?.schemaVersion === UNIVERSAL_SCHEMA_VERSION || parsed?.convenio) {
     return normalizeUniversalConvenio(parsed);
   }
@@ -667,18 +752,110 @@ function conventionExtractionContractForPrompt() {
 
 function buildConventionPrompt({ draftName, notes }) {
   return [
-    "Sos leIA, contadora laboral senior de Argentina e ingeniera de sistemas especialista en liquidacion de sueldos multiconvenio.",
-    "Estructura el convenio desde cero usando exclusivamente los archivos adjuntos. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
+    "INSTRUCCION PARA EL AGENTE ESTRUCTURADOR DE CONVENIOS COLECTIVOS",
+    "Actua como el mejor contador laboral de Argentina y como ingeniero en sistemas full stack senior, con criterio experto en Convenios Colectivos de Trabajo y sistemas de liquidacion de haberes.",
+    "Ademas actua como Analista Funcional Senior: pensa en datos computables, relaciones, formulas, validaciones y trazabilidad documental.",
+    "Tu objetivo NO es resumir el convenio. Tu objetivo es EXTRAER y ESTRUCTURAR informacion liquidatoria computable del CCT.",
+    "Debes analizar la totalidad de la documentacion enviada en esta solicitud: texto principal, actas complementarias, acuerdos salariales, escalas salariales, anexos, tablas, imagenes, cuadros, notas al pie, adendas y resoluciones homologatorias.",
+    "AISLAMIENTO ABSOLUTO: cada estructuracion empieza desde cero. Ignora por completo convenios anteriores, ejemplos de otros CCT, catalogos internos, memoria de conversaciones, borradores previos, datos aprobados, nombres de archivos anteriores y cualquier convenio precargado.",
+    "Nunca completes datos usando otro CCT aunque parezca parecido. Si el documento actual no contiene el dato, escribir: Informacion no encontrada en la documentacion analizada.",
+    "Todo dato que afecte el calculo del sueldo debe ser identificado y clasificado. No omitir conceptos. No resumir articulos. No inventar informacion.",
+    "Si una regla no puede determinarse con certeza, escribir: requiere revision manual.",
+    "EXTRAER OBLIGATORIAMENTE informacion general: numero de convenio, anio, denominacion, actividad, rama, jurisdiccion, ambito territorial, ambito personal, partes firmantes, fecha de homologacion, vigencia y organismo homologante.",
+    "EXTRAER OBLIGATORIAMENTE todas las categorias laborales: nombre, codigo si existe, descripcion, tareas, nivel jerarquico, rama y modalidad.",
+    "NO extraigas tablas salariales completas en esta llamada. Las escalas salariales se extraen en una segunda llamada separada. En esta llamada deja escalas: [] salvo que el texto principal contenga una regla salarial sin tabla separada.",
+    "EXTRAER OBLIGATORIAMENTE haberes remunerativos: sueldo basico, antiguedad, presentismo, puntualidad, titulo, funcion, caja, zona, altura, riesgo, horas extras, nocturnidad, feriados, francos trabajados, guardias, disponibilidad, productividad, comisiones y premios.",
+    "Para cada concepto extraer datos compactos: nombre, articulo, formula corta, base de calculo, porcentaje, importe fijo, condicion breve, tope y frecuencia. No copies parrafos completos.",
+    "EXTRAER OBLIGATORIAMENTE haberes no remunerativos: viaticos, asignaciones, bonos, gratificaciones extraordinarias, beneficios en especie y ticket alimentacion. Extraer formula corta, condiciones breves, base, tope y vigencia.",
+    "EXTRAER OBLIGATORIAMENTE descuentos y retenciones legales y convencionales: jubilacion, Ley 19032, obra social, seguro, cuota sindical, fondo solidario, aportes especiales y contribuciones extraordinarias. Extraer base imponible, porcentaje, tope y condiciones.",
+    "EXTRAER OBLIGATORIAMENTE aportes y contribuciones patronales: fondo solidario empleador, contribuciones sindicales, aportes a camaras empresarias, seguros obligatorios y cualquier obligacion patronal creada por el convenio.",
+    "EXTRAER OBLIGATORIAMENTE licencias solo si tienen impacto liquidatorio. Mantenerlas compactas en conceptos o adicionales cuando correspondan; no copiar articulos completos.",
+    "EXTRAER OBLIGATORIAMENTE jornada laboral: horario normal, jornada maxima, jornada reducida, jornada nocturna, jornada insalubre, descansos y francos.",
+    "EXTRAER OBLIGATORIAMENTE horas extras: horas al 50%, horas al 100%, feriados, nocturnas, bases de calculo y formulas.",
+    "EXTRAER OBLIGATORIAMENTE antiguedad completa: escalas, tramos, formula, topes y base de calculo.",
+    "EXTRAER OBLIGATORIAMENTE presentismo y puntualidad: como se calcula, cuando se pierde, cuando se reduce y base utilizada.",
+    "EXTRAER OBLIGATORIAMENTE reglas de liquidacion: divisor mensual, divisor diario, divisor horario, redondeos, minimos garantizados, garantias salariales, compensaciones, absorciones y topes.",
+    "Toda formula encontrada debe quedar estructurada, por ejemplo antiguedad = sueldo basico x porcentaje x anios; hora extra 50 = valor hora x 1.5 x horas; hora extra 100 = valor hora x 2 x horas.",
+    "Antes de finalizar verificar categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, retenciones, aportes patronales, licencias, jornada laboral, horas extras, formulas de calculo y reglas de liquidacion. Si falta alguno, indicar: Informacion no encontrada en la documentacion analizada.",
+    "REGLA CRITICA: devolve un JSON plano con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales. No agregues ningun otro campo raiz.",
+    "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
+    "No crear escalas vacias. Solo crear una escala si hay nombre_escala, periodo_desde, periodo_hasta o al menos un valor salarial dentro de valores.",
+    "No crear categorias sin categoria_nombre si el nombre esta disponible en el texto. Si no se identifica el nombre real, no inventar.",
+    "Estructura el convenio desde cero usando exclusivamente la documentacion enviada en esta solicitud. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
     "La IA solo estructura datos. No calcules sueldos ni inventes importes, porcentajes, articulos o reglas. Si falta texto usa \"\"; si falta numero usa null; si falta lista usa [].",
     "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
+    "La respuesta debe ser compacta y completa. Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
     "Usa schemaVersion esueldos-cct-estructura-excel-v1 y la estructura Excel: convenio, ambitos, categorias, conceptos, escalas con valores y adicionales.",
     "Diferencia haberes remunerativos, haberes no remunerativos, descuentos, retenciones y aportes patronales en conceptos.tipo_concepto y conceptos.naturaleza.",
     "Las tablas separadas de adicionales deben ir en adicionales o conceptos, no como categorias.",
     "La zona General/Base/Sin adicional debe conservarse en zona como General o general cuando aparezca.",
-    "Devolve JSON valido con esta forma exacta:",
-    JSON.stringify(universalConventionTemplateForPrompt(), null, 2),
+    "Devolve JSON valido con esta forma exacta: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Campos internos importantes: categorias[].categoria_id/categoria_nombre; conceptos[].concepto_id/nombre/tipo_concepto/naturaleza/unidad_calculo/formula_base/base_calculo/condicion/es_liquidable; escalas[].valores[].categoria_id/concepto_id/modalidad/unidad_pago/periodicidad/valor/moneda/zona.",
     draftName ? `Etiqueta informativa escrita por el usuario: ${draftName}. No la uses como evidencia legal ni como reemplazo de la identificacion extraida de los adjuntos.` : "Etiqueta informativa escrita por el usuario: sin etiqueta.",
     notes ? `Notas informativas del usuario: ${notes}. No las uses como reemplazo de evidencia documental.` : "Notas informativas del usuario: sin notas."
+  ].join("\n");
+}
+
+function buildConventionCorePrompt({ draftName, notes }) {
+  return [
+    "Actua como contador laboral argentino e ingeniero de sistemas senior.",
+    "Extrae SOLO datos nucleares del CCT actual para liquidacion. No uses memoria, catalogos ni otros convenios.",
+    "No extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
+    "Devolve JSON valido y compacto con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "schemaVersion debe ser esueldos-cct-estructura-excel-v1.",
+    "convenio: numero, anio, denominacion, actividad, rama, jurisdiccion, ambito, partes, homologacion, vigencia y fuente.",
+    "categorias: todas las categorias detectadas con categoria_id y categoria_nombre.",
+    "conceptos: solo conceptos liquidables o retenciones/contribuciones detectadas, con campos minimos completos. Condiciones y formulas en frases cortas.",
+    "Si falta un dato usar \"Informacion no encontrada en la documentacion analizada\" o null segun corresponda. No inventar.",
+    "No agregues markdown ni explicaciones.",
+    "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
+    notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
+  ].join("\n");
+}
+
+function buildScalePrompt({ draftName, notes }) {
+  return [
+    "Actua como Analista Funcional Senior especializado en escalas salariales de CCT de Argentina.",
+    "Lee SOLO la escala salarial adjunta y extrae categorias y valores salariales publicados.",
+    "No resumas la escala. No omitas columnas. No inventes valores.",
+    "NO crees conceptos por mes, por categoria ni por columna. Prohibido generar IDs como BASICO_OCT_2025 o NO_REM_OCT_2025.",
+    "Usa pocos conceptos canonicos reutilizables: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO. Solo crea otro concepto si la escala lo nombra claramente.",
+    "Todos los importes deben ir en escalas[].valores[]. No repitas importes dentro de conceptos.",
+    "Extraer TODAS las escalas por vigencia: fecha desde, fecha hasta, categoria, sueldo basico, valor hora, valor dia, valor jornal, valor changa, total remunerativo, total jornada 7 horas, total jornada 8 horas y cualquier otro valor publicado.",
+    "No perder informacion por considerarla repetida. Si hay varias ramas, zonas, jornadas o modalidades, conservarlas.",
+    "La respuesta debe ser compacta: no copies encabezados largos, notas completas ni parrafos legales. Extrae valores y relaciones.",
+    "Diferenciar conceptos liquidables de referencias/totales. TOTAL_7H, TOTAL_8H, TOTAL_REMUNERATIVO y VALOR_CHANGA deben conservarse como referencia si el documento los publica como total o valor informativo.",
+    "Si una regla o columna no puede determinarse con certeza, escribir: requiere revision manual.",
+    "REGLA CRITICA: devolve un JSON plano con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales. No agregues ningun otro campo raiz.",
+    "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
+    "Tu objetivo principal es extraer categorias y escalas salariales. No inventes valores.",
+    "No crear escalas vacias. Solo crear una escala si hay nombre_escala, periodo_desde, periodo_hasta o al menos un valor salarial dentro de valores.",
+    "Cada valor salarial debe ir en escalas[].valores[] con categoria_id, zona, modalidad, unidad_pago, periodicidad, valor y moneda.",
+    "IMPORTANTE: en Argentina el punto suele separar miles y la coma decimales. Ejemplo: 860.281 es ochocientos sesenta mil doscientos ochenta y uno, no 860 coma 281.",
+    "Si la escala divide por zona, rama o agrupamiento, conservarlo en zona o grupo_nombre.",
+    "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
+    "Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
+    "Devolve JSON valido con esta forma exacta: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "conceptos debe ser corto: maximo 12 conceptos canonicos. escalas[].valores puede tener muchas filas.",
+    "Campos internos importantes: categorias[].categoria_id/categoria_nombre; conceptos[].concepto_id/nombre/tipo_concepto/naturaleza/unidad_calculo/formula_base/base_calculo/condicion/es_liquidable; escalas[].valores[].categoria_id/concepto_id/modalidad/unidad_pago/periodicidad/valor/moneda/zona.",
+    draftName ? `Etiqueta informativa: ${draftName}.` : "Etiqueta informativa: sin etiqueta.",
+    notes ? `Notas informativas: ${notes}.` : "Notas informativas: sin notas."
+  ].join("\n");
+}
+
+function buildScaleCompactPrompt({ draftName, notes }) {
+  return [
+    "Extrae SOLO la escala salarial en JSON valido.",
+    "No uses memoria ni otros CCT. Solo el texto de esta escala.",
+    "No crear conceptos por periodo/categoria. conceptos maximo: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO.",
+    "Todos los importes van exclusivamente en escalas[].valores[].",
+    "Cada valor: categoria_id, concepto_id, modalidad, unidad_pago, periodicidad, valor, moneda, zona.",
+    "Respuesta raiz exacta: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "Devuelve solo JSON, compacto, sin explicaciones.",
+    "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
+    notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
   ].join("\n");
 }
 
@@ -767,8 +944,54 @@ function convertRawTextToMarkdown(text) {
   return result.join("\n");
 }
 
-async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, draftName, notes }) {
+async function callGeminiJson({ apiKey, model, parts, label }) {
+  const inlineCount = parts.filter((part) => part.inline_data || part.inlineData).length;
+  const markdownCount = parts.filter((part) => /Markdown/i.test(part.text || "")).length;
+  console.log(`[Gemini ${label}] adjuntos=${inlineCount} markdown=${markdownCount} partes=${parts.length}`);
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        temperature: 0.08,
+        topP: 0.72,
+        maxOutputTokens: 16000,
+        responseMimeType: "application/json"
+      }
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new GeminiConventionError(payload?.error?.message || `Gemini respondio HTTP ${response.status}`, {
+      status: response.status,
+      model,
+      code: payload?.error?.status
+    });
+  }
+  const usage = payload?.usageMetadata || null;
+  const finishReason = payload?.candidates?.[0]?.finishReason || "";
+  if (usage) {
+    console.log(`[Gemini ${label}] modelo=${model} entrada=${usage.promptTokenCount || 0} salida=${usage.candidatesTokenCount || usage.outputTokenCount || 0} total=${usage.totalTokenCount || 0} finish=${finishReason || "-"}`);
+  }
+  const text = extractGeminiText(payload);
+  if (!text) throw new GeminiConventionError(`Gemini no devolvio texto para ${label}.`, { status: 502, model });
+  return { parsed: parseGeminiJson(text), tokenUsage: usage };
+}
+
+async function requestConventionOnceLegacy({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
   const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
+  if (cctPdf?.buffer) {
+    parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+    parts.push({ inline_data: { mime_type: cctPdf.mimeType || "application/pdf", data: cctPdf.buffer.toString("base64") } });
+  }
+  if (scalePdf?.buffer) {
+    parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+    parts.push({ inline_data: { mime_type: scalePdf.mimeType || "application/pdf", data: scalePdf.buffer.toString("base64") } });
+  }
   if (cctMarkdown) {
     parts.push({ text: `Texto del CCT extraído en formato Markdown:\n\n${cctMarkdown}` });
   }
@@ -822,7 +1045,158 @@ async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown
   if (!text) {
     throw new GeminiConventionError("Gemini no devolvio texto para el convenio.", { status: 502, model });
   }
-  return normalizeConvention(parseGeminiJson(text), { fallbackName: draftName });
+  const parsed = normalizeConvention(parseGeminiJson(text), { fallbackName: draftName });
+  return enrichExcelConventionWithLocalScale(parsed, { scaleMarkdown, draftName, scalePdf });
+}
+
+async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes }) {
+  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
+  if (cctPdf?.sourceFileName) {
+    parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+  }
+  if (cctMarkdown) {
+    parts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
+  }
+  let result;
+  try {
+    result = await callGeminiJson({ apiKey, model, parts, label: "convenio" });
+  } catch (error) {
+    if (error.code !== "INVALID_JSON") throw error;
+    console.warn("[Gemini convenio] JSON invalido. Reintentando extraccion compacta de convenio.");
+    const retryParts = [{ text: buildConventionCorePrompt({ draftName, notes }) }];
+    if (cctPdf?.sourceFileName) retryParts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+    if (cctMarkdown) retryParts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
+    result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "convenio-core" });
+  }
+  return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
+}
+
+async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes }) {
+  if (!scaleMarkdown) {
+    return { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
+  }
+  const parts = [{ text: buildScalePrompt({ draftName, notes }) }];
+  if (scalePdf?.sourceFileName) {
+    parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+  }
+  if (scaleMarkdown) {
+    parts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
+  }
+  let result;
+  try {
+    result = await callGeminiJson({ apiKey, model, parts, label: "escala" });
+  } catch (error) {
+    if (error.code !== "INVALID_JSON") throw error;
+    console.warn("[Gemini escala] JSON invalido. Reintentando extraccion compacta de escala.");
+    const retryParts = [{ text: buildScaleCompactPrompt({ draftName, notes }) }];
+    if (scalePdf?.sourceFileName) retryParts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+    retryParts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
+    result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "escala-core" });
+  }
+  return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
+}
+
+function mergeExcelConventionParts(conventionPart = {}, scalePart = {}, { draftName } = {}) {
+  const base = normalizeConvention(conventionPart, { fallbackName: draftName });
+  const scale = normalizeConvention(scalePart, { fallbackName: draftName });
+  const keyFor = (item, fields) => fields.map((field) => normalizeText(item?.[field])).find(Boolean) || "";
+  const mergeUnique = (left, right, fields) => {
+    const seen = new Set();
+    return [...(left || []), ...(right || [])].filter((item) => {
+      const key = keyFor(item, fields) || JSON.stringify(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  return normalizeConvention({
+    schemaVersion: EXCEL_SCHEMA_VERSION,
+    convenio: { ...(scale.convenio || {}), ...(base.convenio || {}) },
+    ambitos: mergeUnique(base.ambitos, scale.ambitos, ["ambito_id", "ambito_nombre", "zona"]),
+    categorias: mergeUnique(base.categorias, scale.categorias, ["categoria_id", "categoria_nombre"]),
+    conceptos: mergeUnique(base.conceptos, scale.conceptos, ["concepto_id", "concepto_nombre"]),
+    escalas: (scale.escalas || []).length ? scale.escalas : base.escalas,
+    adicionales: mergeUnique(base.adicionales, scale.adicionales, ["adicional_id", "adicional_nombre"])
+  }, { fallbackName: draftName });
+}
+
+function mergeTokenUsage(...usages) {
+  return usages.filter(Boolean).reduce((acc, usage) => ({
+    promptTokenCount: (acc.promptTokenCount || 0) + (usage.promptTokenCount || 0),
+    candidatesTokenCount: (acc.candidatesTokenCount || 0) + (usage.candidatesTokenCount || usage.outputTokenCount || 0),
+    totalTokenCount: (acc.totalTokenCount || 0) + (usage.totalTokenCount || 0)
+  }), {});
+}
+
+async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
+  const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
+  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes });
+  const merged = mergeExcelConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName });
+  console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
+  console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);
+  console.log(`[CCT merge] final: categorias=${merged.categorias?.length || 0} conceptos=${merged.conceptos?.length || 0} escalas=${merged.escalas?.length || 0}`);
+  return {
+    parsedConvention: enrichExcelConventionWithLocalScale(merged, { scaleMarkdown, draftName, scalePdf }),
+    tokenUsage: mergeTokenUsage(conventionResult.tokenUsage, scaleResult.tokenUsage)
+  };
+}
+
+function hasExcelSalaryValues(convention = {}) {
+  return (convention.escalas || []).some((scale) => (
+    (scale.valores || []).some((value) => value.valor !== null && value.valor !== undefined && value.valor !== "")
+  ));
+}
+
+function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, draftName, scalePdf } = {}) {
+  if (hasExcelSalaryValues(convention)) return convention;
+  const period = periodFromText(scaleMarkdown) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const rows = parseGenericScaleCategories(scaleMarkdown, period);
+  const scaleRows = rows.length ? rows : parseLooseScaleCategories(scaleMarkdown, period);
+  if (!scaleRows.length) return convention;
+  const convenioId = convention.convenio?.convenio_id || normalizeText(draftName || scalePdf?.sourceFileName || "convenio");
+  const categorias = scaleRows.map((row) => ({
+    categoria_id: row.id,
+    convenio_id: convenioId,
+    grupo_nombre: row.group || "",
+    categoria_nombre: row.label,
+    fuente_documento: scalePdf?.sourceFileName || ""
+  })).filter((category) => category.categoria_nombre);
+  const finalCategorias = (convention.categorias || []).length ? convention.categorias : categorias;
+  const categoryByName = new Map(finalCategorias.map((category) => [normalizeText(category.categoria_nombre), category.categoria_id]));
+  const valores = scaleRows.map((row, index) => ({
+    valor_id: `valor-${row.id}-${period}`,
+    escala_id: `escala-${period}`,
+    convenio_id: convenioId,
+    categoria_id: categoryByName.get(normalizeText(row.label)) || row.id,
+    modalidad: row.day ? "daily" : row.hourly ? "hourly" : "monthly",
+    unidad_pago: row.day ? "jornal" : row.hourly ? "hora" : "mensual",
+    periodicidad: "mensual",
+    valor: row.monthly || row.day || row.hourly,
+    moneda: "ARS",
+    vigencia_desde: period,
+    vigencia_hasta: period,
+    fuente_documento: scalePdf?.sourceFileName || "",
+    orden: index + 1
+  })).filter((value) => value.valor !== null && value.valor !== undefined && value.valor !== "");
+  return normalizeConvention({
+    ...convention,
+    convenio: {
+      ...(convention.convenio || {}),
+      convenio_id: convenioId,
+      denominacion: convention.convenio?.denominacion || draftName || scalePdf?.sourceFileName || "Convenio estructurado"
+    },
+    categorias: finalCategorias,
+    escalas: valores.length ? [{
+      escala_id: `escala-${period}`,
+      convenio_id: convenioId,
+      nombre_escala: `Escala ${monthLabel(period) || period}`,
+      periodo_desde: period,
+      periodo_hasta: period,
+      moneda: "ARS",
+      fuente_documento: scalePdf?.sourceFileName || "",
+      valores
+    }] : convention.escalas
+  });
 }
 
 async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes }) {
@@ -849,6 +1223,9 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   const cctMarkdown = convertRawTextToMarkdown(cctRaw);
   const scaleMarkdown = convertRawTextToMarkdown(scaleRaw);
+  const cctMarkdownForGemini = useConventionMarkdown ? cctMarkdown : "";
+  const scaleMarkdownForGemini = useConventionMarkdown ? scaleMarkdown : "";
+  console.log(`[CCT] PDFs recibidos para convertir a Markdown: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escala=${scalePdf?.buffer?.length || 0} bytes (${scalePdf?.mimeType || "sin escala"})`);
 
   // Debug logging requested by user
   console.log("\n==================================================");
@@ -881,14 +1258,17 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   }
 
   const models = geminiModelList(model, fallbackModels);
+  console.log(`[CCT] CONVENTION_USE_MARKDOWN=${useConventionMarkdown ? "true" : "false"} (${useConventionMarkdown ? "solo Markdown para Gemini" : "sin texto Markdown para Gemini"})`);
   const errors = [];
   for (const currentModel of models) {
     try {
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctMarkdown,
-        scaleMarkdown,
+        cctMarkdown: cctMarkdownForGemini,
+        scaleMarkdown: scaleMarkdownForGemini,
+        cctPdf,
+        scalePdf,
         draftName,
         notes
       });
@@ -1503,11 +1883,39 @@ function inferSalaryAmounts(values) {
 }
 
 function labelBeforeFirstAmount(line) {
-  return String(line || "")
-    .replace(/\s+/g, " ")
-    .replace(/\s*\$\s*/g, "$")
-    .replace(/\d{1,3}(?:\.\d{3})+(?:,\d{2})?\$?.*$/g, "")
-    .trim();
+  const normalized = String(line || "").replace(/\s+/g, " ").replace(/\s*\$\s*/g, "$");
+  const match = normalized.match(/\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{1,3},\d{2}/);
+  return (match ? normalized.slice(0, match.index) : normalized).trim();
+}
+
+function parseLooseScaleCategories(scaleText, period) {
+  const seen = new Set();
+  return String(scaleText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const values = moneyValuesFromText(line);
+      if (!values.length) return null;
+      const label = labelBeforeFirstAmount(line);
+      if (!isUsefulCategoryLabel(label) || isLikelyAdditionalLabel(label)) return null;
+      const id = normalizeText(label);
+      if (!id || seen.has(id)) return null;
+      const amounts = inferSalaryAmounts(values);
+      if (!amounts?.monthly) return null;
+      seen.add(id);
+      return {
+        id,
+        label,
+        group: "Escala",
+        monthly: amounts.monthly,
+        monthlyByPeriod: { [period]: amounts.monthly },
+        day: null,
+        hourly: null,
+        nonRem: { [period]: amounts.nonRem || 0 }
+      };
+    })
+    .filter(Boolean);
 }
 
 function isUsefulScaleHeader(line) {
@@ -1993,11 +2401,11 @@ function parseGenericScaleCategories(scaleText, period, { stopAtTotals = false }
     if (stopAtTotals && /(TOTAL A ABONAR|LA SUMA FIJA|LOS ADICIONALES EXTRAORDINARIOS)/i.test(folded)) break;
     if (isSalarySectionHeader(line)) {
       inAdditionalSection = false;
-      currentGroup = line.replace(/\s+/g, " ").trim();
+      currentGroup = "Escala";
       continue;
     }
     if (isAdditionalSectionHeader(line)) {
-      inAdditionalSection = true;
+      if (categories.length) inAdditionalSection = true;
       continue;
     }
     if (inAdditionalSection) continue;
@@ -2465,6 +2873,7 @@ module.exports = {
   parseGenericDocumentRules,
   parseGenericScaleAdditionals,
   parseGenericScaleCategories,
+  parseLooseScaleCategories,
   parseCommerceCategories,
   parseCommerceScaleAdditionals,
   enrichConventionWithDocumentConcepts,

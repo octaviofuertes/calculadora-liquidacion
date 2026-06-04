@@ -1,4 +1,5 @@
 const { z } = require("zod");
+const { convenioSchema: conventionSchema } = require("../models/convenio.model");
 
 const dateString = z.string().min(1).optional().default("");
 const optionalFiniteNumber = z.preprocess(
@@ -140,7 +141,7 @@ const conceptSchema = z.object({
   defaultValue: z.union([z.boolean(), z.number(), z.string()]).optional()
 }).passthrough();
 
-const conventionSchema = z.object({
+const legacyConventionSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   shortName: z.string().optional(),

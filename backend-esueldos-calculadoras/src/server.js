@@ -11,6 +11,7 @@ const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
 const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
 const { geminiPrimaryModel, geminiConventionModel } = require("./gemini-config");
+const { EXCEL_SCHEMA_VERSION, toRuntimeConvention, normalizeAndValidateCCTJson } = require("./models/convenio.model");
 const {
   isSupportedConventionDocument,
   analyzeConventionDocuments,
@@ -114,7 +115,8 @@ function toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs) {
 
   conventionDocs.forEach((doc) => {
     const { _id: mongoId, order, updatedAt: conventionUpdatedAt, ...convention } = doc;
-    conventions[convention.id] = sanitizeGenericConventionCategories(convention);
+    const runtimeConvention = convention.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(convention) : convention;
+    conventions[runtimeConvention.id] = sanitizeGenericConventionCategories(runtimeConvention);
   });
 
   return {
@@ -692,11 +694,47 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
         aiError = error.message || "No se pudo estructurar el convenio con leIA.";
         aiModel = error.model || null;
         aiModelsTried = error.modelsTried || [];
+        console.error("[CCT] Error estructurando con Gemini:", aiError);
         parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), aiError]));
       }
     }
 
-    parsedConvention = sanitizeGenericConventionCategories(applyConventionArchitecture(parsedConvention, processingPipeline));
+    if (aiStatus === "ERROR_IA") {
+      res.status(502).json({
+        ok: false,
+        errores: [{ path: "gemini", message: aiError }],
+        data: null
+      });
+      return;
+    }
+
+    const internalConvention = parsedConvention.categories
+      ? sanitizeGenericConventionCategories(applyConventionArchitecture(parsedConvention, processingPipeline))
+      : parsedConvention;
+    parsedConvention = normalizeConvention(internalConvention, {
+      fallbackName: draftName,
+      useFallbackDefaults: false
+    });
+    const validation = normalizeAndValidateCCTJson(parsedConvention);
+    if (!validation.ok) {
+      res.status(422).json(validation);
+      return;
+    }
+    parsedConvention = validation.data;
+    console.log(`[CCT final] categorias=${parsedConvention.categorias.length} conceptos=${parsedConvention.conceptos.length} escalas=${parsedConvention.escalas.length} adicionales=${parsedConvention.adicionales.length} ambitos=${parsedConvention.ambitos.length}`);
+    const hasExtractedStructure = parsedConvention.categorias.length
+      || parsedConvention.escalas.some((scale) => (scale.valores || []).length)
+      || parsedConvention.conceptos.length
+      || parsedConvention.adicionales.length
+      || parsedConvention.ambitos.length;
+    if (!hasExtractedStructure) {
+      res.status(422).json({
+        ok: false,
+        errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo." }],
+        data: null
+      });
+      return;
+    }
 
     const files = [cctFile, scaleFile].filter(Boolean).map((file) => ({
       field: file.fieldname,
@@ -723,7 +761,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       updatedAt: now
     };
     const insertResult = await db.collection("conventionDrafts").insertOne(doc);
-    res.status(201).json(serializeConventionDraft({ _id: insertResult.insertedId, ...doc }));
+    res.status(201).json({ ok: true, data: parsedConvention, ...serializeConventionDraft({ _id: insertResult.insertedId, ...doc }) });
   } catch (error) {
     next(error);
   }
@@ -737,10 +775,16 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
     }
     const update = { updatedAt: new Date() };
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedConvention")) {
-      update.parsedConvention = normalizeConvention({ convention: req.body.parsedConvention }, {
+      update.parsedConvention = normalizeConvention(req.body.parsedConvention, {
         fallbackName: req.body.parsedConvention?.name || "Convenio pendiente de identificacion documental",
         useFallbackDefaults: false
       });
+      const validation = normalizeAndValidateCCTJson(update.parsedConvention);
+      if (!validation.ok) {
+        res.status(422).json(validation);
+        return;
+      }
+      update.parsedConvention = validation.data;
       update.humanEdited = true;
       update.humanEditedAt = new Date();
     }
@@ -776,25 +820,37 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
     }
 
     const now = new Date();
-    const convention = normalizeConvention({
-      convention: req.body?.parsedConvention || draft.parsedConvention
-    }, {
+    const convention = normalizeConvention(req.body?.parsedConvention || draft.parsedConvention, {
       fallbackName: "Convenio pendiente de identificacion documental",
       useFallbackDefaults: false
     });
-    if (!convention.categories.length) {
+    const validation = normalizeAndValidateCCTJson(convention);
+    if (!validation.ok) {
+      res.status(422).json(validation);
+      return;
+    }
+    Object.assign(convention, validation.data);
+    if (!convention.categorias.length) {
       res.status(400).json({ error: "El JSON no tiene categorias con importes. Revisalo antes de aprobar." });
       return;
     }
+    const hasScaleValues = convention.escalas.some((scale) => (scale.valores || []).some((value) => value.valor !== null && value.valor !== undefined && value.valor !== ""));
+    if (!hasScaleValues) {
+      res.status(400).json({ error: "El JSON no tiene valores salariales en escalas[].valores. Reestructuralo antes de aprobar." });
+      return;
+    }
 
-    const existing = await db.collection("conventions").findOne({ id: convention.id });
+    const conventionId = convention.convenio?.convenio_id || convention.convenio?.denominacion || draft._id.toString();
+    convention.convenio.convenio_id = conventionId;
+    const existing = await db.collection("conventions").findOne({ id: conventionId });
     const maxOrderDoc = await db.collection("conventions").find({}).sort({ order: -1 }).limit(1).next();
     const order = existing?.order || ((maxOrderDoc?.order || 0) + 1);
     await db.collection("conventions").replaceOne(
-      { id: convention.id },
+      { id: conventionId },
       {
-        _id: existing?._id || convention.id,
+        _id: existing?._id || conventionId,
         order,
+        id: conventionId,
         ...convention,
         sourceDraftId: draft._id.toString(),
         approvedAt: now,
@@ -808,7 +864,7 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
         $set: {
           status: "APROBADO",
           parsedConvention: convention,
-          approvedConventionId: convention.id,
+          approvedConventionId: conventionId,
           reviewedAt: now,
           reviewedBy: req.body?.reviewedBy || "Auditoria humana",
           reviewNote: req.body?.note || "",
@@ -1305,7 +1361,9 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
 app.get("/api/conventions", async (req, res, next) => {
   try {
     const conventions = await db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray();
-    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => convention));
+    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => (
+      convention.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(convention) : convention
+    )));
   } catch (error) {
     next(error);
   }
@@ -1319,7 +1377,7 @@ app.get("/api/conventions/:id", async (req, res, next) => {
       return;
     }
     const { _id, order, updatedAt, ...payload } = convention;
-    res.json(payload);
+    res.json(payload.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(payload) : payload);
   } catch (error) {
     next(error);
   }

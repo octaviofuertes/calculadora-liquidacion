@@ -250,7 +250,12 @@
   }
 
   function getConvention() {
-    return DATA.conventions[str("convention", "camioneros")] || DATA.conventions.camioneros || DATA.conventions.uocra;
+    const fallbackId = firstConventionId();
+    return DATA.conventions[str("convention", fallbackId)] || DATA.conventions[fallbackId] || null;
+  }
+
+  function firstConventionId() {
+    return DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions || {})[0] || "";
   }
 
   function getPeriod(conv) {
@@ -397,7 +402,7 @@
     const container = $("conventionCards");
     if (!container) return;
 
-    const activeId = str("convention", "camioneros") || "camioneros";
+    const activeId = str("convention", firstConventionId()) || firstConventionId();
     container.innerHTML = Object.values(DATA.conventions)
       .map((conv) => {
         const meta = conventionCardMeta(conv);
@@ -483,7 +488,7 @@
       await fetchJson(`/api/conventions/${encodeURIComponent(id)}`, { method: "DELETE" });
       await loadCatalog();
       const currentId = str("convention");
-      const fallbackId = DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions)[0];
+      const fallbackId = firstConventionId();
       updateConventionSelectsAfterCatalogReload(currentId === id ? fallbackId : currentId);
       renderConventionCards();
       syncScaleConvention();
@@ -2431,6 +2436,17 @@
       key,
       typeof value === "string" ? value : summaryValue(value?.title || value?.summary || value?.detail || JSON.stringify(value))
     ]);
+    const scaleZones = conv.zones?.length ? conv.zones : [zone || { id: "general", label: "General" }];
+    const scaleTables = scaleZones.flatMap((tableZone) => categoryGuideGroups(conv.categories || []).map((group) => renderSummaryTable(categoryGuideTitle(`Escala salarial - ${tableZone.label || "General"}`, group.label), ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], group.categories.map((cat) => {
+      const row = scaleCategoryRow(conv, cat, tableZone);
+      return [
+        cat.label,
+        firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]) ? fmt(firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period])) : "-",
+        firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]) ? fmt(firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period])) : "-",
+        firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]) ? fmt(firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period])) : "-",
+        periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
+      ];
+    })))).join("");
     return `
       <section class="summary-section summary-highlight">
         <h3>Lectura contable</h3>
@@ -2468,16 +2484,7 @@
       ${renderSummaryTable("Retenciones propias", ["Concepto", "Valor", "Base", "Detalle"], retentionRows)}
       ${renderSummaryTable("Contribuciones propias empleador", ["Concepto", "Valor", "Base", "Detalle"], employerRows)}
       ${renderSummaryTable("Reglas extraidas de documentos", ["Regla", "Valor", "Evidencia", "Fuente"], extractedRuleRows)}
-      ${renderSummaryTable("Categorias de escala", ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], (conv.categories || []).map((cat) => {
-        const row = scaleCategoryRow(conv, cat, zone);
-        return [
-          cat.label,
-          firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]) ? fmt(firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period])) : "-",
-          firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]) ? fmt(firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period])) : "-",
-          firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]) ? fmt(firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period])) : "-",
-          periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
-        ];
-      }))}
+      ${scaleTables}
       ${renderSummaryBulletSection("Checklist de auditoria", conv.auditChecklist || conv.validation?.warnings || [
         "Controlar CCT, escala y periodo vigente.",
         "Validar categoria, zona y jornada contra legajo.",
@@ -3145,11 +3152,12 @@
   function syncScaleConvention() {
     const scaleSelect = $("scaleConvention");
     if (!scaleSelect || !DATA?.conventions) return;
-    const current = scaleSelect.value || str("convention", "uocra");
+    const fallbackId = firstConventionId();
+    const current = scaleSelect.value || str("convention", fallbackId);
     scaleSelect.innerHTML = Object.values(DATA.conventions)
       .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.shortName || conv.name)}</option>`)
       .join("");
-    scaleSelect.value = DATA.conventions[current] ? current : str("convention", "uocra");
+    scaleSelect.value = DATA.conventions[current] ? current : fallbackId;
     const period = $("scalePeriod");
     if (period && !period.value) period.value = selectedPeriodMonth();
   }
@@ -3176,7 +3184,7 @@
   async function loadScaleDashboard() {
     const scaleSelect = $("scaleConvention");
     if (!scaleSelect) return;
-    const conventionId = scaleSelect.value || str("convention", "uocra");
+    const conventionId = scaleSelect.value || str("convention", firstConventionId());
     try {
       const [recent, months] = await Promise.all([
         fetchJson(`/api/scales?conventionId=${encodeURIComponent(conventionId)}&limit=40`),
@@ -3446,7 +3454,7 @@
   }
 
   async function viewActiveScale(period) {
-    const conventionId = $("scaleConvention")?.value || str("convention", "uocra");
+    const conventionId = $("scaleConvention")?.value || str("convention", firstConventionId());
     try {
       const active = await fetchJson(`/api/scales/active?conventionId=${encodeURIComponent(conventionId)}&period=${encodeURIComponent(period)}`);
       scaleState.activeScale = active;
@@ -3469,7 +3477,7 @@
   async function uploadScalePdf(event) {
     event.preventDefault();
     const file = $("scalePdf")?.files?.[0];
-    const conventionId = $("scaleConvention")?.value || str("convention", "uocra");
+    const conventionId = $("scaleConvention")?.value || str("convention", firstConventionId());
     const period = $("scalePeriod")?.value || selectedPeriodMonth();
     if (!file) {
       setScaleStatus("Selecciona un documento o imagen para analizar.", "bad");
@@ -3549,6 +3557,14 @@
     status.className = `scale-status ${tone}`.trim();
   }
 
+  function conventionErrorMessage(payload = {}, fallback = "No se pudo estructurar el convenio.") {
+    const errors = Array.isArray(payload.errores) ? payload.errores : [];
+    if (errors.length) {
+      return errors.slice(0, 5).map((item) => [item.path, item.message].filter(Boolean).join(": ") || String(item)).join(" | ");
+    }
+    return payload.error || payload.message || fallback;
+  }
+
   async function loadConventionDrafts() {
     const list = $("conventionDraftList");
     if (!list) return;
@@ -3583,17 +3599,19 @@
     }
     list.innerHTML = items.map((draft) => {
       const conv = draft.parsedConvention || {};
+      const convName = conv.convenio?.denominacion || conv.shortName || conv.name || draft.name;
+      const convSource = conv.convenio?.fuente_documento || conv.source || draft.files?.[0]?.originalName || "CCT + escala";
       const statusClass = draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : "";
       const canDelete = ["APROBADO", "RECHAZADO"].includes(draft.status);
       return `<div class="convention-draft-row ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}">
         <button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
           <span>
-            <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
-            <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
+            <strong>${escapeHtml(convName)}</strong>
+            <small>${escapeHtml(convSource)}</small>
           </span>
           <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
         </button>
-        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
+        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(convName)}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M8 6V4h8v2"></path>
@@ -3612,11 +3630,14 @@
   function conventionQualityHtml(conv = {}) {
     const warnings = conv.warnings || [];
     const checklist = conv.auditChecklist || [];
+    const categoryCount = (conv.categorias || conv.categories || []).length;
+    const conceptCount = (conv.conceptos || conv.liquidationModel?.concepts || []).length;
+    const scaleValueCount = (conv.escalas || []).reduce((total, scale) => total + (scale.valores || []).length, 0);
     return `<div class="scale-mini-grid">
       <div><span>Confianza</span><strong>${Number(conv.confidence || 0)}%</strong></div>
-      <div><span>Categorias</span><strong>${(conv.categories || []).length}</strong></div>
-      <div><span>Conceptos</span><strong>${(conv.liquidationModel?.concepts || []).length}</strong></div>
-      <div><span>Alertas</span><strong>${warnings.length}</strong></div>
+      <div><span>Categorias</span><strong>${categoryCount}</strong></div>
+      <div><span>Conceptos</span><strong>${conceptCount}</strong></div>
+      <div><span>Valores escala</span><strong>${scaleValueCount}</strong></div>
     </div>
     ${warnings.length ? `<div class="scale-warning">${warnings.map(escapeHtml).join("<br>")}</div>` : `<div class="scale-summary">Sin alertas criticas detectadas por leIA.</div>`}
     ${checklist.length ? `<div class="convention-checklist">${checklist.slice(0, 8).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}`;
@@ -3632,11 +3653,12 @@
       return;
     }
     const conv = draft.parsedConvention || {};
+    const convName = conv.convenio?.denominacion || conv.name || draft.name;
     const isPending = draft.status === "PENDIENTE_REVISION";
     editor.className = "scale-editor convention-json-editor";
     editor.innerHTML = `<div class="scale-editor-head">
       <div>
-        <strong>${escapeHtml(conv.name || draft.name)}</strong>
+        <strong>${escapeHtml(convName)}</strong>
         <span>${escapeHtml(draft.aiError || "JSON ejecutable generado por leIA. Revisalo antes de aprobar.")}</span>
       </div>
       <span class="status-pill ${draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : ""}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</span>
@@ -3850,13 +3872,14 @@
   }
 
   function updateConventionSelectsAfterCatalogReload(preferredId = "") {
-    const selectedId = preferredId || str("convention", "camioneros");
+    const fallbackId = firstConventionId();
+    const selectedId = preferredId || str("convention", fallbackId);
     const conventionSelect = $("convention");
     if (conventionSelect) {
       conventionSelect.innerHTML = Object.values(DATA.conventions)
         .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
         .join("");
-      conventionSelect.value = DATA.conventions[selectedId] ? selectedId : (DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions)[0]);
+      conventionSelect.value = DATA.conventions[selectedId] ? selectedId : fallbackId;
       updateConvention();
     }
     const empConvention = $("empConvention");
@@ -3890,7 +3913,7 @@
         body: formData
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "No se pudo estructurar el convenio.");
+      if (!response.ok) throw new Error(conventionErrorMessage(payload));
       conventionBuilderState.selected = payload;
       if ($("builderCctPdf")) $("builderCctPdf").value = "";
       if ($("builderScalePdf")) $("builderScalePdf").value = "";
@@ -4700,6 +4723,7 @@
 
   function updateConvention() {
     const conv = getConvention();
+    if (!conv) return;
     renderConventionCards();
     const currentPeriod = str("period") || getCurrentPeriodId();
     setOptions($("period"), conv.periods, currentPeriod);
@@ -4725,7 +4749,7 @@
     conventionSelect.innerHTML = Object.values(DATA.conventions)
       .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
       .join("");
-    if (DATA.conventions.camioneros) conventionSelect.value = "camioneros";
+    conventionSelect.value = firstConventionId();
 
     $("payrollForm").addEventListener("input", () => {
       markDirty();
@@ -5238,7 +5262,7 @@
 
     try {
       // Filter by currently selected convention so only relevant employees appear
-      const convId = str("convention", "uocra");
+      const convId = str("convention", firstConventionId());
       const url = apiUrl(`/api/employees/search?q=${encodeURIComponent(q)}&conventionId=${encodeURIComponent(convId)}`);
       const response = await fetch(url);
       if (response.ok) {
