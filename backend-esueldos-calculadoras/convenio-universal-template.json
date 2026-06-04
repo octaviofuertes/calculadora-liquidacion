@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "convenioColectivo": {
     "cct_id": "",
     "nombre_convenio": "",
@@ -68,3 +69,123 @@
     "Contexto": ""
   }
 }
+=======
+  "schemaVersion": "esueldos-cct-estructura-excel-v1",
+  "convenio": {
+    "convenio_id": "",
+    "tipo_norma": "",
+    "numero": "",
+    "año": "",
+    "denominacion": "",
+    "actividad": "",
+    "rama": "",
+    "jurisdiccion": "",
+    "organismo": "",
+    "partes_sindicales": "",
+    "partes_empleadoras": "",
+    "fecha_homologacion": "",
+    "vigencia_desde": "",
+    "vigencia_hasta": "",
+    "ambito_territorial": "",
+    "personal_comprendido": "",
+    "personal_excluido": "",
+    "fuente_documento": ""
+  },
+  "ambitos": [
+    {
+      "ambito_id": "",
+      "convenio_id": "",
+      "tipo_ambito": "",
+      "descripcion": "",
+      "incluido": "",
+      "excluido": "",
+      "fuente_documento": ""
+    }
+  ],
+  "categorias": [
+    {
+      "categoria_id": "",
+      "convenio_id": "",
+      "grupo_nombre": "",
+      "categoria_nombre": "",
+      "descripcion": "",
+      "tareas_incluidas": "",
+      "modalidad_aplicable": "",
+      "nivel_jerarquico": "",
+      "fuente_documento": ""
+    }
+  ],
+  "conceptos": [
+    {
+      "concepto_id": "",
+      "convenio_id": "",
+      "codigo": "",
+      "nombre": "",
+      "tipo_concepto": "",
+      "naturaleza": "",
+      "unidad_calculo": "",
+      "formula_base": "",
+      "base_calculo": "",
+      "porcentaje": "",
+      "importe_fijo": null,
+      "aplica_a": "",
+      "condicion": "",
+      "fuente_documento": ""
+    }
+  ],
+  "escalas": [
+    {
+      "escala_id": "",
+      "convenio_id": "",
+      "nombre_escala": "",
+      "tipo_escala": "",
+      "periodo_desde": "",
+      "periodo_hasta": "",
+      "moneda": "",
+      "alcance": "",
+      "zona": "",
+      "fuente_documento": "",
+      "valores": [
+        {
+          "valor_id": "",
+          "escala_id": "",
+          "convenio_id": "",
+          "categoria_id": "",
+          "concepto_id": "",
+          "modalidad": "",
+          "unidad_pago": "",
+          "periodicidad": "",
+          "valor": null,
+          "valor_minimo": null,
+          "valor_maximo": null,
+          "moneda": "",
+          "alcance": "",
+          "zona": "",
+          "vigencia_desde": "",
+          "vigencia_hasta": "",
+          "fuente_documento": ""
+        }
+      ]
+    }
+  ],
+  "adicionales": [
+    {
+      "adicional_id": "",
+      "convenio_id": "",
+      "concepto_id": "",
+      "nombre": "",
+      "tipo": "",
+      "porcentaje": null,
+      "importe": null,
+      "base_calculo": "",
+      "condicion": "",
+      "zonas_aplica": "",
+      "vigencia_desde": "",
+      "vigencia_hasta": "",
+      "fuente_documento": "",
+      "articulo_anexo": "",
+      "estado_revision": ""
+    }
+  ]
+}
+>>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2

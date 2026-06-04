@@ -1,7 +1,9 @@
+const { EXCEL_SCHEMA_VERSION, toRuntimeConvention } = require("../models/convenio.model");
+
 function stripCatalogConvention(doc) {
   if (!doc) return null;
   const { _id, order, updatedAt, ...convention } = doc;
-  return convention;
+  return convention.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(convention) : convention;
 }
 
 function stripLegalReference(doc) {
@@ -46,20 +48,23 @@ async function getConventionById(db, conventionId) {
 }
 
 async function replaceConvention(db, convention, extra = {}) {
-  const existing = await db.collection("conventions").findOne({ id: convention.id });
+  const runtime = convention.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(convention) : convention;
+  const conventionId = runtime.id;
+  const existing = await db.collection("conventions").findOne({ id: conventionId });
   const maxOrderDoc = await db.collection("conventions").find({}).sort({ order: -1 }).limit(1).next();
   const now = extra.updatedAt || new Date();
   const order = existing?.order || ((maxOrderDoc?.order || 0) + 1);
   const doc = {
-    _id: existing?._id || convention.id,
+    _id: existing?._id || conventionId,
     order,
+    id: conventionId,
     ...convention,
     ...extra,
     updatedAt: now
   };
 
   await db.collection("conventions").replaceOne(
-    { id: convention.id },
+    { id: conventionId },
     doc,
     { upsert: true }
   );
