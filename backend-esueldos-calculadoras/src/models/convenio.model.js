@@ -134,7 +134,7 @@ function yearFrom(source = {}) {
 }
 
 function convenioIdFrom(payload = {}) {
-  return text(payload.convenio_id || payload.id || payload.conventionId || payload.convenio?.convenio_id);
+  return text(payload.convenio_id || payload.numero_convenio || payload.numeroConvenio || payload.cct || payload.id || payload.conventionId || payload.convenio?.convenio_id || payload.convenio?.numero_convenio);
 }
 
 function normalizeConvenioRoot(source = {}) {
@@ -142,15 +142,15 @@ function normalizeConvenioRoot(source = {}) {
   return {
     convenio_id,
     tipo_norma: text(source.tipo_norma || source.type),
-    numero: text(source.numero),
+    numero: text(source.numero || source.numero_convenio || source.cct),
     "a\u00f1o": yearFrom(source),
-    denominacion: text(source.denominacion || source.name || source.shortName || (convenio_id ? `CCT ${convenio_id}` : "Convenio pendiente de identificacion documental")),
+    denominacion: text(source.denominacion || source.nombre || source.name || source.shortName || source.titulo || (convenio_id ? `CCT ${convenio_id}` : "Convenio pendiente de identificacion documental")),
     actividad: text(source.actividad || source.metadata?.activity),
     rama: text(source.rama),
-    jurisdiccion: text(source.jurisdiccion || source.metadata?.jurisdiction),
-    organismo: text(source.organismo || source.metadata?.homologation?.authority),
-    partes_sindicales: text(source.partes_sindicales || source.metadata?.union),
-    partes_empleadoras: text(source.partes_empleadoras || source.metadata?.employerChamber),
+    jurisdiccion: text(source.jurisdiccion || source.ambito_geografico || source.metadata?.jurisdiction),
+    organismo: text(source.organismo || source.organismo_homologante || source.metadata?.homologation?.authority),
+    partes_sindicales: text(source.partes_sindicales || source.partes_firmantes_trabajadores || source.metadata?.union),
+    partes_empleadoras: text(source.partes_empleadoras || source.partes_firmantes_empleadores || source.metadata?.employerChamber),
     fecha_homologacion: text(source.fecha_homologacion || source.metadata?.homologation?.date),
     vigencia_desde: text(source.vigencia_desde || source.normative?.validFrom),
     vigencia_hasta: text(source.vigencia_hasta || source.normative?.validTo),
@@ -165,8 +165,8 @@ function normalizeAmbito(item = {}, convenioId = "", index = 0) {
   return {
     ambito_id: text(item.ambito_id || item.id || `ambito-${index + 1}`),
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
-    tipo_ambito: text(item.tipo_ambito || item.type),
-    descripcion: text(item.descripcion || item.description || item),
+    tipo_ambito: text(item.tipo_ambito || item.tipo || item.type),
+    descripcion: text(item.descripcion || item.nombre || item.description || item),
     incluido: text(item.incluido),
     excluido: text(item.excluido),
     fuente_documento: text(item.fuente_documento || item.source)
@@ -174,17 +174,17 @@ function normalizeAmbito(item = {}, convenioId = "", index = 0) {
 }
 
 function normalizeCategoria(item = {}, convenioId = "", index = 0) {
-  const name = text(item.categoria_nombre || item.name || item.label);
-  const group = text(item.grupo_nombre || item.groupName || item.group);
+  const name = text(item.categoria_nombre || item.categoria || item.nombre || item.name || item.label);
+  const group = text(item.grupo_nombre || item.rama || item.groupName || item.group);
   const id = canonCategoryId(item.categoria_id || item.id || name, name, group || convenioId);
   return {
     categoria_id: id,
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
     grupo_nombre: group,
     categoria_nombre: name,
-    descripcion: text(item.descripcion || item.description),
-    tareas_incluidas: text(item.tareas_incluidas || item.includedTasks),
-    modalidad_aplicable: text(item.modalidad_aplicable || item.applicableMode),
+    descripcion: text(item.descripcion || item.description || item.detalle),
+    tareas_incluidas: text(item.tareas_incluidas || item.tareas || item.includedTasks),
+    modalidad_aplicable: text(item.modalidad_aplicable || item.modalidad || item.applicableMode),
     nivel_jerarquico: text(item.nivel_jerarquico || item.hierarchyLevel),
     fuente_documento: text(item.fuente_documento || item.source)
   };
@@ -215,39 +215,67 @@ function normalizeConcepto(item = {}, convenioId = "", index = 0, forcedType = "
 
 function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
   const rawConceptId = item.concepto_id || item.conceptId || item.concepto || item.nombre_concepto;
+  const rawCategoryId = item.categoria_id || item.categoryId || item.categoria || item.categoria_nombre || item.nombre_categoria;
   return {
     valor_id: text(item.valor_id || item.id || `valor-${index + 1}`),
     escala_id: text(item.escala_id || item.scaleId || escalaId),
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
-    categoria_id: canonCategoryId(item.categoria_id || item.categoryId, item.categoria_nombre || item.categoryName, item.grupo_nombre || item.groupName || item.group),
+    categoria_id: canonCategoryId(rawCategoryId, item.categoria_nombre || item.categoryName || item.categoria, item.grupo_nombre || item.rama || item.groupName || item.group),
     concepto_id: rawConceptId ? canonConceptId(rawConceptId) : "",
     modalidad: text(item.modalidad || item.modality),
     unidad_pago: text(item.unidad_pago || item.paymentUnit),
     periodicidad: text(item.periodicidad || item.periodicity),
-    valor: amount(item.valor ?? item.value),
+    valor: amount(item.valor ?? item.value ?? item.importe ?? item.monto ?? item.amount),
     valor_minimo: amount(item.valor_minimo ?? item.minValue),
     valor_maximo: amount(item.valor_maximo ?? item.maxValue),
     moneda: text(item.moneda || item.currency),
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
-    vigencia_desde: text(item.vigencia_desde || item.validFrom),
-    vigencia_hasta: text(item.vigencia_hasta || item.validTo),
+    vigencia_desde: text(item.vigencia_desde || item.fecha_desde || item.desde || item.validFrom),
+    vigencia_hasta: text(item.vigencia_hasta || item.fecha_hasta || item.hasta || item.validTo),
     fuente_documento: text(item.fuente_documento || item.source)
   };
+}
+
+function expandScaleValue(item = {}, convenioId = "", escalaId = "", index = 0) {
+  const base = normalizeValor(item, convenioId, escalaId, index);
+  const values = base.concepto_id && base.valor !== null && base.valor !== undefined && base.valor !== "" ? [base] : [];
+  const columns = [
+    [["sueldo_basico", "basico", "salario_basico"], "SUELDO_BASICO", "mensual"],
+    [["valor_hora", "hora"], "VALOR_HORA", "hora"],
+    [["valor_dia", "valor_jornal", "jornal"], "VALOR_JORNAL", "jornal"],
+    [["valor_changa", "changa"], "VALOR_CHANGA", "changa"],
+    [["total_remunerativo"], "TOTAL_REMUNERATIVO", "mensual"],
+    [["total_7h", "total_7_h"], "TOTAL_7H", "mensual"],
+    [["total_8h", "total_8_h"], "TOTAL_8H", "mensual"],
+    [["viatico", "viaticos"], "VIATICO", "mensual"]
+  ];
+  for (const [fields, concepto_id, unidad_pago] of columns) {
+    const field = fields.find((key) => item[key] !== undefined && item[key] !== null && item[key] !== "");
+    if (!field) continue;
+    values.push(normalizeValor({
+      ...item,
+      valor_id: `${base.valor_id}-${concepto_id}`,
+      concepto_id,
+      unidad_pago,
+      valor: item[field]
+    }, convenioId, escalaId, values.length));
+  }
+  return values;
 }
 
 function normalizeEscala(item = {}, convenioId = "", index = 0) {
   const escalaId = text(item.escala_id || item.id || `escala-${index + 1}`);
   const valores = array(item.valores || item.values)
-    .map((value, valueIndex) => normalizeValor(value, convenioId, escalaId, valueIndex))
+    .flatMap((value, valueIndex) => expandScaleValue(value, convenioId, escalaId, valueIndex))
     .filter((value) => value.valor !== null && value.valor !== undefined && value.valor !== "");
   return {
     escala_id: escalaId,
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
-    nombre_escala: text(item.nombre_escala || item.name),
-    tipo_escala: text(item.tipo_escala || item.type),
-    periodo_desde: text(item.periodo_desde || item.periodFrom || item.period),
-    periodo_hasta: text(item.periodo_hasta || item.periodTo),
+    nombre_escala: text(item.nombre_escala || item.nombre || item.name || item.periodo || item.period),
+    tipo_escala: text(item.tipo_escala || item.tipo || item.type),
+    periodo_desde: text(item.periodo_desde || item.fecha_desde || item.vigencia_desde || item.desde || item.periodFrom || item.period),
+    periodo_hasta: text(item.periodo_hasta || item.fecha_hasta || item.vigencia_hasta || item.hasta || item.periodTo),
     moneda: text(item.moneda || item.currency),
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
@@ -408,6 +436,8 @@ function universalConcepts(source = {}) {
 function normalizeConvenio(input = {}) {
   if (input?.data && (input.ok === true || input.data.schemaVersion || input.data.convenio)) input = input.data;
   if (input?.json_parcial) input = input.json_parcial;
+  const wrapped = input?.parsedConvention || input?.structuredConvention || input?.resultado || input?.result;
+  if (wrapped && typeof wrapped === "object" && (wrapped.schemaVersion || wrapped.convenio || wrapped.categorias || wrapped.categories)) input = wrapped;
   const source = input.schemaVersion === EXCEL_SCHEMA_VERSION || input.convenio
     ? input
     : { convenio: input, ambitos: input.ambitos, categorias: input.categorias, conceptos: input.conceptos, escalas: input.escalas, adicionales: input.adicionales };

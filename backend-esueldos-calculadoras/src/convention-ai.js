@@ -18,7 +18,9 @@ const UNIVERSAL_CONVENTION_TEMPLATE = require("../convenio-universal-template.js
 
 function isRetryable(error) {
   const message = String(error.message || "").toLowerCase();
-  return error.status === 429
+  return error.code === "EMPTY_STRUCTURE"
+    || error.code === "INVALID_JSON"
+    || error.status === 429
     || error.status === 404
     || error.status === 503
     || message.includes("high demand")
@@ -101,6 +103,9 @@ function closeTruncatedJson(value) {
   }
   if (inString) out += "\"";
   out = out
+    .replace(/,\s*"[^"]*"\s*:\s*$/, "")
+    .replace(/"[^"]*"\s*:\s*$/, "")
+    .replace(/,\s*"[^"]*"\s*$/, "")
     .replace(/,\s*$/, "")
     .replace(/,\s*([}\]])/g, "$1");
   while (stack.length) out += stack.pop();
@@ -429,6 +434,10 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
   }
   if (parsed?.json_parcial) {
     parsed = parsed.json_parcial;
+  }
+  const wrapped = parsed?.parsedConvention || parsed?.structuredConvention || parsed?.resultado || parsed?.result;
+  if (wrapped && typeof wrapped === "object" && (wrapped.schemaVersion || wrapped.convenio || wrapped.convention || wrapped.categorias || wrapped.categories)) {
+    parsed = wrapped;
   }
   if (parsed?.schemaVersion === UNIVERSAL_SCHEMA_VERSION || parsed?.convenio) {
     return normalizeUniversalConvenio(parsed);
@@ -873,7 +882,8 @@ function buildScaleCompactPrompt({ draftName, notes }) {
     "No uses memoria ni otros CCT. Solo el texto de esta escala.",
     "No crear conceptos por periodo/categoria. conceptos maximo: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO.",
     "Todos los importes van exclusivamente en escalas[].valores[].",
-    "Cada valor: categoria_id, concepto_id, modalidad, unidad_pago, periodicidad, valor, moneda, zona.",
+    "Cada valor debe ser minimo y compacto: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona solo si cambia o es indispensable.",
+    "Usa categoria_nombre solo en categorias, no lo repitas en cada valor.",
     "Respuesta raiz exacta: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
     "Devuelve solo JSON, compacto, sin explicaciones.",
     "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
@@ -971,6 +981,15 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
   const inlineCount = parts.filter((part) => part.inline_data || part.inlineData).length;
   const markdownCount = parts.filter((part) => /Markdown/i.test(part.text || "")).length;
   console.log(`[Gemini ${label}] adjuntos=${inlineCount} markdown=${markdownCount} partes=${parts.length}`);
+  const generationConfig = {
+    temperature: 0.08,
+    topP: 0.72,
+    maxOutputTokens: /escala/i.test(label) ? 24000 : 16000,
+    responseMimeType: "application/json"
+  };
+  if (/gemini-2\.5/i.test(model)) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
@@ -979,12 +998,7 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
     },
     body: JSON.stringify({
       contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: 0.08,
-        topP: 0.72,
-        maxOutputTokens: 16000,
-        responseMimeType: "application/json"
-      }
+      generationConfig
     })
   });
   const payload = await response.json().catch(() => ({}));
@@ -1137,7 +1151,7 @@ function mergeExcelConventionParts(conventionPart = {}, scalePart = {}, { draftN
     convenio: { ...(scale.convenio || {}), ...(base.convenio || {}) },
     ambitos: mergeUnique(base.ambitos, scale.ambitos, ["ambito_id", "ambito_nombre", "zona"]),
     categorias: mergeUnique(base.categorias, scale.categorias, ["categoria_id", "categoria_nombre"]),
-    conceptos: mergeUnique(base.conceptos, scale.conceptos, ["concepto_id", "concepto_nombre"]),
+    conceptos: mergeUnique(base.conceptos, scale.conceptos, ["concepto_id", "nombre"]),
     escalas: (scale.escalas || []).length ? scale.escalas : base.escalas,
     adicionales: mergeUnique(base.adicionales, scale.adicionales, ["adicional_id", "adicional_nombre"])
   }, { fallbackName: draftName });
@@ -1158,8 +1172,17 @@ async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown
   console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] final: categorias=${merged.categorias?.length || 0} conceptos=${merged.conceptos?.length || 0} escalas=${merged.escalas?.length || 0}`);
+  const parsedConvention = enrichExcelConventionWithLocalScale(merged, { scaleMarkdown, draftName, scalePdf });
+  console.log(`[CCT merge] enriquecido: categorias=${parsedConvention.categorias?.length || 0} conceptos=${parsedConvention.conceptos?.length || 0} escalas=${parsedConvention.escalas?.length || 0}`);
+  if (!hasExtractedConventionStructure(parsedConvention)) {
+    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual.", {
+      status: 422,
+      model,
+      code: "EMPTY_STRUCTURE"
+    });
+  }
   return {
-    parsedConvention: enrichExcelConventionWithLocalScale(merged, { scaleMarkdown, draftName, scalePdf }),
+    parsedConvention,
     tokenUsage: mergeTokenUsage(conventionResult.tokenUsage, scaleResult.tokenUsage)
   };
 }
@@ -1168,6 +1191,16 @@ function hasExcelSalaryValues(convention = {}) {
   return (convention.escalas || []).some((scale) => (
     (scale.valores || []).some((value) => value.valor !== null && value.valor !== undefined && value.valor !== "")
   ));
+}
+
+function hasExtractedConventionStructure(convention = {}) {
+  return Boolean(
+    (convention.categorias || []).length
+    || (convention.conceptos || []).length
+    || (convention.adicionales || []).length
+    || (convention.ambitos || []).length
+    || (convention.escalas || []).some((scale) => (scale.valores || []).length)
+  );
 }
 
 function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, draftName, scalePdf } = {}) {
@@ -1191,6 +1224,7 @@ function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, d
     escala_id: `escala-${period}`,
     convenio_id: convenioId,
     categoria_id: categoryByName.get(normalizeText(row.label)) || row.id,
+    concepto_id: "SUELDO_BASICO",
     modalidad: row.day ? "daily" : row.hourly ? "hourly" : "monthly",
     unidad_pago: row.day ? "jornal" : row.hourly ? "hora" : "mensual",
     periodicidad: "mensual",
@@ -1316,6 +1350,22 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   }
 
   const last = errors[errors.length - 1] || {};
+  if (last.code === "EMPTY_STRUCTURE") {
+    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo.", {
+      status: 422,
+      model: last.model,
+      code: "EMPTY_STRUCTURE",
+      modelsTried: errors.map((item) => item.model)
+    });
+  }
+  if (last.code === "INVALID_JSON") {
+    throw new GeminiConventionError("Gemini devolvio JSON invalido en todos los modelos probados.", {
+      status: 502,
+      model: last.model,
+      code: "INVALID_JSON",
+      modelsTried: errors.map((item) => item.model)
+    });
+  }
   throw new GeminiConventionError("Gemini esta con alta demanda y no pudo estructurar el convenio en este momento.", {
     status: 503,
     model: last.model,

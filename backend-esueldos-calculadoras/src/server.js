@@ -1,7 +1,8 @@
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 require("dotenv").config();
 
 const express = require("express");
-const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const { ObjectId } = require("mongodb");
@@ -107,6 +108,18 @@ function geminiFallbackModels() {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function geminiBaseApiKey() {
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+}
+
+function geminiConventionApiKey() {
+  return process.env.GEMINI_CONVENTION_API_KEY || geminiBaseApiKey();
+}
+
+function geminiScaleApiKey() {
+  return process.env.GEMINI_SCALE_API_KEY || geminiBaseApiKey();
 }
 
 function toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs) {
@@ -630,7 +643,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
     const draftName = String(req.body.name || "").trim() || "Convenio generado por leIA";
     const notes = String(req.body.notes || "").trim();
     const now = new Date();
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = geminiConventionApiKey();
     let aiStatus = "SIN_API_KEY";
     let aiError = null;
     let aiModel = null;
@@ -672,6 +685,15 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       cctPdf && { ...cctPdf, field: "cctPdf" },
       scalePdf && { ...scalePdf, field: "scalePdf" }
     ]);
+
+    if (!apiKey) {
+      res.status(503).json({
+        ok: false,
+        errores: [{ path: "gemini.apiKey", message: "Falta configurar GEMINI_CONVENTION_API_KEY o GEMINI_API_KEY en el backend." }],
+        data: null
+      });
+      return;
+    }
 
     if (apiKey) {
       try {
@@ -1021,7 +1043,7 @@ app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next)
     const period = normalizePeriod(req.body.period) || currentPeriod();
     const periodLabel = req.body.periodLabel || monthLabel(period);
     const now = new Date();
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = geminiScaleApiKey();
     let aiStatus = "SIN_API_KEY";
     let aiError = null;
     let aiModel = null;
