@@ -3216,6 +3216,7 @@
     if (!items.length) {
       list.innerHTML = `<div class="empty-state">Todavia no hay escalas cargadas para este convenio.</div>`;
       renderScaleEditor(null);
+      updateScaleTokenUsageUI(null);
       return;
     }
     list.innerHTML = items.map((scale) => `<button class="scale-audit-item ${scaleState.selected?.id === scale.id ? "active" : ""}" type="button" data-scale-id="${escapeHtml(scale.id)}">
@@ -3362,8 +3363,10 @@
       scaleState.selected = scale;
       renderScaleAuditList();
       renderScaleEditor(scale);
+      updateScaleTokenUsageUI(scale.tokenUsage);
     } catch (error) {
       setScaleStatus(error.message, "bad");
+      updateScaleTokenUsageUI(null);
     }
   }
 
@@ -3497,6 +3500,7 @@
       $("scalePdf").value = "";
       await loadScaleDashboard();
       await selectScaleForAudit(firstScale.id);
+      updateScaleTokenUsageUI(payload.tokenUsage || firstScale.tokenUsage || null);
       const periods = createdScales.map((scale) => scale.periodLabel || monthLabel(scale.period)).join(", ");
       const pluralMsg = createdScales.length === 1
         ? "leIA creo 1 escala pendiente."
@@ -3504,6 +3508,7 @@
       setScaleStatus(payload.aiStatus === "DETECTADA_POR_IA" ? `${pluralMsg} Revisalas y aprobalas por separado.` : `${pluralMsg} Revisar advertencia de IA.`, payload.aiStatus === "DETECTADA_POR_IA" ? "ok" : "bad");
     } catch (error) {
       setScaleStatus(error.message, "bad");
+      updateScaleTokenUsageUI(null);
     } finally {
       if (button) button.disabled = false;
     }
@@ -3584,7 +3589,6 @@
     list.innerHTML = items.map((draft) => {
       const conv = draft.parsedConvention || {};
       const statusClass = draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : "";
-      const canDelete = ["APROBADO", "RECHAZADO"].includes(draft.status);
       return `<div class="convention-draft-row ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}">
         <button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
           <span>
@@ -3593,7 +3597,7 @@
           </span>
           <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
         </button>
-        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
+        <button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M8 6V4h8v2"></path>
@@ -3601,7 +3605,7 @@
             <path d="M10 11v5"></path>
             <path d="M14 11v5"></path>
           </svg>
-        </button>` : ""}
+        </button>
       </div>`;
     }).join("");
     if (!conventionBuilderState.selected || !items.some((item) => item.id === conventionBuilderState.selected.id)) {
@@ -3646,7 +3650,8 @@
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar JSON</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${draft.status === "APROBADO" ? "disabled" : ""}>Guardar JSON</button>
       ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
-      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : `<button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
+      <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
+      <button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 6h18"></path>
           <path d="M8 6V4h8v2"></path>
@@ -3655,7 +3660,7 @@
           <path d="M14 11v5"></path>
         </svg>
         Eliminar
-      </button>`}
+      </button>
     </div>
     <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
 
@@ -3706,6 +3711,77 @@
     const totalTokens = usage.totalTokenCount || 0;
     if (total) total.textContent = totalTokens ? totalTokens.toLocaleString("es-AR") : "0";
     card.style.display = "block";
+  }
+
+  function updateScaleTokenUsageUI(usage) {
+    const card = $("scaleTokenUsageCard");
+    if (!card) return;
+    if (!usage) {
+      card.style.display = "none";
+      return;
+    }
+    const model = $("scaleTokenModel");
+    const prompt = $("scaleTokenPrompt");
+    const output = $("scaleTokenOutput");
+    const total = $("scaleTokenTotal");
+    if (model) model.textContent = usage.model;
+    if (prompt) prompt.textContent = usage.promptTokenCount ? usage.promptTokenCount.toLocaleString("es-AR") : "0";
+    const outTokens = usage.outputTokenCount || 0;
+    if (output) output.textContent = outTokens ? outTokens.toLocaleString("es-AR") : "0";
+    const totalTokens = usage.totalTokenCount || 0;
+    if (total) total.textContent = totalTokens ? totalTokens.toLocaleString("es-AR") : "0";
+    card.style.display = "block";
+  }
+
+  function formatAiNumber(value) {
+    const number = Number(value || 0);
+    return Number.isFinite(number) ? number.toLocaleString("es-AR") : "0";
+  }
+
+  function renderAiUsageList(id, items) {
+    const target = $(id);
+    if (!target) return;
+    const list = Array.isArray(items) ? items : [];
+    target.innerHTML = list.length
+      ? list.map((item) => `
+        <div class="ai-usage-row">
+          <span>${escapeHtml(item.period || item.provider || item.operation || "-")}</span>
+          <strong>${formatAiNumber(item.totalTokens)} tokens</strong>
+        </div>
+      `).join("")
+      : `<div class="ai-usage-row"><span>Sin datos</span><strong>0 tokens</strong></div>`;
+  }
+
+  async function loadAiUsageDashboard() {
+    try {
+      const [all, gemini, openai] = await Promise.all([
+        fetchJson("/api/ai/usage"),
+        fetchJson("/api/ai/usage/gemini"),
+        fetchJson("/api/ai/usage/openai")
+      ]);
+
+      const setText = (id, value) => {
+        const target = $(id);
+        if (target) target.textContent = value;
+      };
+      const remainingText = (usage) => usage.remainingTokens == null
+        ? "Restante: sin presupuesto"
+        : `Restante: ${formatAiNumber(usage.remainingTokens)} tokens`;
+
+      setText("aiGeminiRequests", formatAiNumber(gemini.requests));
+      setText("aiOpenaiRequests", formatAiNumber(openai.requests));
+      setText("aiPromptTokens", formatAiNumber(all.promptTokens));
+      setText("aiCompletionTokens", formatAiNumber(all.completionTokens));
+      setText("aiTotalTokens", formatAiNumber(all.totalTokens));
+      setText("aiGeminiRemaining", remainingText(gemini));
+      setText("aiOpenaiRemaining", remainingText(openai));
+      setText("aiTotalRemaining", remainingText(all));
+      renderAiUsageList("aiDailyUsage", all.daily);
+      renderAiUsageList("aiMonthlyUsage", all.monthly);
+      renderAiUsageList("aiRecentUsage", all.recentExecutions);
+    } catch (error) {
+      renderAiUsageList("aiRecentUsage", [{ operation: error.message, totalTokens: 0 }]);
+    }
   }
 
   async function selectConventionDraft(id) {
@@ -3779,8 +3855,8 @@
     const draft = conventionBuilderState.drafts.find((item) => item.id === id)
       || (conventionBuilderState.selected?.id === id ? conventionBuilderState.selected : null);
     const status = conventionDraftStatusLabel(draft?.status);
-    if (!draft || !["APROBADO", "RECHAZADO"].includes(draft.status)) {
-      setConventionBuilderStatus("Solo se pueden eliminar borradores aprobados o rechazados.", "bad");
+    if (!draft) {
+      setConventionBuilderStatus("Borrador no encontrado.", "bad");
       return;
     }
     const name = draft.parsedConvention?.shortName || draft.parsedConvention?.name || draft.name || "este borrador";
@@ -4746,7 +4822,7 @@
     document.querySelectorAll(".nav-link").forEach(link => {
       link.addEventListener("click", (e) => {
         const target = link.getAttribute("href").substring(1);
-        if (target === "employeesPanel" || target === "payrollForm" || target === "scalesPanel" || target === "conventionsPanel") {
+        if (target === "employeesPanel" || target === "payrollForm" || target === "scalesPanel" || target === "conventionsPanel" || target === "aiUsagePanel") {
           e.preventDefault();
           document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
           link.classList.add("active");
@@ -4754,13 +4830,16 @@
           $("employeesPanel").style.display = target === "employeesPanel" ? "block" : "none";
           $("scalesPanel").style.display = target === "scalesPanel" ? "block" : "none";
           $("conventionsPanel").style.display = target === "conventionsPanel" ? "block" : "none";
+          const aiUsagePanel = $("aiUsagePanel");
+          if (aiUsagePanel) aiUsagePanel.style.display = target === "aiUsagePanel" ? "block" : "none";
           $("payrollFormPanel").style.display = target === "payrollForm" ? "block" : "none";
 
-          if (target === "employeesPanel" || target === "scalesPanel" || target === "conventionsPanel") {
+          if (target === "employeesPanel" || target === "scalesPanel" || target === "conventionsPanel" || target === "aiUsagePanel") {
             document.querySelector(".app-shell").classList.add("full-view");
             if (target === "employeesPanel") fetchEmployees();
             if (target === "scalesPanel") loadScaleDashboard();
             if (target === "conventionsPanel") loadConventionDrafts();
+            if (target === "aiUsagePanel") loadAiUsageDashboard();
           } else {
             document.querySelector(".app-shell").classList.remove("full-view");
           }
@@ -4782,6 +4861,7 @@
     });
 
     $("employeeDataForm").addEventListener("submit", saveEmployee);
+    $("refreshAiUsageBtn")?.addEventListener("click", loadAiUsageDashboard);
     $("empConvention").addEventListener("change", updateEmpConvention);
     $("searchEmployeeBtn").addEventListener("click", searchEmployee);
     $("employeeLegajo").addEventListener("keypress", (e) => {

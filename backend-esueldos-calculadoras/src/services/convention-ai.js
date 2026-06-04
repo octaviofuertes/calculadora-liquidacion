@@ -1,4 +1,4 @@
-const { geminiModelList } = require("./gemini-config");
+const { geminiModelList } = require("../gemini-config");
 
 class GeminiConventionError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
@@ -11,7 +11,7 @@ class GeminiConventionError extends Error {
   }
 }
 
-const UNIVERSAL_CONVENTION_TEMPLATE = require("../convenio-universal-template.json");
+const UNIVERSAL_CONVENTION_TEMPLATE = require("../../convenio-universal-template.json");
 
 function isRetryable(error) {
   const message = String(error.message || "").toLowerCase();
@@ -865,6 +865,14 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   const models = geminiModelList(model, fallbackModels);
   const errors = [];
+  const tryLocalFallback = (aiError) => {
+    const context = { draftName, notes, cctPdf, scalePdf, cctText: cctMarkdown, scaleText: scaleMarkdown, aiError };
+    if (looksLikeHairdressers730(context)) return buildHairdressersConvention(context);
+    if (looksLikeCommerce130(context)) return buildCommerceConvention(context);
+    if (looksLikePharmacyMendoza(context)) return buildPharmacyConvention(context);
+    return buildGenericConventionFromScale(context);
+  };
+
   for (const currentModel of models) {
     try {
       const result = await requestConventionOnce({
@@ -889,6 +897,15 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         code: error.code
       });
       if (!isRetryable(error)) {
+        const localConvention = tryLocalFallback(error.message);
+        if (localConvention) {
+          return {
+            parsedConvention: localConvention,
+            tokenUsage: null,
+            model: localConvention.extraction?.model || "local-pdf-parse",
+            modelsTried: errors.map((item) => item.model)
+          };
+        }
         error.modelsTried = errors.map((item) => item.model);
         throw error;
       }
@@ -896,6 +913,15 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   }
 
   const last = errors[errors.length - 1] || {};
+  const localConvention = tryLocalFallback(last.message);
+  if (localConvention) {
+    return {
+      parsedConvention: localConvention,
+      tokenUsage: null,
+      model: localConvention.extraction?.model || "local-pdf-parse",
+      modelsTried: errors.map((item) => item.model)
+    };
+  }
   throw new GeminiConventionError("Gemini esta con alta demanda y no pudo estructurar el convenio en este momento.", {
     status: 503,
     model: last.model,

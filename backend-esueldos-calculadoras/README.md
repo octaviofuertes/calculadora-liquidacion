@@ -16,11 +16,14 @@ PORT=4100
 MONGODB_URI=mongodb://127.0.0.1:27017
 MONGODB_DB=esueldos_calculadoras
 FRONTEND_DIR=../frontend-esueldos-calculadoras
-GEMINI_API_KEY=tu_api_key_de_gemini
+
+GEMINI_CONVENTION_API_KEY=tu_api_key_de_gemini_para_convenios
+GEMINI_SCALE_API_KEY=tu_api_key_de_gemini_para_escalas
 GEMINI_MODEL=gemini-2.5-flash
-GEMINI_SCALE_MODEL=gemini-2.5-flash
 GEMINI_CONVENTION_MODEL=gemini-2.5-flash
+GEMINI_SCALE_MODEL=gemini-2.5-flash
 GEMINI_FALLBACK_MODELS=gemini-2.5-flash-lite
+
 CORS_ORIGIN=http://localhost:4100,http://127.0.0.1:5173
 API_AUTH_TOKEN=
 AUTH_REQUIRED=false
