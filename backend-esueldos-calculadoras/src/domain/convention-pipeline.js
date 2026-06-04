@@ -114,6 +114,7 @@ function buildStructuredModel(convention, pipeline = analyzeConventionDocuments(
   const validationRules = convention.validation?.rules || convention.validation?.autoChecks || [];
   const liquidationRules = { ...(convention.rules || {}), ...(convention.liquidationModel?.rules || {}) };
   return {
+    convenio_colectivo: convention.convenioColectivo || convention.ruleEngineModel || null,
     convenio: {
       codigo: convention.id || "",
       nombre: convention.name || "",

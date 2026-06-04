@@ -1,86 +1,70 @@
 {
-  "schemaVersion": "esueldos-convenio-universal-v1",
-  "id": "",
-  "name": "",
-  "shortName": "",
-  "source": "",
-  "type": "",
-  "calculationMode": "generic-v1",
-  "generatedByLeia": true,
-  "metadata": {
-    "country": "",
-    "jurisdiction": "",
-    "activity": "",
-    "union": "",
-    "employerChamber": "",
-    "cct": "",
-    "homologation": {
-      "resolution": "",
-      "date": "",
-      "authority": ""
+  "convenioColectivo": {
+    "cct_id": "",
+    "nombre_convenio": "",
+    "version_acuerdo": "",
+    "vigencia": {
+      "desde": "",
+      "hasta": ""
     },
-    "version": "",
-    "status": "draft",
-    "createdBy": "leIA",
-    "reviewedBy": "",
-    "reviewedAt": ""
-  },
-  "legalFramework": {
-    "primarySources": [],
-    "defaultLaws": [],
-    "articleMap": {}
-  },
-  "scope": {
-    "workersIncluded": [],
-    "workersExcluded": [],
-    "territory": [],
-    "establishments": [],
-    "notes": []
-  },
-  "periods": [],
-  "zones": [],
-  "categories": [],
-  "additionals": {},
-  "rules": {},
-  "liquidationModel": {
-    "version": "generic-v1",
-    "rules": {},
-    "concepts": [],
-    "deductions": [],
-    "retentions": [],
-    "employerContributions": []
-  },
-  "payrollBases": {},
-  "employeeRequirements": {
-    "requiredFields": [],
-    "optionalFields": [],
-    "legajoFlags": []
-  },
-  "validation": {
-    "blocking": [],
-    "warnings": [],
-    "autoChecks": []
-  },
-  "auditChecklist": [],
-  "automationHints": {
-    "preferredEngine": "generic-v1",
-    "aiExtractionPriority": [],
-    "humanReviewRequiredWhen": []
-  },
-  "ui": {
-    "icon": "",
-    "color": "",
-    "groupOrder": []
-  },
-  "extraction": {
-    "confidence": 0,
-    "model": "",
-    "modelsTried": [],
-    "readStrategy": "ai-agent-direct",
-    "sourceFiles": [],
-    "extractedAt": ""
-  },
-  "confidence": 0,
-  "warnings": [],
-  "notes": []
+    "organizaciones": {
+      "sindical": "",
+      "patronal": []
+    },
+    "categorias": [
+      {
+        "id": "",
+        "agrupamiento": "",
+        "rama": "",
+        "clase_letra": "",
+        "descripcion": "",
+        "sueldo_basico": null
+      }
+    ],
+    "conceptos": [
+      {
+        "codigo_interno": "",
+        "nombre": "",
+        "tipo": "REMUNERATIVO",
+        "metodo_calculo": "PROPORCIONAL_DIAS",
+        "parametros": {
+          "porcentaje_fijo": null,
+          "porcentaje_por_anio": null,
+          "divisor": null,
+          "multiplicador": null,
+          "acumulativo": false,
+          "bases_calculo": [],
+          "valores_por_categoria": {}
+        },
+        "condicion_aplicacion": "",
+        "aporta_a": [],
+        "impacta_en": [],
+        "Contexto": ""
+      }
+    ],
+    "regimen_licencias": {
+      "vacaciones": {
+        "metodo_calculo": "",
+        "escalas": [
+          {
+            "desde_anios": null,
+            "hasta_anios": null,
+            "dias_corridos": null
+          }
+        ]
+      },
+      "especiales": [
+        {
+          "motivo": "",
+          "dias": null,
+          "por_evento_max": null,
+          "limite_anual_dias": null,
+          "tipo_dias": "CORRIDOS",
+          "fecha_fija": "",
+          "pago_tipo": "NORMAL"
+        }
+      ]
+    },
+    "Contexto": ""
+  }
 }

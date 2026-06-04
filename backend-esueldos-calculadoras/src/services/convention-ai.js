@@ -148,6 +148,196 @@ function normalizeSalaryType(value) {
   return "";
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function pickRuleEngineConvention(payload = {}) {
+  return payload.convenioColectivo
+    || payload.ConvenioColectivo
+    || payload.convenio_colectivo
+    || payload.convention?.convenioColectivo
+    || payload.convention?.ConvenioColectivo
+    || null;
+}
+
+function tipoConceptoToRowType(value) {
+  const normalized = normalizeText(value);
+  if (normalized === "no-remunerativo" || normalized === "no-remunerativa") return "nonRemunerative";
+  if (normalized === "retencion" || normalized === "retenciones") return "deduction";
+  return "remunerative";
+}
+
+function metodoCalculoToCalculation(value) {
+  const normalized = normalizeText(value);
+  if (normalized === "suma-fija-categoria" || normalized === "division-regla-fija") return "fixed";
+  if (normalized === "formula-custom" || normalized === "porcentaje-sobre-bases") return "percentOfBase";
+  if (normalized === "proporcional-dias") return "amountPerUnit";
+  return "";
+}
+
+function normalizeRuleEngineTemplate(model = {}) {
+  return {
+    cct_id: String(model.cct_id || ""),
+    nombre_convenio: String(model.nombre_convenio || ""),
+    version_acuerdo: String(model.version_acuerdo || ""),
+    vigencia: {
+      desde: String(model.vigencia?.desde || ""),
+      hasta: String(model.vigencia?.hasta || "")
+    },
+    organizaciones: {
+      sindical: String(model.organizaciones?.sindical || ""),
+      patronal: asArray(model.organizaciones?.patronal).filter(Boolean).map(String)
+    },
+    categorias: asArray(model.categorias).map((category, index) => ({
+      id: normalizeText(category.id || category.descripcion || `categoria-${index + 1}`),
+      agrupamiento: String(category.agrupamiento || ""),
+      rama: String(category.rama || ""),
+      clase_letra: String(category.clase_letra || ""),
+      descripcion: String(category.descripcion || category.label || category.name || category.id || `Categoria ${index + 1}`),
+      sueldo_basico: normalizeCurrencyAmount(category.sueldo_basico)
+    })),
+    conceptos: asArray(model.conceptos).map((concept, index) => ({
+      codigo_interno: normalizeText(concept.codigo_interno || concept.id || concept.nombre || `concepto-${index + 1}`),
+      nombre: String(concept.nombre || concept.label || concept.name || `Concepto ${index + 1}`),
+      tipo: String(concept.tipo || "REMUNERATIVO").toUpperCase(),
+      metodo_calculo: String(concept.metodo_calculo || "FORMULA_CUSTOM").toUpperCase(),
+      parametros: {
+        porcentaje_fijo: normalizeMoney(concept.parametros?.porcentaje_fijo),
+        porcentaje_por_anio: normalizeMoney(concept.parametros?.porcentaje_por_anio),
+        divisor: concept.parametros?.divisor == null ? null : Number(concept.parametros.divisor) || null,
+        multiplicador: concept.parametros?.multiplicador == null ? null : Number(concept.parametros.multiplicador) || null,
+        acumulativo: concept.parametros?.acumulativo === true,
+        bases_calculo: asArray(concept.parametros?.bases_calculo).filter(Boolean).map(String),
+        valores_por_categoria: normalizeMoneyMap(concept.parametros?.valores_por_categoria)
+      },
+      condicion_aplicacion: String(concept.condicion_aplicacion || ""),
+      aporta_a: asArray(concept.aporta_a).filter(Boolean).map(String),
+      impacta_en: asArray(concept.impacta_en).filter(Boolean).map(String),
+      Contexto: String(concept.Contexto || concept.contexto || "")
+    })),
+    regimen_licencias: {
+      vacaciones: {
+        metodo_calculo: String(model.regimen_licencias?.vacaciones?.metodo_calculo || ""),
+        escalas: asArray(model.regimen_licencias?.vacaciones?.escalas).map((scale) => ({
+          desde_anios: scale.desde_anios == null ? null : Number(scale.desde_anios) || null,
+          hasta_anios: scale.hasta_anios == null ? null : Number(scale.hasta_anios) || null,
+          dias_corridos: scale.dias_corridos == null ? null : Number(scale.dias_corridos) || null
+        }))
+      },
+      especiales: asArray(model.regimen_licencias?.especiales).map((license) => ({
+        motivo: String(license.motivo || ""),
+        dias: license.dias == null ? null : Number(license.dias) || null,
+        por_evento_max: license.por_evento_max == null ? null : Number(license.por_evento_max) || null,
+        limite_anual_dias: license.limite_anual_dias == null ? null : Number(license.limite_anual_dias) || null,
+        tipo_dias: String(license.tipo_dias || "CORRIDOS").toUpperCase(),
+        fecha_fija: String(license.fecha_fija || ""),
+        pago_tipo: String(license.pago_tipo || "NORMAL").toUpperCase()
+      }))
+    },
+    Contexto: String(model.Contexto || model.contexto || "")
+  };
+}
+
+function ruleEngineCategoryToLegacy(category = {}) {
+  const label = category.descripcion || category.id || "";
+  return {
+    id: category.id || normalizeText(label),
+    label,
+    group: category.agrupamiento || category.rama || "",
+    description: [category.rama, category.clase_letra].filter(Boolean).join(" - "),
+    monthly: category.sueldo_basico,
+    legalReferences: [],
+    notes: [category.Contexto || ""].filter(Boolean)
+  };
+}
+
+function ruleEngineConceptToLegacy(concept = {}) {
+  const params = concept.parametros || {};
+  return {
+    id: concept.codigo_interno || normalizeText(concept.nombre),
+    label: concept.nombre || concept.codigo_interno || "",
+    group: "Conceptos del convenio",
+    inputType: params.valores_por_categoria && Object.keys(params.valores_por_categoria).length ? "number" : "checkbox",
+    rowType: tipoConceptoToRowType(concept.tipo),
+    calculation: metodoCalculoToCalculation(concept.metodo_calculo),
+    percent: normalizeMoney(params.porcentaje_fijo ?? params.porcentaje_por_anio) || 0,
+    amount: null,
+    amountByPeriod: {},
+    unitAmount: null,
+    unitAmountByPeriod: {},
+    base: asArray(params.bases_calculo)[0] || "",
+    defaultValue: false,
+    requiresHumanValidation: !concept.condicion_aplicacion,
+    conditions: [concept.condicion_aplicacion].filter(Boolean),
+    legalReferences: [],
+    detail: concept.Contexto || "",
+    notes: [
+      params.divisor ? `Divisor: ${params.divisor}` : "",
+      params.multiplicador ? `Multiplicador: ${params.multiplicador}` : "",
+      params.acumulativo ? "Acumulativo" : "",
+      asArray(concept.aporta_a).length ? `Aporta a: ${concept.aporta_a.join(", ")}` : "",
+      asArray(concept.impacta_en).length ? `Impacta en: ${concept.impacta_en.join(", ")}` : ""
+    ].filter(Boolean)
+  };
+}
+
+function ruleEngineToLegacyConvention(model = {}, fallbackName = "Convenio generado por leIA") {
+  const convenioColectivo = normalizeRuleEngineTemplate(model);
+  const period = periodFromText(convenioColectivo.vigencia.desde) || "";
+  const concepts = convenioColectivo.conceptos.map(ruleEngineConceptToLegacy);
+  const deductions = concepts.filter((concept) => concept.rowType === "deduction");
+  const executableConcepts = concepts.filter((concept) => concept.rowType !== "deduction");
+  return {
+    schemaVersion: "esueldos-convenio-universal-v1",
+    id: convenioColectivo.cct_id || normalizeText(convenioColectivo.nombre_convenio || fallbackName),
+    name: convenioColectivo.nombre_convenio || fallbackName,
+    shortName: convenioColectivo.nombre_convenio || fallbackName,
+    source: convenioColectivo.cct_id || convenioColectivo.version_acuerdo || "",
+    type: "",
+    periods: period ? [{ id: period, label: monthLabel(period), validFrom: convenioColectivo.vigencia.desde }] : [],
+    categories: convenioColectivo.categorias.map(ruleEngineCategoryToLegacy),
+    zones: [],
+    rules: {
+      licenses: convenioColectivo.regimen_licencias,
+      context: convenioColectivo.Contexto
+    },
+    liquidationModel: {
+      rules: {},
+      concepts: executableConcepts,
+      deductions,
+      retentions: deductions,
+      employerContributions: []
+    },
+    metadata: {
+      union: convenioColectivo.organizaciones.sindical,
+      employerChamber: convenioColectivo.organizaciones.patronal.join(", "),
+      cct: convenioColectivo.cct_id,
+      version: convenioColectivo.version_acuerdo,
+      validFrom: convenioColectivo.vigencia.desde,
+      validTo: convenioColectivo.vigencia.hasta,
+      status: "draft"
+    },
+    employeeRequirements: {
+      requiredFields: ["name", "cuil", "entryDate", "category", "period"],
+      optionalFields: [],
+      legajoFlags: []
+    },
+    auditChecklist: [
+      "Validar categorias, sueldo basico y vigencia contra CCT y escala adjunta.",
+      "Controlar conceptos, bases de calculo, aportes e impactos antes de aprobar.",
+      "Revisar regimen de licencias y su tratamiento de pago."
+    ],
+    validation: {
+      blocking: [],
+      warnings: [],
+      autoChecks: ["requiredEmployeeData", "activeScaleForPeriod", "sumRowsEqualsTotals"]
+    },
+    convenioColectivo,
+    ruleEngineModel: convenioColectivo
+  };
+}
+
 function dropNullishKeys(object, keys) {
   keys.forEach((key) => {
     if (object[key] === null || object[key] === undefined) delete object[key];
@@ -343,7 +533,10 @@ function polishConventionWarnings(parsed) {
 }
 
 function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA", useFallbackDefaults = true } = {}) {
-  const source = parsed.convention || parsed.convenio || parsed;
+  const ruleEngineSource = pickRuleEngineConvention(parsed);
+  const source = ruleEngineSource
+    ? ruleEngineToLegacyConvention(ruleEngineSource, fallbackName)
+    : (parsed.convention || parsed.convenio || parsed);
   const name = source.name || source.nombre || fallbackName;
   const id = normalizeText(source.id || source.shortName || name);
   const fallbackYear = String(new Date().getFullYear());
@@ -487,6 +680,8 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
     "employeeRequirements",
     "employerObligations",
     "validation",
+    "convenioColectivo",
+    "ruleEngineModel",
     "extractedRules",
     "automationHints",
     "ui",
@@ -653,34 +848,91 @@ function conventionExtractionContractForPrompt() {
   };
 }
 
+function ruleEngineConventionContractForPrompt() {
+  return {
+    convenioColectivo: {
+      cct_id: "string identificador legal del CCT, ley, acta o resolucion",
+      nombre_convenio: "string nombre legal o actividad extraida",
+      version_acuerdo: "string version, acuerdo, acta o resolucion",
+      vigencia: {
+        desde: "string fecha detectada",
+        hasta: "string fecha detectada o vacio"
+      },
+      organizaciones: {
+        sindical: "string organizacion sindical",
+        patronal: ["string organizacion patronal"]
+      },
+      categorias: [{
+        id: "string slug estable",
+        agrupamiento: "string agrupamiento detectado",
+        rama: "string rama detectada",
+        clase_letra: "string clase, letra o nivel",
+        descripcion: "string descripcion de categoria",
+        sueldo_basico: "number | null"
+      }],
+      conceptos: [{
+        codigo_interno: "string slug estable",
+        nombre: "string nombre del concepto",
+        tipo: "REMUNERATIVO | NO_REMUNERATIVO | RETENCION",
+        metodo_calculo: "PROPORCIONAL_DIAS | PORCENTAJE_SOBRE_BASES | DIVISION_REGLA_FIJA | SUMA_FIJA_CATEGORIA | FORMULA_CUSTOM",
+        parametros: {
+          porcentaje_fijo: "number | null",
+          porcentaje_por_anio: "number | null",
+          divisor: "integer | null",
+          multiplicador: "integer | null",
+          acumulativo: "boolean",
+          bases_calculo: ["string codigo_interno de concepto o base como sueldo_basico"],
+          valores_por_categoria: { "categoria_id": "number" }
+        },
+        condicion_aplicacion: "string condicion textual",
+        aporta_a: ["string bases, organismos o aportes sobre los que impacta"],
+        impacta_en: ["string conceptos o totales impactados"],
+        Contexto: "string explicacion corta de que trata la tabla o campo"
+      }],
+      regimen_licencias: {
+        vacaciones: {
+          metodo_calculo: "string",
+          escalas: [{
+            desde_anios: "integer | null",
+            hasta_anios: "integer | null",
+            dias_corridos: "integer | null"
+          }]
+        },
+        especiales: [{
+          motivo: "string",
+          dias: "integer | null",
+          por_evento_max: "integer | null",
+          limite_anual_dias: "integer | null",
+          tipo_dias: "CORRIDOS | HABILES",
+          fecha_fija: "string",
+          pago_tipo: "NORMAL | COMO_FERIADO | NO_RECONOCIDO"
+        }]
+      },
+      Contexto: "string explicacion general de que trata el convenio o tabla"
+    }
+  };
+}
+
 function buildConventionPrompt({ draftName, notes }) {
   return [
     "Sos leIA, contadora laboral senior de Argentina e ingeniera de sistemas especialista en liquidacion de sueldos multiconvenio.",
     "Estructura el convenio desde cero. Usa exclusivamente el contenido de los archivos adjuntos como fuente factual. No uses catalogos, convenios precargados, borradores previos, versiones archivadas ni rastros de convenios eliminados.",
     "La plantilla incluida al final es solo un contrato de campos vacios: no contiene valores legales ni contables. No completes campos por analogia con otros convenios. Si un dato no aparece en los adjuntos, dejalo vacio o null y registralo en warnings cuando requiera revision.",
-    "Tu tarea es leer por separado el CCT y la escala salarial adjunta para generar un JSON de convenio COMPLETO, auditable y ejecutable por eSueldos. No limites la extraccion de conceptos a la escala: el CCT tambien puede definir haberes remunerativos y no remunerativos.",
+    "Tu tarea es leer por separado el CCT y la escala salarial adjunta para generar un JSON de convenio COMPLETO, auditable y ejecutable por eSueldos usando como contrato principal la clase raiz ConvenioColectivo.",
     "No escribas explicaciones fuera del JSON. No inventes montos, porcentajes ni articulos. Si un dato numerico no esta claro, usa null, marca requiresHumanValidation=true y agrega una warning. Usa 0 solamente cuando el documento indique expresamente cero.",
     "METODO OBLIGATORIO: primero recorre todas las paginas de cada adjunto. Despues extrae por separado el CCT y la escala. Finalmente concilia ambos resultados en un unico JSON. No devuelvas arrays vacios si existen filas, importes, porcentajes o reglas legibles en cualquiera de los archivos.",
-    "DEL CCT O ACTA extrae: identificacion legal, actividad, alcance, vigencia, categorias si aparecen, jornada, divisores, antiguedad, presentismo, horas extra, licencias, adicionales, haberes remunerativos, haberes no remunerativos, descuentos del trabajador, retenciones, contribuciones del empleador, condiciones de aplicacion y referencias de articulo.",
-    "DE LA ESCALA SALARIAL extrae: periodos, zonas, jornadas, categorias laborales, basicos mensuales, jornales, valores hora, importes no remunerativos por categoria y periodo, y tablas separadas de adicionales. Lee encabezados combinados y conserva la relacion correcta entre fila, columna, zona y mes.",
-    "REGLA CRITICA DE NO REMUNERATIVOS: si el CCT, acta o escala indica que una suma no remunerativa genera antiguedad no remunerativa o presentismo no remunerativo, registra sus reglas separadas en liquidationModel.rules.nonRemunerativeScale: seniorityEnabled, seniorityPercentPerYear, seniorityCapYears, presentismEnabled, presentismPercent y presentismRequiresNoUnjustifiedAbsence. No las mezcles con antiguedad o presentismo remunerativos. Conserva evidencia y referencias legales.",
-    "REGLA CRITICA DE ZONA GENERAL: si una tabla salarial muestra General, Base, Zona general, Zona base o Sin adicional zonal, registrala siempre en zones como { id: \"general\", label: \"General\", coef: 1 }. No la omitas aunque el coeficiente 1 sea implicito. Vincula sus filas con zone: \"general\".",
-    "CONCILIACION: categories contiene exclusivamente categorias laborales con su escala basica. Los adicionales, pluses, viaticos, kilometrajes, premios, sumas fijas y porcentajes van en liquidationModel.concepts aunque provengan de una tabla separada de la escala. No conviertas adicionales en categorias.",
-    "El JSON debe servir para mensual, jornal, hora, zonas, coeficientes, categorias, escalas por periodo, no remunerativos, antiguedad, presentismo, horas extra, feriados, vacaciones, adicionales, aportes del trabajador, contribuciones del empleador y auditoria humana.",
-    "Usa schemaVersion esueldos-convenio-universal-v1 y calculationMode generic-v1. Los periodos deben ser YYYY-MM. Los ids deben ser estables, sin espacios ni acentos.",
-    "No uses salaryType monthly por defecto. Si el CCT o la escala habla de jornal, dia, changa, valor dia o pago por dia, usa daily y completa day/dayByPeriod. Si habla de hora o valor hora, usa hourly y completa hourly/hourlyByPeriod. Usa monthly solo cuando el basico sea mensual.",
-    "Toda categoria debe traer monthly, day u hourly, y si la escala trae varios meses usa monthlyByPeriod/dayByPeriod/hourlyByPeriod y nonRem por periodo.",
-    "Contrato de categories: cada fila puede incluir id, label, group, description, monthly, day, hourly, monthlyByPeriod, dayByPeriod, hourlyByPeriod, nonRem, zone, normalWeeklyHours, normalDailyHours, legalReferences y notes. Inclui solo campos respaldados por los adjuntos.",
-    "Todo concepto variable detectado en el CCT o en la escala debe ir en liquidationModel.concepts con inputType checkbox/number, rowType remunerative/nonRemunerative/deduction, calculation fixed/percentOfBase/amountPerUnit, base, tratamiento de aportes, condiciones, referencias legales, procedencia documental y detalle.",
-    "Contrato de conceptos, deducciones y retenciones: cada fila puede incluir id, label, group, inputType, rowType, calculation, percent, amount, amountByPeriod, unitAmount, unitAmountByPeriod, base, defaultValue, appliesWhen, requiresHumanValidation, conditions, legalReferences, source, sourceFiles, detail y notes. Inclui solo campos respaldados por los adjuntos.",
-    "Las deducciones propias del trabajador van en liquidationModel.deductions y se muestran como novedades del mes. Las retenciones propias del convenio, embargos u otras retenciones identificadas van en liquidationModel.retentions: no las mezcles con haberes ni contribuciones del empleador. Usa defaultValue true si normalmente aplican y false si son eventuales. Las contribuciones propias del empleador van en liquidationModel.employerContributions. No agregues Jubilacion/PAMI/Obra Social/Ganancias generales porque eSueldos ya las calcula.",
-    "Extrae las reglas de liquidacion con su evidencia: jornada, divisores, antiguedad, presentismo, horas extra, feriados, licencias, vacaciones, bases de calculo, condiciones y reglas de validacion. Guarda reglas generales en rules y reglas ejecutables detalladas en liquidationModel.rules. No inventes una regla a partir de texto ambiguo: conserva el texto en notes o warnings y marca requiresHumanValidation.",
-    "Inclui auditChecklist, validation, employeeRequirements y notes para que el liquidador humano pueda auditar el convenio antes de aprobarlo.",
+    "DEL CCT O ACTA extrae: cct_id, nombre_convenio, version_acuerdo, vigencia, organizaciones sindical/patronal, regimen de licencias, condiciones y conceptos remunerativos, no remunerativos y retenciones.",
+    "DE LA ESCALA SALARIAL extrae: categorias laborales, agrupamiento, rama, clase/letra, descripcion y sueldo_basico. Si una tabla trae importes por categoria para un concepto, usalos en parametros.valores_por_categoria.",
+    "ENUMS OBLIGATORIOS: tipo debe ser REMUNERATIVO, NO_REMUNERATIVO o RETENCION. metodo_calculo debe ser PROPORCIONAL_DIAS, PORCENTAJE_SOBRE_BASES, DIVISION_REGLA_FIJA, SUMA_FIJA_CATEGORIA o FORMULA_CUSTOM. tipo_dias debe ser CORRIDOS o HABILES. pago_tipo debe ser NORMAL, COMO_FERIADO o NO_RECONOCIDO.",
+    "CONCILIACION: categorias contiene exclusivamente categorias laborales con sueldo_basico. Adicionales, pluses, viaticos, premios, aportes, retenciones, porcentajes y sumas fijas van en conceptos. No conviertas adicionales en categorias.",
+    "En cada Concepto completa parametros con porcentaje_fijo, porcentaje_por_anio, divisor, multiplicador, acumulativo, bases_calculo y valores_por_categoria cuando corresponda. bases_calculo debe apuntar a codigos internos de conceptos o bases reconocibles como sueldo_basico.",
+    "Completa Contexto en ConvenioColectivo y en cada Concepto explicando de que trata la tabla o regla para ayudar a la IA y al auditor humano.",
+    "El backend adaptara esta estructura nueva al formato ejecutable interno, pero tu respuesta debe priorizar convenioColectivo como fuente principal.",
     "Si los adjuntos son imagenes o contienen tablas representadas visualmente, interpretalos directamente como agente IA multimodal: observa encabezados, filas, columnas, notas y relaciones espaciales antes de estructurar. Clasifica los bloques en identificacion y alcance, categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, descuentos, retenciones, jornada laboral, licencias y reglas de validacion.",
-    "Cuando la escala traiga una tabla separada de adicionales, no mezcles sus filas con categories. Lleva cada adicional a liquidationModel.concepts indicando rowType, calculation fixed/percentOfBase/amountPerUnit, base, importe o porcentaje, unidad y tratamiento remunerativo.",
+    "Cuando la escala traiga una tabla separada de adicionales, no mezcles sus filas con categorias. Lleva cada adicional a conceptos indicando tipo, metodo_calculo, parametros, condicion_aplicacion, aporta_a, impacta_en y Contexto.",
     "El backend construira ademas structuredModel como molde auditable del convenio, preservando los campos ejecutables de esta plantilla.",
     "CONTRATO DE TIPOS PARA COMPLETAR. Es una descripcion, no copies literalmente sus textos:",
-    JSON.stringify(conventionExtractionContractForPrompt(), null, 2),
+    JSON.stringify(ruleEngineConventionContractForPrompt(), null, 2),
     "Devolve JSON valido con esta forma exacta y completa:",
     JSON.stringify(universalConventionTemplateForPrompt(), null, 2),
     draftName ? `Etiqueta informativa escrita por el usuario: ${draftName}. No la uses como evidencia legal ni como reemplazo de la identificacion extraida de los adjuntos.` : "Etiqueta informativa escrita por el usuario: sin etiqueta.",
