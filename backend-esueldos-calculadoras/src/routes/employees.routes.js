@@ -8,6 +8,20 @@ function serializeEmployee(doc) {
   return { id: _id.toString(), ...payload };
 }
 
+function normalizeEmployeePayload(payload) {
+  return {
+    ...payload,
+    legajo: String(payload.legajo || "").trim(),
+    name: String(payload.name || "").trim(),
+    cuil: String(payload.cuil || "").trim(),
+    entryDate: String(payload.entryDate || "").trim(),
+    civilStatus: String(payload.civilStatus || "soltero").trim(),
+    conventionId: String(payload.conventionId || "").trim(),
+    category: String(payload.category || "").trim(),
+    zone: String(payload.zone || "").trim()
+  };
+}
+
 function createEmployeesRouter({ getDb }) {
   const router = express.Router();
 
@@ -70,7 +84,7 @@ function createEmployeesRouter({ getDb }) {
   router.post("/api/employees", async (req, res, next) => {
     try {
       const db = getDb();
-      const payload = parseOrThrow(employeeWriteSchema, req.body, "Empleado invalido");
+      const payload = normalizeEmployeePayload(parseOrThrow(employeeWriteSchema, req.body, "Empleado invalido"));
       const existing = await db.collection("employees").findOne({ legajo: payload.legajo });
       if (existing) {
         res.status(400).json({ error: "El legajo ya existe" });
@@ -96,7 +110,7 @@ function createEmployeesRouter({ getDb }) {
         res.status(400).json({ error: "ID invalido" });
         return;
       }
-      const payload = parseOrThrow(employeeWriteSchema.partial().passthrough(), req.body, "Empleado invalido");
+      const payload = normalizeEmployeePayload(parseOrThrow(employeeWriteSchema.partial().passthrough(), req.body, "Empleado invalido"));
       const { id, _id, ...updateData } = payload;
 
       const result = await getDb().collection("employees").findOneAndUpdate(

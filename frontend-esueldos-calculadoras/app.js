@@ -104,6 +104,17 @@
     return el ? el.value : fallback;
   }
 
+  function readDateInput(id) {
+    const el = $(id);
+    if (!el) return "";
+    const value = String(el.value || "").trim();
+    if (value) return value;
+    const shown = String(el.getAttribute("value") || "").trim();
+    const match = shown.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!match) return shown;
+    return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+  }
+
   function on(id) {
     const el = $(id);
     return !!(el && el.checked);
@@ -128,7 +139,7 @@
   }
 
   function yearsFromEntry() {
-    const raw = str("entryDate");
+    const raw = readDateInput("entryDate");
     if (!raw) return 0;
     const start = new Date(`${raw}T00:00:00`);
     const today = new Date();
@@ -467,7 +478,7 @@
   function isStep2Valid() {
     const name = str("employeeName", "").trim();
     const cuil = str("employeeCuil", "").trim();
-    const entry = str("entryDate", "").trim();
+    const entry = readDateInput("entryDate");
     return name.length > 0 && cuil.length > 0 && entry.length > 0;
   }
 
@@ -479,7 +490,7 @@
       if (el && !el.value.trim()) {
         el.classList.add("field-error");
         el.addEventListener("input", function onInput() {
-          el.classList.remove("field-error");
+          if (id !== "entryDate" || readDateInput("entryDate")) el.classList.remove("field-error");
           if (isStep2Valid()) {
             const err = document.getElementById("step2ValidationError");
             if (err) err.classList.remove("visible");
@@ -488,6 +499,13 @@
         });
       }
     });
+  }
+
+  function clearStep2ErrorIfValid() {
+    if (!isStep2Valid()) return;
+    const err = document.getElementById("step2ValidationError");
+    if (err) err.classList.remove("visible");
+    ["employeeName", "employeeCuil", "entryDate"].forEach((id) => $(id)?.classList.remove("field-error"));
   }
 
   function goToStep(step) {
@@ -586,7 +604,7 @@
     const zone = getZone(conv);
     const worker = str("employeeName", "Sin nombre") || "Sin nombre";
     const cuil = str("employeeCuil", "-") || "-";
-    const entryDate = str("entryDate", "-") || "-";
+    const entryDate = readDateInput("entryDate") || "-";
     const years = yearsFromEntry();
     const period = periodLabel(conv);
 
@@ -1525,7 +1543,7 @@
         legajo: str("employeeLegajo", ""),
         name: str("employeeName", "Sin nombre") || "Sin nombre",
         cuil: str("employeeCuil", "-") || "-",
-        entryDate: str("entryDate", "-") || "-",
+        entryDate: readDateInput("entryDate") || "-",
         years: yearsFromEntry()
       },
       period: getPeriod(conv),
@@ -1563,7 +1581,7 @@
         legajo: str("employeeLegajo", ""),
         name: str("employeeName", "Sin nombre") || "Sin nombre",
         cuil: str("employeeCuil", "-") || "-",
-        entryDate: str("entryDate", "") || "",
+        entryDate: readDateInput("entryDate") || "",
         civilStatus: str("civilStatus", "soltero")
       },
       inputs,
@@ -5055,6 +5073,7 @@
     $("employeeCuil").value = emp.cuil || "";
     $("entryDate").value = emp.entryDate || "";
     $("civilStatus").value = emp.civilStatus || "soltero";
+    clearStep2ErrorIfValid();
     
     if (emp.conventionId) {
       $("convention").value = emp.conventionId;
