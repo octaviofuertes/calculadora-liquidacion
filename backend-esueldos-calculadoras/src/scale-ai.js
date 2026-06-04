@@ -1,3 +1,5 @@
+const { geminiModelList } = require("./gemini-config");
+
 class GeminiScaleError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
     super(message);
@@ -7,14 +9,6 @@ class GeminiScaleError extends Error {
     this.code = code;
     this.modelsTried = modelsTried || [];
   }
-}
-
-function modelList(primaryModel, fallbackModels = []) {
-  return [primaryModel, ...fallbackModels]
-    .filter(Boolean)
-    .map((item) => String(item).trim())
-    .filter(Boolean)
-    .filter((item, index, list) => list.indexOf(item) === index);
 }
 
 function isRetryable(error) {
@@ -120,13 +114,61 @@ function normalizeMoney(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function normalizeOptionalBoolean(value) {
+  if (typeof value === "boolean") return value;
+  if (value === null || value === undefined || value === "") return null;
+  const normalized = normalizeText(value);
+  if (["true", "si", "yes", "aplica", "activo"].includes(normalized)) return true;
+  if (["false", "no", "no aplica", "inactivo"].includes(normalized)) return false;
+  return null;
+}
+
+function normalizePercent(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return normalizeMoney(String(value).replace("%", ""));
+}
+
+function normalizeNonRemunerativeRules(rawRules) {
+  if (!rawRules || typeof rawRules !== "object" || Array.isArray(rawRules)) return {};
+  const rules = {};
+  const copyBoolean = (target, aliases) => {
+    const key = aliases.find((alias) => Object.prototype.hasOwnProperty.call(rawRules, alias));
+    if (key) rules[target] = normalizeOptionalBoolean(rawRules[key]);
+  };
+  const copyPercent = (target, aliases) => {
+    const key = aliases.find((alias) => Object.prototype.hasOwnProperty.call(rawRules, alias));
+    if (key) rules[target] = normalizePercent(rawRules[key]);
+  };
+
+  copyBoolean("enabled", ["enabled", "aplica"]);
+  copyBoolean("seniorityEnabled", ["seniorityEnabled", "aplicaAntiguedad", "antiguedadHabilitada"]);
+  copyPercent("seniorityPercentPerYear", ["seniorityPercentPerYear", "porcentajeAntiguedadPorAnio", "antiguedadPorAnio"]);
+  copyPercent("seniorityCapYears", ["seniorityCapYears", "topeAniosAntiguedad"]);
+  copyBoolean("presentismEnabled", ["presentismEnabled", "aplicaPresentismo", "presentismoHabilitado"]);
+  copyPercent("presentismPercent", ["presentismPercent", "porcentajePresentismo"]);
+  copyBoolean("presentismRequiresNoUnjustifiedAbsence", ["presentismRequiresNoUnjustifiedAbsence", "presentismoExigeSinInasistenciasInjustificadas"]);
+  copyBoolean("subjectToHealthInsurance", ["subjectToHealthInsurance", "aportaObraSocial"]);
+  copyBoolean("subjectToUnion", ["subjectToUnion", "aportaSindicato"]);
+  if (Array.isArray(rawRules.legalReferences || rawRules.referenciasLegales)) {
+    rules.legalReferences = (rawRules.legalReferences || rawRules.referenciasLegales).filter(Boolean).map(String);
+  }
+  if (Array.isArray(rawRules.notes || rawRules.observaciones)) {
+    rules.notes = (rawRules.notes || rawRules.observaciones).filter(Boolean).map(String);
+  }
+  if (rules.enabled == null && (Number.isFinite(rules.seniorityPercentPerYear) || Number.isFinite(rules.presentismPercent))) rules.enabled = true;
+  if (rules.seniorityEnabled == null && Number.isFinite(rules.seniorityPercentPerYear)) rules.seniorityEnabled = true;
+  if (rules.presentismEnabled == null && Number.isFinite(rules.presentismPercent)) rules.presentismEnabled = true;
+  return rules;
+}
+
 function normalizeRows(rows) {
   if (!Array.isArray(rows)) return [];
   return rows
     .map((row) => ({
       id: row.id ? String(row.id) : "",
       label: row.label || row.category || row.name || "",
-      zone: row.zone || row.zona || "",
+      group: row.group || row.grupo || row.section || row.seccion || "",
+      zone: normalizeZoneId(row.zone || row.zona),
       monthly: normalizeMoney(row.monthly ?? row.sueldoMensual ?? row.basicoMensual ?? row.baseSalary),
       day: normalizeMoney(row.day ?? row.jornal ?? row.valorDia),
       hourly: normalizeMoney(row.hourly ?? row.hora ?? row.valorHora),
@@ -143,6 +185,47 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+function isGeneralZone(value) {
+  const normalized = normalizeText(value);
+  return [
+    "general",
+    "base",
+    "zona general",
+    "zona base",
+    "base general",
+    "general base",
+    "sin adicional",
+    "sin adicional zonal",
+    "sin adicional de zona"
+  ].includes(normalized);
+}
+
+function normalizeZoneId(value) {
+  const normalized = normalizeText(value);
+  return isGeneralZone(normalized) ? "general" : normalized;
+}
+
+function normalizeScaleZones(rawZones, categories) {
+  const byId = new Map();
+  (Array.isArray(rawZones) ? rawZones : []).forEach((zone) => {
+    const id = normalizeZoneId(zone.id || zone.label || zone.name || zone.zona);
+    const general = id === "general" || isGeneralZone(zone.label || zone.name || zone.zona);
+    const coefficient = normalizeMoney(zone.coefficient ?? zone.coeficiente ?? zone.coef);
+    const normalized = {
+      id: general ? "general" : id,
+      label: general ? "General" : (zone.label || zone.name || zone.zona || ""),
+      coefficient: coefficient ?? (general ? 1 : null)
+    };
+    if (normalized.id || normalized.label) byId.set(normalized.id || normalizeText(normalized.label), { ...(byId.get(normalized.id) || {}), ...normalized });
+  });
+  const hasDocumentaryGeneral = categories.some((category) => category.zone === "general")
+    || (byId.size > 0 && categories.some((category) => !category.zone));
+  if (!byId.has("general") && hasDocumentaryGeneral) {
+    byId.set("general", { id: "general", label: "General", coefficient: 1 });
+  }
+  return Array.from(byId.values());
 }
 
 function rowHasAnyAmount(row) {
@@ -168,6 +251,32 @@ function matchesKnownCategory(row, convention) {
     return (rowId && catId && rowId === catId)
       || (rowLabel && catLabel && (rowLabel === catLabel || rowLabel.includes(catLabel) || catLabel.includes(rowLabel)));
   });
+}
+
+function looksLikeAdditionalRow(row) {
+  const label = normalizeText(row?.label || row?.id);
+  const group = normalizeText(row?.group);
+  return /^[\s$%.,\d-]+$/.test(String(row?.label || "").trim())
+    || /(adicional|plus|premio|bonific|viatic|pernoct|comida|kilometr|\bkm\b|hora extra|presentismo|antiguedad|titulo|quebranto|falla de caja|movilidad|refrigerio|seguro|primeros \d+ km|mas de \d+ km|art \d+|cct \d+)/i.test(label)
+    || /(adicional|asignacion complementaria|art \d+|ayud chof|chofer|kilometr|\bkm\b|viatic|pernoct|comida|plus|premio|bonific)/i.test(group);
+}
+
+function splitScaleRows({ categories, additionals, convention }) {
+  const keptCategories = [];
+  const mergedAdditionals = [...additionals];
+  const seenAdditionals = new Set(additionals.map((row) => normalizeText(row.id || row.label)));
+  categories.forEach((row) => {
+    if (looksLikeAdditionalRow(row) && !matchesKnownCategory(row, convention)) {
+      const key = normalizeText(row.id || row.label);
+      if (key && !seenAdditionals.has(key)) {
+        seenAdditionals.add(key);
+        mergedAdditionals.push(row);
+      }
+      return;
+    }
+    keptCategories.push(row);
+  });
+  return { categories: keptCategories, additionals: mergedAdditionals };
 }
 
 function hasSevereWarning(warnings) {
@@ -210,15 +319,14 @@ function scoreScaleConfidence({ parsedConfidence, categories, additionals, nonRe
 function normalizeScale(parsed, { convention, period, sourceFileName }) {
   const fallbackYear = fallbackYearFromPeriod(period);
   const detectedPeriod = periodFromText(parsed.period || parsed.periodLabel || parsed.month || parsed.mes || "", fallbackYear) || period;
-  const categories = normalizeRows(parsed.categories || parsed.items || parsed.rows);
-  const additionals = normalizeRows(parsed.additionals || parsed.adicionales);
-  const zones = Array.isArray(parsed.zones || parsed.zonas)
-    ? (parsed.zones || parsed.zonas).map((zone) => ({
-      id: zone.id ? String(zone.id) : "",
-      label: zone.label || zone.name || zone.zona || "",
-      coefficient: normalizeMoney(zone.coefficient ?? zone.coeficiente ?? zone.coef)
-    })).filter((zone) => zone.label || zone.coefficient)
-    : [];
+  const normalizedCategories = normalizeRows(parsed.categories || parsed.items || parsed.rows);
+  const normalizedAdditionals = normalizeRows(parsed.additionals || parsed.adicionales);
+  const { categories, additionals } = splitScaleRows({
+    categories: normalizedCategories,
+    additionals: normalizedAdditionals,
+    convention
+  });
+  const zones = normalizeScaleZones(parsed.zones || parsed.zonas, categories);
   const warnings = Array.isArray(parsed.warnings || parsed.alertas)
     ? (parsed.warnings || parsed.alertas).filter(Boolean).map(String)
     : [];
@@ -227,6 +335,9 @@ function normalizeScale(parsed, { convention, period, sourceFileName }) {
   const normalizedNonRemunerative = Array.isArray(parsed.nonRemunerative || parsed.noRemunerativos)
     ? normalizeRows(parsed.nonRemunerative || parsed.noRemunerativos)
     : [];
+  const nonRemunerativeRules = normalizeNonRemunerativeRules(
+    parsed.nonRemunerativeRules || parsed.reglasNoRemunerativas || parsed.rules?.nonRemunerativeScale
+  );
 
   return {
     period: detectedPeriod,
@@ -250,6 +361,7 @@ function normalizeScale(parsed, { convention, period, sourceFileName }) {
     additionals,
     zones,
     nonRemunerative: normalizedNonRemunerative,
+    nonRemunerativeRules,
     notes: Array.isArray(parsed.notes || parsed.observaciones)
       ? (parsed.notes || parsed.observaciones).filter(Boolean).map(String)
       : [],
@@ -274,6 +386,7 @@ function normalizeScaleBundle(parsed, { convention, period, sourceFileName }) {
           additionals: entry.additionals || entry.adicionales || parsed.additionals || parsed.adicionales,
           zones: entry.zones || entry.zonas || parsed.zones || parsed.zonas,
           nonRemunerative: entry.nonRemunerative || entry.noRemunerativos || parsed.nonRemunerative || parsed.noRemunerativos,
+          nonRemunerativeRules: entry.nonRemunerativeRules || entry.reglasNoRemunerativas || parsed.nonRemunerativeRules || parsed.reglasNoRemunerativas,
           notes: entry.notes || entry.observaciones || parsed.notes || parsed.observaciones,
           warnings: entry.warnings || entry.alertas || parsed.warnings || parsed.alertas,
           sourceSummary: entry.sourceSummary || entry.resumen || parsed.sourceSummary || parsed.resumen,
@@ -316,14 +429,21 @@ function buildScalePrompt({ convention, period, periodLabel }) {
 
   return [
     "Sos leIA, asistente de auditoria de escalas salariales de eSueldos.",
-    "Lee el PDF adjunto y extrae importes de escala salarial para revision humana.",
+    "Lee el documento o imagen adjunta e interpreta directamente su contenido como agente IA multimodal para extraer importes de escala salarial para revision humana.",
+    "La unica fuente factual de importes es el archivo adjunto. El convenio seleccionado y sus categorias conocidas son una ayuda para vincular ids, no una fuente de valores. No copies importes anteriores ni completes filas por analogia.",
+    "Si el adjunto es una imagen o contiene tablas representadas visualmente, analiza encabezados, filas, columnas y relaciones espaciales directamente como agente IA multimodal.",
+    "Recorre todas las paginas. No devuelvas categories, additionals o scales vacios si el archivo contiene filas e importes legibles. Si una tabla no se puede reconstruir con certeza, conserva lo legible y explica la duda en warnings.",
     "Si el PDF contiene importes para varios meses o periodos, crea una escala separada por cada mes/periodo detectado.",
     "Ejemplo: si una escala de Farmacia trae basico Abril 2026 y columnas no remunerativas Abril/Mayo/Junio 2026, devolve tres escalas: 2026-04, 2026-05 y 2026-06. Repite el basico en cada mes y cambia el no remunerativo segun la columna de ese mes.",
     "No inventes importes. Si un dato no esta claro, usa null y agregalo en warnings.",
     "El campo confidence debe medir la confianza de extraccion de datos: usa 85 a 95 si detectaste la mayoria de categorias conocidas con importes claros; usa menos de 50 solo si faltan importes o hay dudas importantes.",
     "Para planillas extensas, prioriza una fila por categoria conocida y una fila por adicional/concepto salarial conocido. Evita duplicados y manten notes vacio salvo que sea necesario.",
+    "Si el documento contiene una tabla separada titulada ADICIONALES, PLUS, VIATICOS u OTROS CONCEPTOS, carga esas filas exclusivamente en additionals. No mezcles adicionales con categories aunque tengan importes monetarios.",
+    "Trata como adicionales los importes por kilometro, viaticos, comida, pernoctada, premios, titulos, plus, quebranto de caja, movilidad y conceptos similares. Categories debe contener solamente categorias laborales de la escala basica.",
     "REGLA CRITICA DE MONTOS: Extrae unicamente valores monetarios fijos. Si un adicional o concepto se define como un porcentaje (ej. 10%, 1%, etc.), cargalo como null en los importes y si es necesario indicalo en notes. NUNCA extraigas un porcentaje como si fuera un monto en pesos (ej. NO extraigas 10% como 10).",
+    "REGLA CRITICA DE NO REMUNERATIVOS: si la escala indica que la suma no remunerativa genera antiguedad no remunerativa o presentismo no remunerativo, extrae esas reglas separadas en nonRemunerativeRules con seniorityEnabled, seniorityPercentPerYear, seniorityCapYears, presentismEnabled, presentismPercent y presentismRequiresNoUnjustifiedAbsence. Esos porcentajes son reglas, no importes monetarios.",
     "Si el convenio usa zonas con coeficientes ya cargados en el sistema, no repitas la misma categoria por cada zona: carga la categoria base/general una sola vez y registra las zonas en zones con coefficient.",
+    "REGLA CRITICA DE ZONA GENERAL: si la tabla muestra una columna General, Base, Zona general, Zona base o Sin adicional zonal, incluila siempre en zones como { id: \"general\", label: \"General\", coefficient: 1 }. No la omitas aunque el coeficiente 1 sea implicito. Marca las filas de esa columna con zone: \"general\".",
     "No devuelvas mas filas de categorias que las categorias conocidas del sistema, salvo que el PDF tenga una categoria nueva realmente distinta.",
     ...automaticZoneLines,
     ...camionerosLines,
@@ -376,6 +496,16 @@ function buildScalePrompt({ convention, period, periodLabel }) {
             }
           ],
           nonRemunerative: [],
+          nonRemunerativeRules: {
+            enabled: null,
+            seniorityEnabled: null,
+            seniorityPercentPerYear: null,
+            seniorityCapYears: null,
+            presentismEnabled: null,
+            presentismPercent: null,
+            presentismRequiresNoUnjustifiedAbsence: null,
+            legalReferences: []
+          },
           notes: []
         }
       ],
@@ -508,6 +638,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
   }
 
   const markdownText = convertRawTextToMarkdown(rawText);
+  const attachPdf = !hasUsefulPdfText(rawText);
 
   // Debug output requested by user
   console.log("\n==================================================");
@@ -527,7 +658,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
     console.error("Error al guardar archivo debug de escala:", err.message);
   }
 
-  const models = modelList(model, fallbackModels);
+  const models = geminiModelList(model, fallbackModels);
   const errors = [];
 
   for (const currentModel of models) {
@@ -539,6 +670,9 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
         period,
         periodLabel,
         markdownText,
+        pdfBuffer,
+        mimeType,
+        attachPdf,
         sourceFileName
       });
       return {
@@ -583,6 +717,8 @@ module.exports = {
   extractScalesFromPdf,
   normalizeScale,
   normalizeScaleBundle,
+  normalizeNonRemunerativeRules,
   scoreScaleConfidence,
-  buildScalePrompt
+  buildScalePrompt,
+  splitScaleRows
 };

@@ -1,4 +1,4 @@
-const ENGINE_VERSION = "backend-payroll-engine-v1";
+const ENGINE_VERSION = "backend-payroll-engine-v2";
 
 function amount(value) {
   const number = Number(value);
@@ -65,12 +65,34 @@ function normalizeMatchText(value) {
     .trim();
 }
 
+function normalizeZoneMatchText(value) {
+  const normalized = normalizeMatchText(value);
+  return [
+    "general",
+    "base",
+    "zona general",
+    "zona base",
+    "base general",
+    "general base",
+    "sin adicional",
+    "sin adicional zonal",
+    "sin adicional de zona"
+  ].includes(normalized) ? "general" : normalized;
+}
+
+function scaleRowMatchesZone(row, zone) {
+  const rowZone = normalizeZoneMatchText(row?.zone);
+  const zoneId = normalizeZoneMatchText(zone?.id);
+  const zoneLabel = normalizeZoneMatchText(zone?.label);
+  return Boolean(rowZone && ((zoneId && rowZone === zoneId) || (zoneLabel && rowZone === zoneLabel)));
+}
+
 function findScaleRow(rows, item, zone) {
   if (!Array.isArray(rows) || !item) return null;
   const itemId = normalizeMatchText(item.id);
   const itemLabel = normalizeMatchText(item.label);
-  const zoneId = normalizeMatchText(zone?.id);
-  const zoneLabel = normalizeMatchText(zone?.label);
+  const zoneId = normalizeZoneMatchText(zone?.id);
+  const zoneLabel = normalizeZoneMatchText(zone?.label);
   const candidates = rows.filter((row) => {
     const rowId = normalizeMatchText(row.id);
     const rowLabel = normalizeMatchText(row.label);
@@ -81,7 +103,7 @@ function findScaleRow(rows, item, zone) {
   });
   if (!candidates.length) return null;
   return candidates.find((row) => {
-    const rowZone = normalizeMatchText(row.zone);
+    const rowZone = normalizeZoneMatchText(row.zone);
     return rowZone && ((zoneId && rowZone.includes(zoneId)) || (zoneLabel && rowZone.includes(zoneLabel)));
   }) || candidates.find((row) => !row.zone) || candidates[0];
 }
@@ -178,6 +200,30 @@ function applyWorkerDeductions(ctx, rows, remTotal, osBase) {
   addRow(rows.deductionRows, "Ganancias 4ta categoria", calculateGanancias(c, ctx.inputs, remTotal, ctx.employee.civilStatus), "Estimacion anualizada");
 }
 
+function genericConventionItemBase(item, remTotal, noRemTotal, basic) {
+  const base = normalizeMatchText(item?.base || "remunerative");
+  if (["gross", "bruto", "total haberes"].includes(base)) return remTotal + noRemTotal;
+  if (["nonremunerative", "non remunerative", "no remunerativo"].includes(base)) return noRemTotal;
+  if (["basic", "basico"].includes(base)) return basic;
+  return remTotal;
+}
+
+function applyGenericConventionDeductions(ctx, rows, remTotal, noRemTotal, basic) {
+  const model = ctx.convention.liquidationModel || {};
+  const applyItems = (items, targetRows, fallbackDetail, userSelectable = false, inputPrefix = "gen_deduction") => {
+    (items || []).forEach((item) => {
+      if (userSelectable && !inputBool(ctx.inputs, `${inputPrefix}_${item.id}`, item.defaultValue !== false)) return;
+      const base = genericConventionItemBase(item, remTotal, noRemTotal, basic);
+      const fixedAmount = periodAmountValue(item, ctx.payloadPeriod, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(item.amount);
+      const value = fixedAmount || base * ((Number(item.percent || 0) || 0) / 100);
+      addRow(targetRows, item.label, value, item.detail || fallbackDetail);
+    });
+  };
+  applyItems(model.deductions, rows.deductionRows, "Aporte propio del convenio", true);
+  applyItems(model.retentions, rows.deductionRows, "Retencion propia del convenio", true, "gen_retention");
+  applyItems(model.employerContributions, rows.employerRows, "Contribucion propia del convenio");
+}
+
 function applyEmployerContribs(ctx, rows, remTotal, osBase, baseSalary = remTotal) {
   const c = ctx.constants;
   const er = c.employerBase || {};
@@ -252,8 +298,13 @@ function calcGeneric(ctx) {
   const activeCatRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
   const model = ctx.convention.liquidationModel || {};
   const rules = { ...(ctx.convention.rules || {}), ...(model.rules || {}) };
+  rules.nonRemunerativeScale = {
+    ...(rules.nonRemunerativeScale || {}),
+    ...(ctx.activeScale?.parsedScale?.nonRemunerativeRules || ctx.activeScale?.parsedScale?.reglasNoRemunerativas || {})
+  };
   const salaryType = rules.salaryType || ctx.category.salaryType || ctx.convention.type || "monthly";
   const zoneCoef = Number(ctx.zone?.coef || 1) || 1;
+  const scaleCoef = scaleRowMatchesZone(activeCatRow, ctx.zone) ? 1 : zoneCoef;
   const monthPct = Math.max(0, Math.min(100, inputValue(ctx.inputs, "genMonthPct", 100))) / 100;
   const monthDivisor = Number(rules.monthDivisor || 30) || 30;
   const hourDivisor = Number(rules.overtime?.divisor || rules.hourDivisor || 200) || 200;
@@ -262,9 +313,9 @@ function calcGeneric(ctx) {
   const categoryMonthlyRaw = firstFinite(activeCatRow?.monthly, periodAmountValue(activeCatRow, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]), periodAmountValue(ctx.category, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]), ctx.category.monthly);
   const categoryDayRaw = firstFinite(activeCatRow?.day, periodAmountValue(activeCatRow, period, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]), periodAmountValue(ctx.category, period, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]), ctx.category.day);
   const categoryHourlyRaw = firstFinite(activeCatRow?.hourly, periodAmountValue(activeCatRow, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]), periodAmountValue(ctx.category, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]), ctx.category.hourly);
-  const categoryMonthly = (categoryMonthlyRaw || 0) * zoneCoef;
-  const categoryDay = (firstFinite(categoryDayRaw, categoryMonthly ? categoryMonthly / monthDivisor : null) || 0) * (activeCatRow?.day || ctx.category.day ? zoneCoef : 1);
-  const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || ctx.category.hourly ? zoneCoef : 1);
+  const categoryMonthly = (categoryMonthlyRaw || 0) * scaleCoef;
+  const categoryDay = (firstFinite(categoryDayRaw, categoryMonthly ? categoryMonthly / monthDivisor : null) || 0) * (activeCatRow?.day || ctx.category.day ? scaleCoef : 1);
+  const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || ctx.category.hourly ? scaleCoef : 1);
   let basic = salaryType === "daily" ? categoryDay * workUnits : salaryType === "hourly" ? categoryHourly * workUnits : categoryMonthly * monthPct;
   addRow(rows.remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} unidades`);
   addRow(rows.remRows, "Inasistencia injustificada", -(salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays), `${absentDays} dias`);
@@ -282,7 +333,7 @@ function calcGeneric(ctx) {
   const hourValue = (sumRows(rows.remRows) || basic) / hourDivisor;
   addRow(rows.remRows, "Horas extra 50%", hourValue * inputValue(ctx.inputs, "genExtra50", 0) * 1.5, `/${hourDivisor} x 1,5`);
   addRow(rows.remRows, "Horas extra 100%", hourValue * inputValue(ctx.inputs, "genExtra100", 0) * 2, `/${hourDivisor} x 2`);
-  const noRemScaleBase = (firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(ctx.category, period)) || 0) * monthPct * zoneCoef;
+  const noRemScaleBase = (firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(ctx.category, period)) || 0) * monthPct * scaleCoef;
   (model.concepts || []).forEach((concept) => {
     const key = `gen_${concept.id}`;
     const enabled = concept.inputType === "number" ? inputValue(ctx.inputs, key, 0) : (inputBool(ctx.inputs, key, !!concept.defaultValue) ? 1 : 0);
@@ -295,11 +346,28 @@ function calcGeneric(ctx) {
         : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
     addRow(concept.rowType === "nonRemunerative" ? rows.noRemRows : concept.rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, concept.detail || concept.group || "Concepto del convenio");
   });
-  if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) addRow(rows.noRemRows, "Suma no remunerativa escala", noRemScaleBase, ctx.activeScale ? "Escala aprobada" : "Escala base");
+  if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {
+    addRow(rows.noRemRows, "Suma no remunerativa escala", noRemScaleBase, ctx.activeScale ? "Escala aprobada" : "Escala base");
+    const noRemRule = rules.nonRemunerativeScale || {};
+    const noRemSeniorityPct = Number(noRemRule.seniorityPercentPerYear || 0) || 0;
+    const noRemPresentismPct = Number(noRemRule.presentismPercent || 0) || 0;
+    const noRemYears = noRemRule.seniorityCapYears ? Math.min(ctx.employee.years, Number(noRemRule.seniorityCapYears)) : ctx.employee.years;
+    const applyNoRemSeniority = noRemRule.seniorityEnabled !== false
+      && inputBool(ctx.inputs, "genSeniority", seniorityRule.enabled !== false || noRemSeniorityPct > 0);
+    const noRemSeniority = applyNoRemSeniority ? noRemScaleBase * ((noRemSeniorityPct * noRemYears) / 100) : 0;
+    addRow(rows.noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${noRemYears} años`);
+    const allowNoRemPresentism = !noRemRule.presentismRequiresNoUnjustifiedAbsence || absentDays === 0;
+    const applyNoRemPresentism = noRemRule.presentismEnabled !== false
+      && inputBool(ctx.inputs, "genPresentism", presentismRule.enabled === true || noRemPresentismPct > 0);
+    if (applyNoRemPresentism && allowNoRemPresentism) {
+      addRow(rows.noRemRows, "Presentismo no remunerativo", (noRemScaleBase + noRemSeniority) * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
+    }
+  }
   applyManualRows(ctx, rows);
   const remTotal = sumRows(rows.remRows);
   const noRemTotal = sumRows(rows.noRemRows);
   applyWorkerDeductions(ctx, rows, remTotal, remTotal + noRemTotal);
+  applyGenericConventionDeductions(ctx, rows, remTotal, noRemTotal, basic);
   applyEmployerContribs(ctx, rows, remTotal, remTotal + noRemTotal, basic);
   addRow(rows.details, "Basico de escala", categoryMonthly || categoryDay || categoryHourly, ctx.activeScale ? "Escala aprobada" : "Escala base");
   addRow(rows.details, "Base obra social", remTotal + noRemTotal, "Remunerativo + no remunerativo sujeto a OS");
@@ -424,7 +492,7 @@ function calcCamioneros(ctx) {
   const rows = emptyRows();
   const coef = Number(ctx.zone.coef || 1) || 1;
   const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
-  const hasSpecificZone = !!(activeRow && activeRow.zone);
+  const hasSpecificZone = scaleRowMatchesZone(activeRow, ctx.zone);
   const periodDays = Math.max(1, inputValue(ctx.inputs, "camPeriodDays", 24));
   const paidDays = Math.min(Math.max(0, inputValue(ctx.inputs, "camWorkingDays", periodDays)), periodDays);
   const absentDays = Math.max(0, inputValue(ctx.inputs, "camAbsentDays", 0));
