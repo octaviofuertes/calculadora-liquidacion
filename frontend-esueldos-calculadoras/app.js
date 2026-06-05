@@ -553,7 +553,7 @@
     nextBtn.style.display = currentStep === TOTAL_STEPS ? "none" : "inline-flex";
     // Disable Next based on step:
     // - Step 1: require a convention to be selected
-    // - Step 2: require entry date to be filled
+    // - Step 2: require worker data to be filled
     if (currentStep === 1) {
       nextBtn.disabled = !isStep1Valid();
     } else if (currentStep === 2) {
@@ -574,14 +574,16 @@
   }
 
   function isStep2Valid() {
+    const name = str("employeeName", "").trim();
+    const cuil = str("employeeCuil", "").trim();
     const entry = readDateInput("entryDate");
-    return entry.length > 0;
+    return name.length > 0 && cuil.length > 0 && entry.length > 0;
   }
 
   function showStep2Error() {
     const errorEl = document.getElementById("step2ValidationError");
     if (errorEl) errorEl.classList.add("visible");
-    ["entryDate"].forEach((id) => {
+    ["employeeName", "employeeCuil", "entryDate"].forEach((id) => {
       const el = $(id);
       if (el && !el.value.trim()) {
         el.classList.add("field-error");
@@ -601,7 +603,7 @@
     if (!isStep2Valid()) return;
     const err = document.getElementById("step2ValidationError");
     if (err) err.classList.remove("visible");
-    ["entryDate"].forEach((id) => $(id)?.classList.remove("field-error"));
+    ["employeeName", "employeeCuil", "entryDate"].forEach((id) => $(id)?.classList.remove("field-error"));
   }
 
   function goToStep(step) {
@@ -4486,6 +4488,12 @@
       conventionSelect.value = DATA.conventions[selectedId] ? selectedId : fallbackId;
       updateConvention();
     }
+    const empConvention = $("empConvention");
+    if (empConvention) {
+      empConvention.innerHTML = Object.values(DATA.conventions)
+        .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
+        .join("");
+    }
   }
 
   async function uploadConventionDraft(event) {
@@ -5368,19 +5376,21 @@
     document.querySelectorAll(".nav-link").forEach(link => {
       link.addEventListener("click", (e) => {
         const target = link.getAttribute("href").substring(1);
-        if (target === "payrollForm" || target === "scalesPanel" || target === "conventionsPanel" || target === "aiUsagePanel") {
+        if (target === "employeesPanel" || target === "payrollForm" || target === "scalesPanel" || target === "conventionsPanel" || target === "aiUsagePanel") {
           e.preventDefault();
           document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
           link.classList.add("active");
 
+          $("employeesPanel").style.display = target === "employeesPanel" ? "block" : "none";
           $("scalesPanel").style.display = target === "scalesPanel" ? "block" : "none";
           $("conventionsPanel").style.display = target === "conventionsPanel" ? "block" : "none";
           const aiUsagePanel = $("aiUsagePanel");
           if (aiUsagePanel) aiUsagePanel.style.display = target === "aiUsagePanel" ? "block" : "none";
           $("payrollFormPanel").style.display = target === "payrollForm" ? "block" : "none";
 
-          if (target === "scalesPanel" || target === "conventionsPanel" || target === "aiUsagePanel") {
+          if (target === "employeesPanel" || target === "scalesPanel" || target === "conventionsPanel" || target === "aiUsagePanel") {
             document.querySelector(".app-shell").classList.add("full-view");
+            if (target === "employeesPanel") fetchEmployees();
             if (target === "scalesPanel") loadScaleDashboard();
             if (target === "conventionsPanel") loadConventionDrafts();
             if (target === "aiUsagePanel") loadAiUsageDashboard();
@@ -5391,7 +5401,45 @@
       });
     });
 
+    $("addEmployeeBtn").addEventListener("click", () => {
+      $("editEmployeeId").value = "";
+      $("employeeDataForm").reset();
+      $("employeeModalTitle").textContent = "Nuevo empleado";
+      updateEmpConvention();
+      setNextLegajo();
+      $("employeeFormModal").style.display = "flex";
+    });
+
+    $("closeEmployeeModal").addEventListener("click", () => {
+      $("employeeFormModal").style.display = "none";
+    });
+
+    $("employeeDataForm").addEventListener("submit", saveEmployee);
     $("refreshAiUsageBtn")?.addEventListener("click", loadAiUsageDashboard);
+    $("empConvention").addEventListener("change", updateEmpConvention);
+    $("searchEmployeeBtn").addEventListener("click", searchEmployee);
+    $("employeeLegajo").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        searchEmployee();
+      }
+    });
+
+    $("employeeName").addEventListener("input", () => {
+      clearTimeout(autocompleteTimeout);
+      autocompleteTimeout = setTimeout(searchEmployeesAutocomplete, 300);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#employeeName") && !e.target.closest("#employeeSuggestions")) {
+        $("employeeSuggestions").style.display = "none";
+      }
+    });
+
+    // Fill convention select in employee form
+    $("empConvention").innerHTML = Object.values(DATA.conventions)
+      .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
+      .join("");
     
     document.querySelectorAll(".wizard-step-btn").forEach((button) => {
       button.addEventListener("click", () => {
@@ -5406,8 +5454,8 @@
     $("prevStepBtn").addEventListener("click", () => goToStep(currentStep - 1));
     $("nextStepBtn").addEventListener("click", () => goToStep(currentStep + 1));
 
-    // Actualizar boton Siguiente dinamicamente al escribir en campos del paso 2
-    ["entryDate"].forEach((id) => {
+    // Actualizar boton Siguiente dinamicamente al escribir en campos del trabajador (paso 2)
+    ["employeeName", "employeeCuil", "entryDate"].forEach((id) => {
       const el = $(id);
       if (el) {
         el.addEventListener("input", () => { if (currentStep === 2) renderWizard(); });
@@ -5493,6 +5541,15 @@
 
   async function saveLiquidation() {
     if (!lastResult) return;
+    
+    const existing = liquidationsList.find(l => 
+      l.period === lastResult.period && 
+      (l.employee?.legajo === lastResult.employee.legajo || l.employee?.name === lastResult.employee.name)
+    );
+    if (existing) {
+      alert("Ya guardaste un recibo para este empleado en este mes. Si necesitas corregirlo, eliminalo primero desde la vista de Empleados > Recibos.");
+      return;
+    }
 
     const button = $("saveBtn");
     if (!button) return;
@@ -5525,6 +5582,7 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const saved = await response.json();
       button.textContent = `Guardado ${saved.id.slice(-6)}`;
+      fetchEmployees(); // Refrescar lista en background
       setTimeout(() => {
         button.textContent = originalText;
       }, 2500);
@@ -5534,6 +5592,352 @@
     } finally {
       button.disabled = false;
     }
+  }
+
+  // --- Employee Management ---
+  let employees = [];
+  let liquidationsList = [];
+
+  async function fetchEmployees() {
+    try {
+      const resEmp = await fetchJson("/api/employees");
+      const resLiq = await fetchJson("/api/liquidations?limit=1000").catch(() => []);
+      employees = resEmp;
+      liquidationsList = resLiq;
+      renderEmployeeTable();
+    } catch (error) {
+      console.error("Error fetching employees/liquidations:", error);
+      const body = $("employeeTableBody");
+      if (body) {
+        body.innerHTML = `<tr><td colspan="7">No se pudieron cargar empleados: ${escapeHtml(error.message || "error de red")}</td></tr>`;
+      }
+    }
+  }
+
+  function renderEmployeeTable() {
+    const body = $("employeeTableBody");
+    if (!body) return;
+    const currentPeriodId = getCurrentPeriodId();
+
+    body.innerHTML = employees.map(emp => {
+      const conv = DATA.conventions[emp.conventionId];
+      const catLabel = conv?.categories?.find(c => c.id === emp.category)?.label || emp.category || "-";
+      const zoneLabel = conv?.zones?.find(z => z.id === emp.zone)?.label || emp.zone || "-";
+      
+      const empLiqs = liquidationsList.filter(l => (l.employee?.legajo === emp.legajo || l.employee?.name === emp.name));
+      const hasCurrent = empLiqs.some(l => l.period === currentPeriodId);
+      const statusBadge = hasCurrent 
+        ? `<span class="status-pill ok">Liquidacion mes actual</span>`
+        : `<span class="status-pill bad">Pendiente mes actual</span>`;
+
+      return `
+      <tr>
+        <td>${escapeHtml(emp.legajo)}</td>
+        <td>${escapeHtml(emp.name)}<br><small style="color:var(--muted)">${statusBadge}</small></td>
+        <td>${escapeHtml(emp.cuil || "-")}</td>
+        <td>${escapeHtml(conv?.shortName || emp.conventionId || "-")}</td>
+        <td>${escapeHtml(catLabel)}</td>
+        <td>${escapeHtml(zoneLabel)}</td>
+        <td>
+          <div class="action-btns" style="flex-wrap:wrap; gap:4px;">
+            <button class="btn-small" onclick="window.viewLiquidations('${emp.legajo}', '${escapeHtml(emp.name)}')">Recibos</button>
+            <button class="btn-small" onclick="window.editEmployee('${emp.id}')">Editar</button>
+            <button class="btn-small btn-delete" onclick="window.deleteEmployee('${emp.id}')">Eliminar</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  window.currentViewLiquidationsLegajo = null;
+  window.currentViewLiquidationsName = null;
+
+  window.renderLiquidationsList = () => {
+    const legajo = window.currentViewLiquidationsLegajo;
+    const name = window.currentViewLiquidationsName;
+    let empLiqs = liquidationsList.filter(l => l.employee?.legajo === legajo || l.employee?.name === name);
+    
+    const filterEl = $("liqMonthFilter");
+    if (filterEl && filterEl.value) {
+      empLiqs = empLiqs.filter(l => l.period === filterEl.value);
+    }
+    
+    const listHtml = empLiqs.length === 0 
+      ? `<div class="empty-state" style="padding:40px;text-align:center">No hay liquidaciones.</div>`
+      : `<div class="tables"><table><thead><tr><th>Periodo</th><th>Convenio</th><th class="num">Neto</th><th class="num">Fecha</th><th></th></tr></thead><tbody>
+          ${empLiqs.map(l => `<tr>
+            <td>${escapeHtml(monthLabel(periodIdToMonth(l.period) || l.period))}</td>
+            <td>${escapeHtml(l.conventionName || l.convention)}</td>
+            <td class="num">${fmt(l.totals?.net || 0)}</td>
+            <td class="num">${shortDate(l.createdAt)}</td>
+            <td>
+              <div class="action-btns" style="flex-wrap:nowrap">
+                <button class="btn-small" onclick="window.viewSavedLiquidation('${l.id}')">Ver</button>
+                <button class="btn-small btn-delete" onclick="window.deleteLiquidation('${l.id}')">X</button>
+              </div>
+            </td>
+          </tr>`).join("")}
+        </tbody></table></div>`;
+    
+    const container = $("liqModalListContainer");
+    if (container) container.innerHTML = listHtml;
+  };
+
+  window.deleteLiquidation = async (id) => {
+    if (!confirm("¿Eliminar este recibo guardado? Esta accion no se puede deshacer.")) return;
+    try {
+      await fetchJson(`/api/liquidations/${id}`, { method: "DELETE" });
+      await fetchEmployees();
+      window.renderLiquidationsList();
+    } catch (e) {
+      alert("Error de red al intentar eliminar.");
+    }
+  };
+
+  window.viewLiquidations = (legajo, name) => {
+    window.currentViewLiquidationsLegajo = legajo;
+    window.currentViewLiquidationsName = name;
+    
+    const empLiqs = liquidationsList.filter(l => l.employee?.legajo === legajo || l.employee?.name === name);
+    const periods = [...new Set(empLiqs.map(l => l.period))].sort().reverse();
+    
+    const filterHtml = `
+      <div style="margin-bottom:16px; display:flex; gap:10px; align-items:center;">
+        <label for="liqMonthFilter" style="font-size:12px; font-weight:600; color:var(--muted)">Filtrar por mes:</label>
+        <select id="liqMonthFilter" onchange="window.renderLiquidationsList()" style="padding:4px 8px; border:1px solid #ccc; border-radius:4px; font-size:13px">
+          <option value="">Todos los meses</option>
+          ${periods.map(p => `<option value="${p}">${escapeHtml(monthLabel(periodIdToMonth(p) || p))}</option>`).join("")}
+        </select>
+      </div>
+      <div id="liqModalListContainer"></div>
+    `;
+
+    const modal = $("employeeLiquidationsModal");
+    if (modal) {
+      $("liqModalTitle").textContent = `Recibos de ${name}`;
+      $("liqModalContent").innerHTML = filterHtml;
+      window.renderLiquidationsList();
+      modal.style.display = "flex";
+    }
+  };
+
+  window.viewSavedLiquidation = (id) => {
+    const saved = liquidationsList.find(l => l.id === id);
+    if (!saved) return;
+    
+    const conv = DATA.conventions[saved.convention];
+    lastResult = {
+      conv: conv || { id: saved.convention, name: saved.conventionName, periods: [] },
+      employee: saved.employee,
+      period: saved.period,
+      category: { label: saved.category },
+      zone: { label: saved.zone },
+      remRows: saved.remunerative,
+      noRemRows: saved.nonRemunerative,
+      deductionRows: saved.deductions,
+      employerRows: saved.employer,
+      details: saved.details || [],
+      totals: saved.totals
+    };
+    lastAudit = saved.audit || null;
+    
+    $("employeeLiquidationsModal").style.display = "none";
+    
+    // Simular clic en el nav para ir a Sueldos
+    const navLink = document.querySelector('.nav-link[href="#payrollForm"]');
+    if (navLink) navLink.click();
+    
+    // Renderizar recibo
+    goToStep(4);
+    renderAll(lastResult);
+    if (lastAudit) renderAuditResult(lastAudit);
+    setActionButtonsEnabled(true);
+    activateTab("receipt");
+  };
+
+  window.editEmployee = (id) => {
+    const emp = employees.find(e => e.id === id);
+    if (!emp) return;
+    $("editEmployeeId").value = emp.id;
+    $("empLegajo").value = emp.legajo;
+    $("empName").value = emp.name;
+    $("empCuil").value = emp.cuil || "";
+    $("empEntryDate").value = emp.entryDate || "";
+    $("empCivilStatus").value = emp.civilStatus || "soltero";
+    $("empConvention").value = emp.conventionId || "uocra";
+    updateEmpConvention();
+    $("empCategory").value = emp.category || "";
+    $("empZone").value = emp.zone || "";
+    
+    $("employeeModalTitle").textContent = "Editar empleado";
+    $("employeeFormModal").style.display = "flex";
+  };
+
+  window.deleteEmployee = async (id) => {
+    if (!confirm("¿Estás seguro de eliminar este empleado?")) return;
+    try {
+      await fetchJson(`/api/employees/${id}`, { method: "DELETE" });
+      fetchEmployees();
+    } catch (error) {
+      alert("Error al eliminar");
+    }
+  };
+
+  function updateEmpConvention() {
+    const empConvEl = $("empConvention");
+    const empCatEl = $("empCategory");
+    const empZoneEl = $("empZone");
+    if (!empConvEl || !empCatEl || !empZoneEl) return;
+    const conv = DATA.conventions[empConvEl.value];
+    if (!conv) return;
+    setOptions(empCatEl, conv.categories);
+    setOptions(empZoneEl, conv.zones);
+  }
+
+  async function saveEmployee(event) {
+    event.preventDefault();
+    const id = $("editEmployeeId").value;
+    const payload = {
+      legajo: $("empLegajo").value,
+      name: $("empName").value,
+      cuil: $("empCuil").value,
+      entryDate: $("empEntryDate").value,
+      civilStatus: $("empCivilStatus").value,
+      conventionId: $("empConvention").value,
+      category: $("empCategory").value,
+      zone: $("empZone").value
+    };
+
+    try {
+      const url = id ? apiUrl(`/api/employees/${id}`) : apiUrl("/api/employees");
+      const method = id ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        $("employeeFormModal").style.display = "none";
+        fetchEmployees();
+      } else {
+        const err = await response.json();
+        alert(err.error || "Error al guardar");
+      }
+    } catch (error) {
+      alert("Error al conectar con el servidor");
+    }
+  }
+
+  async function searchEmployee() {
+    const legajoEl = $("employeeLegajo");
+    const legajo = legajoEl?.value.trim();
+    if (!legajo) return;
+
+    // Feedback visual en el input
+    legajoEl.style.borderColor = "";
+    const errorMsg = legajoEl.parentNode.querySelector(".legajo-error");
+    if (errorMsg) errorMsg.remove();
+    
+    try {
+      const response = await fetch(apiUrl(`/api/employees/${legajo}`));
+      if (response.ok) {
+        const emp = await response.json();
+        fillEmployeeData(emp);
+        legajoEl.style.borderColor = "var(--green)";
+        setTimeout(() => { legajoEl.style.borderColor = ""; }, 2000);
+      } else {
+        // Mensaje inline en lugar de alert()
+        legajoEl.style.borderColor = "var(--red)";
+        const msg = document.createElement("small");
+        msg.className = "legajo-error";
+        msg.style.cssText = "color:var(--red);font-size:11px;margin-top:4px;display:block";
+        msg.textContent = `Legajo ${legajo} no encontrado`;
+        legajoEl.parentNode.appendChild(msg);
+        setTimeout(() => { legajoEl.style.borderColor = ""; msg.remove(); }, 3000);
+      }
+    } catch (error) {
+      console.error("Error searching employee:", error);
+    }
+  }
+
+  let autocompleteTimeout = null;
+
+  async function searchEmployeesAutocomplete() {
+    const q = $("employeeName").value.trim();
+    const suggestions = $("employeeSuggestions");
+    if (q.length < 2) {
+      suggestions.style.display = "none";
+      return;
+    }
+
+    try {
+      // Filter by currently selected convention so only relevant employees appear
+      const convId = str("convention", firstConventionId());
+      const url = apiUrl(`/api/employees/search?q=${encodeURIComponent(q)}&conventionId=${encodeURIComponent(convId)}`);
+      const response = await fetch(url);
+      if (response.ok) {
+        const results = await response.json();
+        renderSuggestions(results);
+      }
+    } catch (error) {
+      console.error("Autocomplete error:", error);
+    }
+  }
+
+  function renderSuggestions(results) {
+    const suggestions = $("employeeSuggestions");
+    if (!results.length) {
+      suggestions.style.display = "none";
+      return;
+    }
+
+    suggestions.innerHTML = results.map(emp => `
+      <div class="suggestion-item" data-id="${emp.id}">
+        <strong>${escapeHtml(emp.name)}</strong>
+        <small>Legajo: ${escapeHtml(emp.legajo)}</small>
+      </div>
+    `).join("");
+    suggestions.style.display = "block";
+
+    suggestions.querySelectorAll(".suggestion-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const emp = results.find(e => e.id === item.dataset.id);
+        if (emp) {
+          $("employeeLegajo").value = emp.legajo;
+          fillEmployeeData(emp);
+          suggestions.style.display = "none";
+        }
+      });
+    });
+  }
+
+  async function setNextLegajo() {
+    try {
+      const response = await fetch(apiUrl("/api/employees/next-legajo"));
+      if (response.ok) {
+        const { nextLegajo } = await response.json();
+        $("empLegajo").value = nextLegajo;
+      }
+    } catch (error) {
+      console.error("Error fetching next legajo:", error);
+    }
+  }
+
+  function fillEmployeeData(emp) {
+    $("employeeName").value = emp.name;
+    $("employeeCuil").value = emp.cuil || "";
+    $("entryDate").value = emp.entryDate || "";
+    $("civilStatus").value = emp.civilStatus || "soltero";
+    clearStep2ErrorIfValid();
+    
+    if (emp.conventionId) {
+      $("convention").value = emp.conventionId;
+      updateConvention();
+      if (emp.category) $("category").value = emp.category;
+      if (emp.zone) $("zone").value = emp.zone;
+    }
+    
+    markDirty();
   }
 
   if (document.readyState === "loading") {
