@@ -23,6 +23,7 @@ const { configureSecurity } = require("./middleware/security");
 const catalogService = require("./services/catalog-service");
 const convenioService = require("./services/convenio-service");
 const { calculateLiquidation } = require("./services/liquidation-service");
+const tokenMetrics = require("./services/token-metrics");
 const scaleRepository = require("./repositories/scale-repository");
 const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
 const { createAdminRouter } = require("./routes/admin.routes");
