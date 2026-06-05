@@ -3733,7 +3733,7 @@
             <path d="M10 11v5"></path>
             <path d="M14 11v5"></path>
           </svg>
-        </button>
+        </button>` : ""}
       </div>`;
     }).join("");
     if (!conventionBuilderState.selected || !items.some((item) => item.id === conventionBuilderState.selected.id)) {
@@ -4055,7 +4055,7 @@
           <path d="M14 11v5"></path>
         </svg>
         Eliminar
-      </button>`}
+      </button>
     </div>`;
     if (tablesArea) {
       tablesArea.innerHTML = `<div class="convention-audit-table-stack">${conventionAuditTablesHtml(conv, isApproved, { includeGeneral: false })}${auditActions}</div>`;
@@ -5321,7 +5321,36 @@
     markDirty();
   }
 
+  function bindNavigation() {
+    document.querySelectorAll(".nav-link").forEach(link => {
+      link.addEventListener("click", (e) => {
+        const target = link.getAttribute("href").substring(1);
+        if (target === "payrollForm" || target === "scalesPanel" || target === "conventionsPanel") {
+          e.preventDefault();
+          document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
+          link.classList.add("active");
+
+          if ($("scalesPanel")) $("scalesPanel").style.display = target === "scalesPanel" ? "block" : "none";
+          if ($("conventionsPanel")) $("conventionsPanel").style.display = target === "conventionsPanel" ? "block" : "none";
+          const aiUsagePanel = $("aiUsagePanel");
+          if (aiUsagePanel) aiUsagePanel.style.display = target === "aiUsagePanel" ? "block" : "none";
+          if ($("payrollFormPanel")) $("payrollFormPanel").style.display = target === "payrollForm" ? "block" : "none";
+
+          if (target === "scalesPanel" || target === "conventionsPanel") {
+            document.querySelector(".app-shell")?.classList.add("full-view");
+            if (target === "scalesPanel") loadScaleDashboard();
+            if (target === "conventionsPanel") loadConventionDrafts();
+            if (target === "aiUsagePanel") loadAiUsageDashboard();
+          } else {
+            document.querySelector(".app-shell")?.classList.remove("full-view");
+          }
+        }
+      });
+    });
+  }
+
   async function init() {
+    bindNavigation();
     await loadCatalog();
 
     const conventionSelect = $("convention");
@@ -5343,33 +5372,6 @@
         }
         markDirty();
       }
-    });
-
-    // Navigation
-    document.querySelectorAll(".nav-link").forEach(link => {
-      link.addEventListener("click", (e) => {
-        const target = link.getAttribute("href").substring(1);
-        if (target === "payrollForm" || target === "scalesPanel" || target === "conventionsPanel") {
-          e.preventDefault();
-          document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
-          link.classList.add("active");
-
-          $("scalesPanel").style.display = target === "scalesPanel" ? "block" : "none";
-          $("conventionsPanel").style.display = target === "conventionsPanel" ? "block" : "none";
-          const aiUsagePanel = $("aiUsagePanel");
-          if (aiUsagePanel) aiUsagePanel.style.display = target === "aiUsagePanel" ? "block" : "none";
-          $("payrollFormPanel").style.display = target === "payrollForm" ? "block" : "none";
-
-          if (target === "scalesPanel" || target === "conventionsPanel") {
-            document.querySelector(".app-shell").classList.add("full-view");
-            if (target === "scalesPanel") loadScaleDashboard();
-            if (target === "conventionsPanel") loadConventionDrafts();
-            if (target === "aiUsagePanel") loadAiUsageDashboard();
-          } else {
-            document.querySelector(".app-shell").classList.remove("full-view");
-          }
-        }
-      });
     });
 
     document.querySelectorAll(".wizard-step-btn").forEach((button) => {

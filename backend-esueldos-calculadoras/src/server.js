@@ -9,9 +9,9 @@ const { ObjectId } = require("mongodb");
 const { getDb, closeDb } = require("./db");
 const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
-const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
-const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
-const { geminiPrimaryModel, geminiConventionModel } = require("./gemini-config");
+const { extractScalesFromPdf, GeminiScaleError } = require("./services/scale-ai");
+const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./services/convention-ai");
+const { geminiPrimaryModel, geminiScaleModel, geminiConventionModel } = require("./gemini-config");
 const { EXCEL_SCHEMA_VERSION, toRuntimeConvention, normalizeAndValidateCCTJson } = require("./models/convenio.model");
 const {
   isSupportedConventionDocument,
@@ -26,6 +26,7 @@ const { calculateLiquidation } = require("./services/liquidation-service");
 const scaleRepository = require("./repositories/scale-repository");
 const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
 const { createAdminRouter } = require("./routes/admin.routes");
+const { createAiRouter } = require("./routes/ai.routes");
 const { createCatalogRouter } = require("./routes/catalog.routes");
 const { createHealthRouter } = require("./routes/health.routes");
 const { createConveniosRouter } = require("./routes/convenios.routes");
