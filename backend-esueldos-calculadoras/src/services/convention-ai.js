@@ -1,5 +1,5 @@
-const { geminiModelList } = require("./gemini-config");
-const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("./models/convenio.model");
+const { geminiModelList } = require("../gemini-config");
+const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
 const useConventionMarkdown = String(process.env.CONVENTION_USE_MARKDOWN || "true").toLowerCase() !== "false";
 
