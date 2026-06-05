@@ -27,7 +27,6 @@ const scaleRepository = require("./repositories/scale-repository");
 const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
 const { createAdminRouter } = require("./routes/admin.routes");
 const { createCatalogRouter } = require("./routes/catalog.routes");
-const { createEmployeesRouter } = require("./routes/employees.routes");
 const { createHealthRouter } = require("./routes/health.routes");
 const { createConveniosRouter } = require("./routes/convenios.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
@@ -159,9 +158,6 @@ async function ensureScaleIndexes() {
   await db.collection("conventionVersions").createIndex({ conventionId: 1, version: -1 });
   await db.collection("liquidationAudits").createIndex({ createdAt: -1 });
   await db.collection("liquidationAudits").createIndex({ conventionId: 1, period: 1, createdAt: -1 });
-  await db.collection("employees").createIndex({ legajo: 1 }, { unique: true });
-  await db.collection("employees").createIndex({ name: "text" });
-  await db.collection("employees").createIndex({ conventionId: 1, name: 1 });
   await db.collection("liquidations").createIndex({ convention: 1, period: 1, createdAt: -1 });
   await convenioService.ensureConvenioIndexes(db);
   await ensureVersionIndexes(db);
@@ -1512,131 +1508,6 @@ app.delete("/api/liquidations/:id", async (req, res, next) => {
     const result = await db.collection("liquidations").deleteOne({ _id: new ObjectId(req.params.id) });
     if (result.deletedCount === 0) {
       res.status(404).json({ error: "Liquidacion no encontrada" });
-      return;
-    }
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/next-legajo", async (req, res, next) => {
-  try {
-    const docs = await db.collection("employees").find({}, { projection: { legajo: 1 } }).toArray();
-    const max = docs.reduce((current, emp) => {
-      const num = parseInt(emp.legajo, 10);
-      return !Number.isNaN(num) && num > current ? num : current;
-    }, 0);
-    const nextLegajo = String(max + 1).padStart(3, "0");
-    res.json({ nextLegajo });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/search", async (req, res, next) => {
-  try {
-    const { q, conventionId } = req.query;
-    if (!q) {
-      res.json([]);
-      return;
-    }
-
-    const safeQuery = escapeRegex(String(q).slice(0, 80));
-    const filter = { name: { $regex: safeQuery, $options: "i" } };
-    if (conventionId && conventionId !== "null" && conventionId !== "undefined") {
-      filter.conventionId = conventionId;
-    }
-
-    const docs = await db.collection("employees").find(filter).limit(10).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees", async (req, res, next) => {
-  try {
-    const docs = await db.collection("employees").find({}).sort({ legajo: 1 }).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/:legajo", async (req, res, next) => {
-  try {
-    const doc = await db.collection("employees").findOne({ legajo: req.params.legajo });
-    if (!doc) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    const { _id, ...payload } = doc;
-    res.json({ id: _id.toString(), ...payload });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/employees", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(employeeWriteSchema, req.body, "Empleado invalido");
-
-    const existing = await db.collection("employees").findOne({ legajo: payload.legajo });
-    if (existing) {
-      res.status(400).json({ error: "El legajo ya existe" });
-      return;
-    }
-
-    const now = new Date();
-    const doc = {
-      ...payload,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    const result = await db.collection("employees").insertOne(doc);
-    res.status(201).json({ id: result.insertedId.toString(), ...doc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.put("/api/employees/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const payload = parseOrThrow(employeeWriteSchema.partial().passthrough(), req.body, "Empleado invalido");
-    const { id, _id, ...updateData } = payload;
-
-    const result = await db.collection("employees").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { ...updateData, updatedAt: new Date() } },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    const { _id: mongoId, ...updatedDoc } = result;
-    res.json({ id: mongoId.toString(), ...updatedDoc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete("/api/employees/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const result = await db.collection("employees").deleteOne({ _id: new ObjectId(req.params.id) });
-    if (result.deletedCount === 0) {
-      res.status(404).json({ error: "Empleado no encontrado" });
       return;
     }
     res.json({ ok: true });
