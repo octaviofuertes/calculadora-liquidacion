@@ -204,7 +204,7 @@
               <span class="scale-icon scale-icon-audit">OK</span>
               <div>
                 <h3>Auditoria humana</h3>
-                <p>Revisa el JSON detectado antes de aprobarlo como vigente.</p>
+                <p>Revis&aacute; los datos detectados antes de aprobarlos como vigentes.</p>
               </div>
             </div>
             <div id="scaleAuditList" class="scale-audit-list"></div>
@@ -229,7 +229,7 @@
         <div class="section-head">
           <div>
             <span class="eyebrow">Convenios IA</span>
-            <h2>Constructor de convenios JSON</h2>
+            <h2>Constructor de convenios</h2>
             <p>Sub&iacute; CCT + escala, leIA estructura el convenio y lo deja listo para auditor&iacute;a humana.</p>
           </div>
           <button class="icon-btn" id="refreshConventionDraftsBtn" type="button">Actualizar</button>
@@ -238,7 +238,7 @@
         <div class="convention-builder-layout">
           <form class="scale-card convention-builder-upload" id="conventionBuilderForm">
             <div class="scale-card-head">
-              <span class="scale-icon convention-builder-icon">JSON</span>
+              <span class="scale-icon convention-builder-icon">IA</span>
               <div>
                 <h3>Crear convenio con leIA</h3>
                 <p>La IA lee los PDFs, arma categor&iacute;as, reglas, conceptos, aportes y checklist de auditor&iacute;a.</p>
@@ -301,8 +301,8 @@
             <div class="scale-card-head">
               <span class="scale-icon scale-icon-audit">IA</span>
               <div>
-                <h3>Auditor&iacute;a humana del JSON</h3>
-                <p>Edit&aacute; el JSON si hace falta. Al aprobar, aparece autom&aacute;ticamente en Sueldos.</p>
+                <h3>Auditor&iacute;a humana del convenio</h3>
+                <p>Edit&aacute; tablas, conceptos y escalas si hace falta. Al aprobar, aparece autom&aacute;ticamente en Sueldos.</p>
                 <div class="convention-bulk-actions" aria-label="Acciones masivas de auditoria">
                   <button class="convention-bulk-delete is-approved" id="deleteApprovedDraftsBtn" type="button">
                     Eliminar todos los aprobados
@@ -314,9 +314,10 @@
               </div>
             </div>
             <div id="conventionDraftList" class="scale-audit-list convention-draft-list"></div>
-            <div id="conventionJsonEditor" class="scale-editor empty-state">Seleccion&aacute; un convenio generado para revisar su JSON.</div>
+            <div id="conventionJsonEditor" class="scale-editor empty-state">Seleccion&aacute; un convenio generado para revisar los datos extra&iacute;dos.</div>
           </div>
         </div>
+        <div id="conventionAuditTablesArea" class="convention-audit-tables-area"></div>
       </section>
 
       <section class="panel form-panel" id="payrollFormPanel" aria-label="Carga de liquidacion">

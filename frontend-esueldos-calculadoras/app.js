@@ -63,8 +63,8 @@
     "dias ausentes just.": "Ausencias justificadas informativas que normalmente no descuentan salario.",
     "hs extra 50%": "Horas extra con recargo del 50%.",
     "hs extra 100%": "Horas extra con recargo del 100%.",
-    "antiguedad segun json": "Aplica la regla de antiguedad aprobada en el convenio generado por leIA.",
-    "presentismo segun json": "Aplica presentismo si el convenio aprobado lo define y se cumplen sus condiciones.",
+    "antiguedad segun convenio": "Aplica la regla de antiguedad aprobada en el convenio generado por leIA.",
+    "presentismo segun convenio": "Aplica presentismo si el convenio aprobado lo define y se cumplen sus condiciones.",
     "no remunerativo de escala": "Incluye sumas no remunerativas cargadas en la escala vigente.",
     "liquidacion": "Tipo de periodo a liquidar para el convenio seleccionado.",
     "horas normales": "Horas ordinarias trabajadas o pagaderas antes de adicionales y descuentos.",
@@ -261,7 +261,12 @@
   }
 
   function getConvention() {
-    return DATA.conventions[str("convention", "camioneros")] || DATA.conventions.camioneros || DATA.conventions.uocra;
+    const fallbackId = firstConventionId();
+    return DATA.conventions[str("convention", fallbackId)] || DATA.conventions[fallbackId] || null;
+  }
+
+  function firstConventionId() {
+    return DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions || {})[0] || "";
   }
 
   function getPeriod(conv) {
@@ -408,7 +413,7 @@
     const container = $("conventionCards");
     if (!container) return;
 
-    const activeId = str("convention", "camioneros") || "camioneros";
+    const activeId = str("convention", firstConventionId()) || firstConventionId();
     container.innerHTML = Object.values(DATA.conventions)
       .map((conv) => {
         const meta = conventionCardMeta(conv);
@@ -494,7 +499,7 @@
       await fetchJson(`/api/conventions/${encodeURIComponent(id)}`, { method: "DELETE" });
       await loadCatalog();
       const currentId = str("convention");
-      const fallbackId = DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions)[0];
+      const fallbackId = firstConventionId();
       updateConventionSelectsAfterCatalogReload(currentId === id ? fallbackId : currentId);
       renderConventionCards();
       syncScaleConvention();
@@ -1134,7 +1139,7 @@
 
     addRow(details, "Basico de escala", categoryMonthly || categoryDay || categoryHourly, activeScaleDetail(conv));
     addRow(details, "Tipo de liquidacion", 0, salaryType);
-    addRow(details, "Divisor horas extra", hourDivisor, "Regla del convenio JSON");
+    addRow(details, "Divisor horas extra", hourDivisor, "Regla del convenio aprobado");
     addRow(details, "Base obra social", osBase, "Remunerativo + no remunerativo sujeto a OS");
     return buildResult(conv, remRows, noRemRows, deductionRows, employerRows, details);
   }
@@ -1899,7 +1904,122 @@
     if (value === null || value === undefined || value === "") return fallback;
     if (typeof value === "number") return Number.isFinite(value) ? value.toLocaleString("es-AR") : fallback;
     if (Array.isArray(value)) return value.length ? value.join(", ") : fallback;
+    if (typeof value === "object") {
+      const readable = value.label || value.nombre || value.name || value.titulo || value.title || value.descripcion || value.description || value.detalle || value.detail || value.value || value.id;
+      return readable ? summaryValue(readable, fallback) : JSON.stringify(value);
+    }
     return String(value);
+  }
+
+  function summaryKey(value) {
+    return summaryValue(value, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function humanizeTechnicalText(value, fallback = "-") {
+    const raw = summaryValue(value, "");
+    if (!raw) return fallback;
+    const exact = {
+      requiere_revision_manual: "Requiere revisión manual",
+      requires_review: "Requiere revisión manual",
+      requiresreview: "Requiere revisión manual",
+      valor_escala_categoria: "valor de escala de la categoría",
+      escala_salarial: "escala salarial",
+      sueldo_basico: "sueldo básico",
+      total_remunerativo: "total remunerativo",
+      no_remunerativo: "no remunerativo"
+    }[summaryKey(raw)];
+    if (exact) return exact;
+    return raw
+      .replace(/_/g, " ")
+      .replace(/\bsegun\b/gi, "segun")
+      .replace(/\bcategoria\b/gi, "categoria")
+      .replace(/\bperiodo\b/gi, "periodo")
+      .replace(/\bjornada\b/gi, "jornada")
+      .replace(/\brequiere revision manual\b/gi, "Requiere revisión manual")
+      .trim();
+  }
+
+  function humanConceptType(item = {}) {
+    const key = summaryKey(item.rowType || item.group || item.tipo_concepto || item.naturaleza);
+    const labels = {
+      remunerative: "Haber remunerativo",
+      remunerativo: "Haber remunerativo",
+      haber_remunerativo: "Haber remunerativo",
+      nonremunerative: "Haber no remunerativo",
+      non_remunerative: "Haber no remunerativo",
+      no_remunerativo: "Haber no remunerativo",
+      haber_no_remunerativo: "Haber no remunerativo",
+      deduction: "Deducción / retención",
+      descuento: "Deducción / retención",
+      retencion: "Deducción / retención",
+      reference: "Valor de referencia",
+      referencia: "Valor de referencia",
+      referencial: "Valor de referencia",
+      employercontribution: "Contribución empleador",
+      employer_contribution: "Contribución empleador",
+      aporte_patronal: "Contribución empleador",
+      contribucion_patronal: "Contribución empleador"
+    };
+    return labels[key] || humanizeTechnicalText(item.group || item.rowType || "Concepto");
+  }
+
+  function humanConceptCalculation(item = {}) {
+    const key = summaryKey(item.calculation || item.formula_base);
+    const labels = {
+      fixed: "Importe fijo",
+      monto_fijo: "Importe fijo",
+      importe_fijo: "Importe fijo",
+      percentofbase: "Porcentaje sobre base",
+      percent_of_base: "Porcentaje sobre base",
+      porcentaje_sobre_base: "Porcentaje sobre base",
+      percentaje_sobre_base: "Porcentaje sobre base",
+      scalevalue: "Valor de escala",
+      scale_value: "Valor de escala",
+      valor_escala_categoria: "Valor de escala",
+      amountperunit: "Cantidad por valor unitario",
+      amount_per_unit: "Cantidad por valor unitario",
+      cantidad_por_valor_unitario: "Cantidad por valor unitario",
+      porcentaje_sobre_valor_hora: "Porcentaje sobre valor hora",
+      reference: "Valor informativo",
+      valor_referencia_escala: "Valor informativo",
+      requiresreview: "Requiere revisión manual",
+      requiere_revision_manual: "Requiere revisión manual"
+    };
+    let label = labels[key] || humanizeTechnicalText(item.calculation || item.formula_base, "-");
+    if (item.percent) label += ` (${summaryValue(item.percent)}%)`;
+    else if (item.amount && key === "fixed") label += ` (${fmt(Number(item.amount))})`;
+    return label;
+  }
+
+  function humanConceptBase(value) {
+    const labels = {
+      basic: "Sueldo básico",
+      basico: "Sueldo básico",
+      sueldo_basico: "Sueldo básico",
+      escala_salarial: "Escala salarial de la categoría",
+      total_remunerativo: "Total remunerativo",
+      haberes_remunerativos: "Haberes remunerativos",
+      remuneracion_sujeta_a_aporte: "Remuneración sujeta a aportes",
+      valor_hora: "Valor hora",
+      valor_dia: "Valor día",
+      monto_fijo: "Monto fijo",
+      requiresreview: "Requiere revisión manual",
+      requiere_revision_manual: "Requiere revisión manual"
+    };
+    const key = summaryKey(value);
+    return labels[key] || humanizeTechnicalText(value);
+  }
+
+  function humanConceptDetail(item = {}) {
+    const raw = item.detail || item.notes?.[0] || item.condicion || item.appliesWhen || item.formula_base || "";
+    const detail = humanizeTechnicalText(raw, "");
+    return detail || "Sin condición especial informada.";
   }
 
   function conventionCct(conv) {
@@ -2391,8 +2511,8 @@
     const presentism = rules.presentism || {};
     const nonRem = rules.nonRemunerativeScale || {};
     const nonRemDetail = [
-      `OS: ${summaryValue(nonRem.subjectToHealthInsurance, "segun JSON")}`,
-      `sindicato: ${summaryValue(nonRem.subjectToUnion, "segun JSON")}`,
+      `OS: ${summaryValue(nonRem.subjectToHealthInsurance, "segun datos aprobados")}`,
+      `sindicato: ${summaryValue(nonRem.subjectToUnion, "segun datos aprobados")}`,
       Number(nonRem.seniorityPercentPerYear || 0) ? `antiguedad NR ${nonRem.seniorityPercentPerYear}% por año` : "",
       Number(nonRem.presentismPercent || 0) ? `presentismo NR ${nonRem.presentismPercent}%` : ""
     ].filter(Boolean).join("; ");
@@ -2402,11 +2522,11 @@
     const scope = conv.scope || {};
     const concepts = summaryArray(model.concepts || conv.concepts);
     const conceptSummaryRow = (item) => [
-      item.label || item.id,
-      item.group || item.rowType || "Concepto",
-      item.calculation ? `${item.calculation}${item.percent ? ` ${item.percent}%` : ""}` : (item.amount ? fmt(Number(item.amount)) : "-"),
-      item.base || "-",
-      item.detail || item.notes?.[0] || ""
+      humanizeTechnicalText(item.label || item.id),
+      humanConceptType(item),
+      humanConceptCalculation(item),
+      humanConceptBase(item.base),
+      humanConceptDetail(item)
     ];
     const conceptType = (item) => String(item.rowType || "remunerative").toLowerCase().replace(/[^a-z]/g, "");
     const remunerativeConceptRows = concepts
@@ -2422,16 +2542,16 @@
       .filter((item) => !["remunerative", "nonremunerative", "deduction"].includes(conceptType(item)))
       .map(conceptSummaryRow);
     const deductionRows = summaryArray(model.deductions || conv.deductions).map((item) => [
-      item.label || item.id,
+      humanizeTechnicalText(item.label || item.id),
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
-      item.base || "remunerative",
-      item.detail || item.appliesWhen || ""
+      humanConceptBase(item.base || "remunerative"),
+      humanConceptDetail(item)
     ]);
     const retentionRows = summaryArray(model.retentions || conv.retentions).map((item) => [
-      item.label || item.id,
+      humanizeTechnicalText(item.label || item.id),
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
-      item.base || "remunerative",
-      item.detail || item.appliesWhen || ""
+      humanConceptBase(item.base || "remunerative"),
+      humanConceptDetail(item)
     ]);
     const extractedRuleRows = summaryArray(conv.extractedRules).map((item) => [
       item.label || item.id,
@@ -2440,19 +2560,30 @@
       item.sourceFileName || item.source || "-"
     ]);
     const employerRows = summaryArray(model.employerContributions || conv.employerContributions).map((item) => [
-      item.label || item.id,
+      humanizeTechnicalText(item.label || item.id),
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
-      item.base || "remunerative",
-      item.detail || item.appliesWhen || ""
+      humanConceptBase(item.base || "remunerative"),
+      humanConceptDetail(item)
     ]);
     const articleRows = Object.entries(legal.articleMap || {}).map(([key, value]) => [
       key,
       typeof value === "string" ? value : summaryValue(value?.title || value?.summary || value?.detail || JSON.stringify(value))
     ]);
+    const scaleZones = conv.zones?.length ? conv.zones : [zone || { id: "general", label: "General" }];
+    const scaleTables = scaleZones.flatMap((tableZone) => categoryGuideGroups(conv.categories || []).map((group) => renderSummaryTable(categoryGuideTitle(`Escala salarial - ${tableZone.label || "General"}`, group.label), ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], group.categories.map((cat) => {
+      const row = scaleCategoryRow(conv, cat, tableZone);
+      return [
+        cat.label,
+        firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]) ? fmt(firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period])) : "-",
+        firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]) ? fmt(firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period])) : "-",
+        firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]) ? fmt(firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period])) : "-",
+        periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
+      ];
+    })))).join("");
     return `
       <section class="summary-section summary-highlight">
         <h3>Lectura contable</h3>
-        <p>Este convenio fue estructurado en JSON ejecutable. El motor generico usa categoria, periodo, zona, escala vigente, reglas de proporcionalidad, antiguedad, presentismo, no remunerativos, conceptos variables, deducciones, retenciones y contribuciones propias definidas por leIA y aprobadas por auditoria humana.</p>
+        <p>Este convenio fue estructurado por leIA para liquidación. El motor genérico usa categoría, período, zona, escala vigente, reglas de proporcionalidad, antigüedad, presentismo, no remunerativos, conceptos variables, deducciones, retenciones y contribuciones aprobadas por auditoría humana.</p>
       </section>
       ${renderSummaryCards([
         { label: "Tipo de sueldo", value: rules.salaryType || conv.type || "monthly", detail: "Define si la base se prorratea mensual, diaria u horaria." },
@@ -2478,24 +2609,15 @@
       ${renderSummaryBulletSection("Trabajadores incluidos", scope.workersIncluded)}
       ${renderSummaryBulletSection("Trabajadores excluidos", scope.workersExcluded)}
       ${renderSummaryTable("Articulos relevantes", ["Articulo", "Resumen"], articleRows)}
-      ${renderSummaryTable("Haberes remunerativos", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], remunerativeConceptRows)}
-      ${renderSummaryTable("Haberes no remunerativos", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], nonRemunerativeConceptRows)}
-      ${renderSummaryTable("Descuentos convencionales variables", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], deductionConceptRows)}
-      ${renderSummaryTable("Otros conceptos del motor JSON", ["Concepto", "Grupo / tipo", "Calculo", "Base", "Detalle"], otherConceptRows)}
-      ${renderSummaryTable("Deducciones propias", ["Concepto", "Valor", "Base", "Detalle"], deductionRows)}
-      ${renderSummaryTable("Retenciones propias", ["Concepto", "Valor", "Base", "Detalle"], retentionRows)}
-      ${renderSummaryTable("Contribuciones propias empleador", ["Concepto", "Valor", "Base", "Detalle"], employerRows)}
+      ${renderSummaryTable("Haberes remunerativos", ["Concepto", "Tipo", "Cómo se calcula", "Base de cálculo", "Condición / detalle"], remunerativeConceptRows)}
+      ${renderSummaryTable("Haberes no remunerativos", ["Concepto", "Tipo", "Cómo se calcula", "Base de cálculo", "Condición / detalle"], nonRemunerativeConceptRows)}
+      ${renderSummaryTable("Descuentos convencionales variables", ["Concepto", "Tipo", "Cómo se calcula", "Base de cálculo", "Condición / detalle"], deductionConceptRows)}
+      ${renderSummaryTable("Otros conceptos del motor", ["Concepto", "Tipo", "Cómo se calcula", "Base de cálculo", "Condición / detalle"], otherConceptRows)}
+      ${renderSummaryTable("Deducciones propias", ["Concepto", "Valor", "Base de cálculo", "Condición / detalle"], deductionRows)}
+      ${renderSummaryTable("Retenciones propias", ["Concepto", "Valor", "Base de cálculo", "Condición / detalle"], retentionRows)}
+      ${renderSummaryTable("Contribuciones propias empleador", ["Concepto", "Valor", "Base de cálculo", "Condición / detalle"], employerRows)}
       ${renderSummaryTable("Reglas extraidas de documentos", ["Regla", "Valor", "Evidencia", "Fuente"], extractedRuleRows)}
-      ${renderSummaryTable("Categorias de escala", ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], (conv.categories || []).map((cat) => {
-        const row = scaleCategoryRow(conv, cat, zone);
-        return [
-          cat.label,
-          firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]) ? fmt(firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period])) : "-",
-          firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]) ? fmt(firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period])) : "-",
-          firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]) ? fmt(firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period])) : "-",
-          periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
-        ];
-      }))}
+      ${scaleTables}
       ${renderSummaryBulletSection("Checklist de auditoria", conv.auditChecklist || conv.validation?.warnings || [
         "Controlar CCT, escala y periodo vigente.",
         "Validar categoria, zona y jornada contra legajo.",
@@ -2523,12 +2645,12 @@
           </tr>`;
         }).join("")}
       </tbody></table>
-      <table><thead><tr><th>Concepto JSON</th><th>Tipo</th><th>Calculo</th><th>Base</th></tr></thead><tbody>
+      <table><thead><tr><th>Concepto</th><th>Tipo</th><th>Cómo se calcula</th><th>Base de cálculo</th></tr></thead><tbody>
         ${(model.concepts || []).map((concept) => `<tr>
-          <td>${escapeHtml(concept.label)}</td>
-          <td>${escapeHtml(concept.rowType || "remunerative")}</td>
-          <td>${escapeHtml(concept.calculation || "")}${concept.percent ? ` ${escapeHtml(concept.percent)}%` : ""}</td>
-          <td>${escapeHtml(concept.base || "basic")}</td>
+          <td>${escapeHtml(humanizeTechnicalText(concept.label || concept.id))}</td>
+          <td>${escapeHtml(humanConceptType(concept))}</td>
+          <td>${escapeHtml(humanConceptCalculation(concept))}</td>
+          <td>${escapeHtml(humanConceptBase(concept.base || "basic"))}</td>
         </tr>`).join("") || `<tr><td colspan="4">Sin conceptos variables cargados.</td></tr>`}
       </tbody></table>
       <div class="scale-summary">Convenio generado por leIA con motor generico JSON. Edita el convenio desde Convenios IA si necesitás ajustar reglas finas.</div>
@@ -2871,20 +2993,20 @@
         return concept.inputType === "number" ? Number(input || 0) > 0 : !!input;
       });
       const remLabels = (result.remRows || []).map((row) => String(row.label || "").toLowerCase()).join(" | ");
-      addChecklist("Convenio JSON: motor generico activo", true, "La liquidacion uso reglas aprobadas de Convenios IA.");
-      addChecklist("Convenio JSON: categorias con importes", (result.conv.categories || []).length > 0, `${(result.conv.categories || []).length} categorias cargadas.`);
-      addChecklist("Convenio JSON: conceptos variables", enabledConcepts.length >= 0, `${enabledConcepts.length} conceptos variables activados.`);
+      addChecklist("Convenio IA: motor generico activo", true, "La liquidacion uso reglas aprobadas de Convenios IA.");
+      addChecklist("Convenio IA: categorias con importes", (result.conv.categories || []).length > 0, `${(result.conv.categories || []).length} categorias cargadas.`);
+      addChecklist("Convenio IA: conceptos variables", enabledConcepts.length >= 0, `${enabledConcepts.length} conceptos variables activados.`);
       if (!result.conv.generatedByLeia) {
-        addFinding("baja", "Convenio JSON sin marca leIA", "El convenio usa motor generico pero no tiene trazabilidad de generacion IA.", "Revisar origen del convenio", "nav-conventions", "");
+        addFinding("baja", "Convenio IA sin marca leIA", "El convenio usa motor generico pero no tiene trazabilidad de generacion IA.", "Revisar origen del convenio", "nav-conventions", "");
       }
       if (!(model.concepts || []).length) {
-        addFinding("media", "Convenio sin conceptos variables", "El JSON no tiene adicionales parametrizables. Puede estar incompleto para una liquidacion real.", "Completar JSON del convenio", "nav-conventions", "");
+        addFinding("media", "Convenio sin conceptos variables", "No tiene adicionales parametrizables. Puede estar incompleto para una liquidacion real.", "Completar datos del convenio", "nav-conventions", "");
       }
       if (parameters.genPresentism && !remLabels.includes("presentismo")) {
         addFinding("baja", "Presentismo activado sin importe", "El presentismo esta activado pero el porcentaje del JSON es 0 o no corresponde por ausencias.", "Revisar regla de presentismo", "step", "3");
       }
       if (Number(parameters.genAbsentDays || 0) > Number(result.conv.rules?.monthDivisor || 30)) {
-        addFinding("alta", "Ausencias mayores al divisor mensual", "Las ausencias injustificadas superan el divisor del convenio JSON.", "Corregir ausencias", "step", "3");
+        addFinding("alta", "Ausencias mayores al divisor mensual", "Las ausencias injustificadas superan el divisor del convenio aprobado.", "Corregir ausencias", "step", "3");
       }
     }
 
@@ -3163,11 +3285,12 @@
   function syncScaleConvention() {
     const scaleSelect = $("scaleConvention");
     if (!scaleSelect || !DATA?.conventions) return;
-    const current = scaleSelect.value || str("convention", "uocra");
+    const fallbackId = firstConventionId();
+    const current = scaleSelect.value || str("convention", fallbackId);
     scaleSelect.innerHTML = Object.values(DATA.conventions)
       .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.shortName || conv.name)}</option>`)
       .join("");
-    scaleSelect.value = DATA.conventions[current] ? current : str("convention", "uocra");
+    scaleSelect.value = DATA.conventions[current] ? current : fallbackId;
     const period = $("scalePeriod");
     if (period && !period.value) period.value = selectedPeriodMonth();
   }
@@ -3194,7 +3317,7 @@
   async function loadScaleDashboard() {
     const scaleSelect = $("scaleConvention");
     if (!scaleSelect) return;
-    const conventionId = scaleSelect.value || str("convention", "uocra");
+    const conventionId = scaleSelect.value || str("convention", firstConventionId());
     try {
       const [recent, months] = await Promise.all([
         fetchJson(`/api/scales?conventionId=${encodeURIComponent(conventionId)}&limit=40`),
@@ -3467,7 +3590,7 @@
   }
 
   async function viewActiveScale(period) {
-    const conventionId = $("scaleConvention")?.value || str("convention", "uocra");
+    const conventionId = $("scaleConvention")?.value || str("convention", firstConventionId());
     try {
       const active = await fetchJson(`/api/scales/active?conventionId=${encodeURIComponent(conventionId)}&period=${encodeURIComponent(period)}`);
       scaleState.activeScale = active;
@@ -3490,7 +3613,7 @@
   async function uploadScalePdf(event) {
     event.preventDefault();
     const file = $("scalePdf")?.files?.[0];
-    const conventionId = $("scaleConvention")?.value || str("convention", "uocra");
+    const conventionId = $("scaleConvention")?.value || str("convention", firstConventionId());
     const period = $("scalePeriod")?.value || selectedPeriodMonth();
     if (!file) {
       setScaleStatus("Selecciona un documento o imagen para analizar.", "bad");
@@ -3572,6 +3695,14 @@
     status.className = `scale-status ${tone}`.trim();
   }
 
+  function conventionErrorMessage(payload = {}, fallback = "No se pudo estructurar el convenio.") {
+    const errors = Array.isArray(payload.errores) ? payload.errores : [];
+    if (errors.length) {
+      return errors.slice(0, 5).map((item) => [item.path, item.message].filter(Boolean).join(": ") || String(item)).join(" | ");
+    }
+    return payload.error || payload.message || fallback;
+  }
+
   async function loadConventionDrafts() {
     const list = $("conventionDraftList");
     if (!list) return;
@@ -3606,16 +3737,18 @@
     }
     list.innerHTML = items.map((draft) => {
       const conv = draft.parsedConvention || {};
+      const convName = conv.convenio?.denominacion || conv.shortName || conv.name || draft.name;
+      const convSource = conv.convenio?.fuente_documento || conv.source || draft.files?.[0]?.originalName || "CCT + escala";
       const statusClass = draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : "";
       return `<div class="convention-draft-row ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}">
         <button class="scale-audit-item ${conventionBuilderState.selected?.id === draft.id ? "active" : ""}" type="button" data-convention-draft-id="${escapeHtml(draft.id)}">
           <span>
-            <strong>${escapeHtml(conv.shortName || conv.name || draft.name)}</strong>
-            <small>${escapeHtml(conv.source || draft.files?.[0]?.originalName || "CCT + escala")}</small>
+            <strong>${escapeHtml(convName)}</strong>
+            <small>${escapeHtml(convSource)}</small>
           </span>
           <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
         </button>
-        <button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
+        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(convName)}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M8 6V4h8v2"></path>
@@ -3634,39 +3767,306 @@
   function conventionQualityHtml(conv = {}) {
     const warnings = conv.warnings || [];
     const checklist = conv.auditChecklist || [];
+    const categoryCount = (conv.categorias || conv.categories || []).length;
+    const conceptCount = (conv.conceptos || conv.liquidationModel?.concepts || []).length;
+    const scaleValueCount = (conv.escalas || []).reduce((total, scale) => total + (scale.valores || []).length, 0);
     return `<div class="scale-mini-grid">
       <div><span>Confianza</span><strong>${Number(conv.confidence || 0)}%</strong></div>
-      <div><span>Categorias</span><strong>${(conv.categories || []).length}</strong></div>
-      <div><span>Conceptos</span><strong>${(conv.liquidationModel?.concepts || []).length}</strong></div>
-      <div><span>Alertas</span><strong>${warnings.length}</strong></div>
+      <div><span>Categorias</span><strong>${categoryCount}</strong></div>
+      <div><span>Conceptos</span><strong>${conceptCount}</strong></div>
+      <div><span>Valores escala</span><strong>${scaleValueCount}</strong></div>
     </div>
     ${warnings.length ? `<div class="scale-warning">${warnings.map(escapeHtml).join("<br>")}</div>` : `<div class="scale-summary">Sin alertas criticas detectadas por leIA.</div>`}
     ${checklist.length ? `<div class="convention-checklist">${checklist.slice(0, 8).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>` : ""}`;
   }
 
+  function auditFieldValue(value) {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "object") return summaryValue(value, "");
+    return String(value);
+  }
+
+  function auditInput(field, value, options = {}) {
+    const disabled = options.locked ? "disabled" : "";
+    const safeValue = escapeHtml(auditFieldValue(value));
+    const placeholder = options.placeholder ? ` placeholder="${escapeHtml(options.placeholder)}"` : "";
+    if (options.type === "textarea") {
+      return `<textarea data-field="${escapeHtml(field)}" rows="1" ${disabled}${placeholder}>${safeValue}</textarea>`;
+    }
+    if (options.type === "select") {
+      const baseChoices = options.choices || [];
+      const hasCurrentChoice = baseChoices.some((choice) => String(choice.value) === String(value));
+      const choices = !value || hasCurrentChoice ? baseChoices : [{ value, label: humanizeTechnicalText(value) }, ...baseChoices];
+      return `<select data-field="${escapeHtml(field)}" ${disabled}>
+        ${choices.map((choice) => {
+          const selected = String(choice.value) === String(value) ? "selected" : "";
+          return `<option value="${escapeHtml(choice.value)}" ${selected}>${escapeHtml(choice.label)}</option>`;
+        }).join("")}
+      </select>`;
+    }
+    return `<input data-field="${escapeHtml(field)}" type="${escapeHtml(options.type || "text")}" value="${safeValue}" ${disabled}${placeholder}>`;
+  }
+
+  function auditTable(title, section, description, columns, rows, options = {}) {
+    const locked = !!options.locked;
+    const cleanRows = Array.isArray(rows) ? rows : [];
+    const expanded = options.expanded ? "open" : "";
+    return `<details class="convention-audit-table" data-audit-section="${escapeHtml(section)}" ${expanded}>
+      <summary class="convention-audit-table-summary">
+        <span>${escapeHtml(title)}</span>
+        <em>${cleanRows.length} fila${cleanRows.length === 1 ? "" : "s"}</em>
+      </summary>
+      <div class="convention-audit-table-head">
+        <div>
+          <p>${escapeHtml(description || "")}</p>
+        </div>
+        <div class="convention-audit-actions">
+          <button class="icon-btn" type="button" data-audit-add="${escapeHtml(section)}" ${locked ? "disabled" : ""}>Agregar</button>
+          <button class="icon-btn danger" type="button" data-audit-delete="${escapeHtml(section)}" ${locked ? "disabled" : ""}>Eliminar seleccionados</button>
+        </div>
+      </div>
+      <div class="convention-audit-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="audit-check-cell">
+                <label class="audit-check">
+                  <input type="checkbox" data-audit-select-all="${escapeHtml(section)}" ${locked ? "disabled" : ""}>
+                  <span>Sel.</span>
+                </label>
+              </th>
+              ${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${cleanRows.length ? cleanRows.map((row, index) => `<tr data-row-index="${index}">
+              <td class="audit-check-cell"><input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}></td>
+              ${columns.map((column) => `<td>${auditInput(column.field, row?.[column.field], { ...column, locked })}</td>`).join("")}
+            </tr>`).join("") : `<tr class="audit-empty-row"><td colspan="${columns.length + 1}">Sin datos extraidos. Podés agregar filas manualmente.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </details>`;
+  }
+
+  function conventionGeneralEditor(conv = {}, locked = false) {
+    const data = conv.convenio || {};
+    const fields = [
+      ["convenio_id", "ID convenio"],
+      ["denominacion", "Denominación"],
+      ["actividad", "Actividad"],
+      ["rama", "Rama"],
+      ["jurisdiccion", "Jurisdicción"],
+      ["ambito_territorial", "Ámbito territorial"],
+      ["ambito_personal", "Ámbito personal"],
+      ["vigencia_desde", "Vigencia desde"],
+      ["vigencia_hasta", "Vigencia hasta"],
+      ["fuente_documento", "Fuente"]
+    ];
+    return `<section class="convention-audit-general">
+      <div class="convention-audit-table-head">
+        <div>
+          <h3>Información general</h3>
+          <p>Datos identificatorios extraídos del convenio y sus actas.</p>
+        </div>
+      </div>
+      <div class="convention-audit-general-grid">
+        ${fields.map(([field, label]) => `<label>
+          <span>${escapeHtml(label)}</span>
+          ${auditInput(field, data[field], { locked, placeholder: label })}
+        </label>`).join("")}
+      </div>
+    </section>`;
+  }
+
+  function flatScaleValues(conv = {}) {
+    return (conv.escalas || []).flatMap((scale) => (scale.valores || []).map((value) => ({
+      escala_id: value.escala_id || scale.escala_id,
+      categoria_id: value.categoria_id,
+      concepto_id: value.concepto_id,
+      unidad_pago: value.unidad_pago,
+      periodicidad: value.periodicidad,
+      valor: value.valor,
+      moneda: value.moneda || scale.moneda,
+      zona: value.zona || scale.zona
+    })));
+  }
+
+  function isBasicScaleValue(value = {}) {
+    const key = summaryKey(`${value.concepto_id || ""} ${value.concepto || ""} ${value.nombre_concepto || ""}`);
+    return (key === "basico" || key.includes("basico") || key.includes("sueldo_basico") || key.includes("salario_basico"))
+      && !/(no_rem|no_remunerativo|total|adicional|presentismo|antiguedad|viatico|deduccion|retencion|cuota|aporte)/.test(key);
+  }
+
+  function categoryBaseSalaryInfo(conv = {}, category = {}) {
+    const categoryId = String(category.categoria_id || "").trim();
+    if (!categoryId) return { escala_id: (conv.escalas || [])[0]?.escala_id || "", sueldo_base: "" };
+    for (const scale of conv.escalas || []) {
+      const value = (scale.valores || []).find((item) => String(item.categoria_id || "").trim() === categoryId && isBasicScaleValue(item));
+      if (value) {
+        return {
+          escala_id: value.escala_id || scale.escala_id || "",
+          sueldo_base: value.valor ?? "",
+          unidad_pago: value.unidad_pago || "mensual",
+          periodicidad: value.periodicidad || scale.periodo_desde || "",
+          moneda: value.moneda || scale.moneda || "ARS",
+          zona: value.zona || scale.zona || ""
+        };
+      }
+    }
+    return { escala_id: (conv.escalas || [])[0]?.escala_id || "", sueldo_base: "" };
+  }
+
+  function categoryAuditRows(conv = {}) {
+    return (conv.categorias || []).map((category) => ({
+      ...category,
+      ...categoryBaseSalaryInfo(conv, category)
+    }));
+  }
+
+  function conceptAuditGroup(concept = {}) {
+    const raw = summaryKey(`${concept.tipo_concepto || ""} ${concept.naturaleza || ""} ${concept.concepto_id || ""} ${concept.nombre || ""}`);
+    if (raw.includes("no_remunerativo") || raw.includes("no_rem")) return "no_remunerativos";
+    if (/(descuento|retencion|deduccion|cuota|sindical|obra_social|jubilacion|aporte|fondo)/.test(raw)
+      && !/(haber|bono|premio|asignacion|sueldo|salario|adicional)/.test(raw)) return "deducciones";
+    return "remunerativos";
+  }
+
+  function conceptAuditRows(conv = {}, group = "remunerativos") {
+    return (conv.conceptos || [])
+      .filter((concept) => conceptAuditGroup(concept) === group)
+      .map((item) => ({ ...item, es_liquidable: item.es_liquidable === false ? "false" : "true" }));
+  }
+
+  function conventionAuditTablesHtml(conv = {}, locked = false, options = {}) {
+    const typeChoices = [
+      { value: "haber", label: "Haber" },
+      { value: "descuento", label: "Descuento" },
+      { value: "retencion", label: "Retención" },
+      { value: "aporte_patronal", label: "Aporte patronal" },
+      { value: "referencia", label: "Referencia" },
+      { value: "requiere_revision_manual", label: "Requiere revisión" }
+    ];
+    const natureChoices = [
+      { value: "remunerativo", label: "Remunerativo" },
+      { value: "no_remunerativo", label: "No remunerativo" },
+      { value: "retencion", label: "Retención" },
+      { value: "contribucion_patronal", label: "Contribución patronal" },
+      { value: "referencial", label: "Referencial" },
+      { value: "requiere_revision_manual", label: "Requiere revisión" }
+    ];
+    const liquidableChoices = [
+      { value: "true", label: "Sí" },
+      { value: "false", label: "No" }
+    ];
+    return `
+      ${options.includeGeneral === false ? "" : conventionGeneralEditor(conv, locked)}
+      ${auditTable("Ámbitos", "ambitos", "Alcance territorial, personal o de actividad detectado.", [
+        { field: "ambito_id", label: "ID" },
+        { field: "nombre", label: "Nombre" },
+        { field: "tipo", label: "Tipo" },
+        { field: "descripcion", label: "Descripción", type: "textarea" }
+      ], conv.ambitos || [], { locked, expanded: true })}
+      ${auditTable("Categorías laborales", "categorias", "Categorías con sueldo base editable desde la escala.", [
+        { field: "categoria_id", label: "ID categoría" },
+        { field: "categoria_nombre", label: "Nombre" },
+        { field: "grupo_nombre", label: "Rama / grupo" },
+        { field: "sueldo_base", label: "Sueldo base" },
+        { field: "escala_id", label: "Escala" },
+        { field: "descripcion", label: "Descripción", type: "textarea" },
+        { field: "modalidad_aplicable", label: "Modalidad" }
+      ], categoryAuditRows(conv), { locked })}
+      ${auditTable("Haberes remunerativos", "conceptos_remunerativos", "Conceptos que integran la base remunerativa.", [
+        { field: "concepto_id", label: "ID concepto" },
+        { field: "nombre", label: "Concepto" },
+        { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
+        { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
+        { field: "unidad_calculo", label: "Unidad" },
+        { field: "formula_base", label: "Cómo se calcula" },
+        { field: "base_calculo", label: "Base" },
+        { field: "porcentaje", label: "%" },
+        { field: "importe_fijo", label: "Importe" },
+        { field: "condicion", label: "Condición", type: "textarea" },
+        { field: "es_liquidable", label: "Liquidable", type: "select", choices: liquidableChoices }
+      ], conceptAuditRows(conv, "remunerativos"), { locked })}
+      ${auditTable("Haberes no remunerativos", "conceptos_no_remunerativos", "Conceptos no remunerativos extraídos de convenio o escala.", [
+        { field: "concepto_id", label: "ID concepto" },
+        { field: "nombre", label: "Concepto" },
+        { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
+        { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
+        { field: "unidad_calculo", label: "Unidad" },
+        { field: "formula_base", label: "Cómo se calcula" },
+        { field: "base_calculo", label: "Base" },
+        { field: "porcentaje", label: "%" },
+        { field: "importe_fijo", label: "Importe" },
+        { field: "condicion", label: "Condición", type: "textarea" },
+        { field: "es_liquidable", label: "Liquidable", type: "select", choices: liquidableChoices }
+      ], conceptAuditRows(conv, "no_remunerativos"), { locked })}
+      ${auditTable("Deducciones", "conceptos_deducciones", "Descuentos, retenciones y aportes del trabajador.", [
+        { field: "concepto_id", label: "ID concepto" },
+        { field: "nombre", label: "Concepto" },
+        { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
+        { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
+        { field: "unidad_calculo", label: "Unidad" },
+        { field: "formula_base", label: "Cómo se calcula" },
+        { field: "base_calculo", label: "Base" },
+        { field: "porcentaje", label: "%" },
+        { field: "importe_fijo", label: "Importe" },
+        { field: "condicion", label: "Condición", type: "textarea" },
+        { field: "es_liquidable", label: "Liquidable", type: "select", choices: liquidableChoices }
+      ], conceptAuditRows(conv, "deducciones"), { locked })}
+      ${auditTable("Escalas salariales", "escalas", "Vigencias o tablas salariales publicadas.", [
+        { field: "escala_id", label: "ID escala" },
+        { field: "nombre_escala", label: "Nombre" },
+        { field: "periodo_desde", label: "Desde" },
+        { field: "periodo_hasta", label: "Hasta" },
+        { field: "zona", label: "Zona" },
+        { field: "moneda", label: "Moneda" },
+        { field: "alcance", label: "Alcance" }
+      ], conv.escalas || [], { locked })}
+      ${auditTable("Adicionales y reglas particulares", "adicionales", "Adicionales detectados que pueden alimentar conceptos o controles humanos.", [
+        { field: "adicional_id", label: "ID adicional" },
+        { field: "concepto_id", label: "Concepto vinculado" },
+        { field: "nombre", label: "Nombre" },
+        { field: "formula", label: "Fórmula" },
+        { field: "base_calculo", label: "Base" },
+        { field: "porcentaje", label: "%" },
+        { field: "importe_fijo", label: "Importe" },
+        { field: "condicion", label: "Condición", type: "textarea" }
+      ], conv.adicionales || [], { locked })}
+    `;
+  }
+
   function renderConventionJsonEditor(draft) {
     const editor = $("conventionJsonEditor");
+    const tablesArea = $("conventionAuditTablesArea");
     if (!editor) return;
     if (!draft) {
       editor.className = "scale-editor empty-state";
-      editor.innerHTML = "Seleccion&aacute; un convenio generado para revisar su JSON.";
+      editor.innerHTML = "Seleccion&aacute; un convenio generado para revisar los datos extra&iacute;dos.";
+      if (tablesArea) tablesArea.innerHTML = "";
       updateTokenUsageUI(null);
       return;
     }
     const conv = draft.parsedConvention || {};
+    const convName = conv.convenio?.denominacion || conv.name || draft.name;
     const isPending = draft.status === "PENDIENTE_REVISION";
+    const isApproved = draft.status === "APROBADO";
     editor.className = "scale-editor convention-json-editor";
     editor.innerHTML = `<div class="scale-editor-head">
       <div>
-        <strong>${escapeHtml(conv.name || draft.name)}</strong>
-        <span>${escapeHtml(draft.aiError || "JSON ejecutable generado por leIA. Revisalo antes de aprobar.")}</span>
+        <strong>${escapeHtml(convName)}</strong>
+        <span>${escapeHtml(draft.aiError || "Datos estructurados por leIA. Revisalos, corregilos y aprobá cuando estén listos.")}</span>
       </div>
       <span class="status-pill ${draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : ""}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</span>
     </div>
-    <textarea id="conventionJsonText" spellcheck="false" ${draft.status === "APROBADO" ? "readonly" : ""}>${escapeHtml(JSON.stringify(conv, null, 2))}</textarea>
-    <div class="scale-editor-actions">
-      <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar JSON</button>
-      <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${draft.status === "APROBADO" ? "disabled" : ""}>Guardar JSON</button>
+    <div class="convention-audit-editor">
+      ${conventionGeneralEditor(conv, isApproved)}
+    </div>
+    <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
+    const auditActions = `<div class="scale-editor-actions convention-audit-bottom-actions">
+      <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar respaldo</button>
+      <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${isApproved ? "disabled" : ""}>Guardar revisión</button>
       ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
       <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
       <button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
@@ -3678,28 +4078,164 @@
           <path d="M14 11v5"></path>
         </svg>
         Eliminar
-      </button>
-    </div>
-    <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
+      </button>`}
+    </div>`;
+    if (tablesArea) {
+      tablesArea.innerHTML = `<div class="convention-audit-table-stack">${conventionAuditTablesHtml(conv, isApproved, { includeGeneral: false })}${auditActions}</div>`;
+    }
 
-    $("downloadConventionJsonBtn")?.addEventListener("click", () => downloadConventionJson(draft));
-    $("saveConventionJsonBtn")?.addEventListener("click", saveConventionDraftJson);
-    $("approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
-    $("rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
-    $("deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
+    tablesArea?.querySelector("#downloadConventionJsonBtn")?.addEventListener("click", () => downloadConventionJson(draft));
+    tablesArea?.querySelector("#saveConventionJsonBtn")?.addEventListener("click", saveConventionDraftJson);
+    tablesArea?.querySelector("#approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
+    tablesArea?.querySelector("#rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
+    tablesArea?.querySelector("#deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
+    [editor, tablesArea].filter(Boolean).forEach((root) => {
+      root.querySelectorAll("[data-audit-select-all]").forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          const section = checkbox.dataset.auditSelectAll;
+          root.querySelectorAll(`[data-audit-row-check="${section}"]`).forEach((rowCheck) => {
+            rowCheck.checked = checkbox.checked;
+          });
+        });
+      });
+      root.querySelectorAll("[data-audit-add]").forEach((button) => {
+        button.addEventListener("click", () => addConventionAuditRow(button.dataset.auditAdd));
+      });
+      root.querySelectorAll("[data-audit-delete]").forEach((button) => {
+        button.addEventListener("click", () => deleteConventionAuditRows(button.dataset.auditDelete));
+      });
+    });
   }
 
   function parseConventionJsonEditor() {
-    const raw = $("conventionJsonText")?.value || "{}";
-    try {
-      return JSON.parse(raw);
-    } catch (error) {
-      throw new Error("El JSON del convenio no es valido. Revisalo antes de guardar.");
+    const base = JSON.parse(JSON.stringify(conventionBuilderState.selected?.parsedConvention || {}));
+    const editor = $("conventionJsonEditor");
+    const tablesArea = $("conventionAuditTablesArea");
+    if (!editor || !editor.querySelector(".convention-audit-editor")) return base;
+    const convenio = { ...(base.convenio || {}) };
+    editor.querySelectorAll("[data-audit-convenio-field], .convention-audit-general [data-field]").forEach((field) => {
+      convenio[field.dataset.auditConvenioField || field.dataset.field] = field.value;
+    });
+    const collectRows = (section) => Array.from((tablesArea || document).querySelectorAll(`[data-audit-section="${section}"] tbody tr:not(.audit-empty-row)`))
+      .map((row) => {
+        const item = {};
+        row.querySelectorAll("[data-field]").forEach((field) => {
+          item[field.dataset.field] = field.value;
+        });
+        return item;
+      })
+      .filter((item) => Object.values(item).some((value) => String(value || "").trim() !== ""));
+    const escalas = collectRows("escalas").map((scale, index) => ({
+      ...scale,
+      escala_id: scale.escala_id || `escala-${index + 1}`,
+      valores: []
+    }));
+    const scaleById = new Map(escalas.map((scale) => [scale.escala_id, scale]));
+    if (!escalas.length) {
+      const firstScale = { escala_id: "escala-1", nombre_escala: "", periodo_desde: "", periodo_hasta: "", moneda: "ARS", valores: [] };
+      escalas.push(firstScale);
+      scaleById.set(firstScale.escala_id, firstScale);
     }
+    const rawCategoryRows = collectRows("categorias");
+    const categoryIds = new Set(rawCategoryRows.map((item) => item.categoria_id).filter(Boolean));
+    (base.escalas || []).forEach((scale) => {
+      (scale.valores || []).forEach((value, index) => {
+        if (isBasicScaleValue(value)) return;
+        if (value.categoria_id && !categoryIds.has(value.categoria_id)) return;
+        const escalaId = value.escala_id || scale.escala_id || escalas[0]?.escala_id || "escala-1";
+        if (!scaleById.has(escalaId)) return;
+        scaleById.get(escalaId).valores.push({ ...value, valor_id: value.valor_id || `valor-extra-${index + 1}`, escala_id: escalaId });
+      });
+    });
+    rawCategoryRows.forEach((category, index) => {
+      if (!String(category.sueldo_base || "").trim()) return;
+      const escalaId = category.escala_id || escalas[0]?.escala_id || "escala-1";
+      if (!scaleById.has(escalaId)) {
+        const created = { escala_id: escalaId, nombre_escala: escalaId, periodo_desde: "", periodo_hasta: "", valores: [] };
+        scaleById.set(escalaId, created);
+        escalas.push(created);
+      }
+      scaleById.get(escalaId).valores.push({
+        valor_id: `basico-${category.categoria_id || index + 1}`,
+        escala_id: escalaId,
+        categoria_id: category.categoria_id,
+        concepto_id: "SUELDO_BASICO",
+        unidad_pago: category.unidad_pago || "mensual",
+        periodicidad: category.periodicidad || scaleById.get(escalaId).periodo_desde || "",
+        valor: category.sueldo_base,
+        moneda: category.moneda || scaleById.get(escalaId).moneda || "ARS",
+        zona: category.zona || scaleById.get(escalaId).zona || ""
+      });
+    });
+    const categorias = rawCategoryRows.map((category) => {
+      const { sueldo_base, escala_id, unidad_pago, periodicidad, moneda, zona, ...cleanCategory } = category;
+      return cleanCategory;
+    });
+    const conceptos = [
+      ...collectRows("conceptos_remunerativos"),
+      ...collectRows("conceptos_no_remunerativos"),
+      ...collectRows("conceptos_deducciones")
+    ].map((item) => ({ ...item, es_liquidable: item.es_liquidable !== "false" }));
+    return {
+      ...base,
+      schemaVersion: base.schemaVersion || "esueldos-cct-estructura-excel-v1",
+      convenio,
+      ambitos: collectRows("ambitos"),
+      categorias,
+      conceptos,
+      escalas,
+      adicionales: collectRows("adicionales")
+    };
+  }
+
+  function addConventionAuditRow(section) {
+    if (!conventionBuilderState.selected || conventionBuilderState.selected.status === "APROBADO") return;
+    const parsed = parseConventionJsonEditor();
+    const nextIndex = (items) => (Array.isArray(items) ? items.length + 1 : 1);
+    if (section === "ambitos") parsed.ambitos = [...(parsed.ambitos || []), { ambito_id: `ambito-${nextIndex(parsed.ambitos)}`, nombre: "", tipo: "", descripcion: "" }];
+    if (section === "categorias") parsed.categorias = [...(parsed.categorias || []), { categoria_id: "", categoria_nombre: "", grupo_nombre: "", sueldo_base: "", escala_id: parsed.escalas?.[0]?.escala_id || "", descripcion: "", modalidad_aplicable: "" }];
+    if (section === "conceptos_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
+    if (section === "conceptos_no_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "no_remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
+    if (section === "conceptos_deducciones") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "descuento", naturaleza: "retencion", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
+    if (section === "escalas") parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", periodo_hasta: "", zona: "", moneda: "ARS", alcance: "", valores: [] }];
+    if (section === "adicionales") parsed.adicionales = [...(parsed.adicionales || []), { adicional_id: `adicional-${nextIndex(parsed.adicionales)}`, concepto_id: "", nombre: "", formula: "", base_calculo: "", porcentaje: "", importe_fijo: "", condicion: "" }];
+    conventionBuilderState.selected.parsedConvention = parsed;
+    renderConventionJsonEditor(conventionBuilderState.selected);
+  }
+
+  function deleteConventionAuditRows(section) {
+    if (!conventionBuilderState.selected || conventionBuilderState.selected.status === "APROBADO") return;
+    const tablesArea = $("conventionAuditTablesArea");
+    const checkedRows = Array.from(tablesArea?.querySelectorAll(`[data-audit-row-check="${section}"]:checked`) || []);
+    if (!checkedRows.length) {
+      setConventionBuilderStatus("Seleccioná al menos una fila para eliminar.", "bad");
+      return;
+    }
+    const removedScaleIds = [];
+    checkedRows.forEach((checkbox) => {
+      const row = checkbox.closest("tr");
+      if (section === "escalas") {
+        const scaleId = row?.querySelector('[data-field="escala_id"]')?.value;
+        if (scaleId) removedScaleIds.push(scaleId);
+      }
+      row?.remove();
+    });
+    if (removedScaleIds.length) {
+      tablesArea?.querySelectorAll('[data-audit-section="categorias"] tbody tr').forEach((row) => {
+        const scaleField = row.querySelector('[data-field="escala_id"]');
+        if (!scaleField || !removedScaleIds.includes(scaleField.value)) return;
+        scaleField.value = "";
+        const salaryField = row.querySelector('[data-field="sueldo_base"]');
+        if (salaryField) salaryField.value = "";
+      });
+    }
+    conventionBuilderState.selected.parsedConvention = parseConventionJsonEditor();
+    renderConventionJsonEditor(conventionBuilderState.selected);
+    setConventionBuilderStatus("Filas eliminadas de la revisión. Guardá los cambios para persistirlos.", "ok");
   }
 
   function downloadConventionJson(draft) {
-    const conv = draft?.parsedConvention || {};
+    const conv = conventionBuilderState.selected?.id === draft?.id ? parseConventionJsonEditor() : (draft?.parsedConvention || {});
     const blob = new Blob([JSON.stringify(conv, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3825,7 +4361,7 @@
       });
       await loadConventionDrafts();
       await selectConventionDraft(conventionBuilderState.selected.id);
-      setConventionBuilderStatus("JSON guardado y normalizado para liquidar.", "ok");
+      setConventionBuilderStatus("Revisión guardada y normalizada para liquidar.", "ok");
     } catch (error) {
       setConventionBuilderStatus(error.message, "bad");
     }
@@ -3944,13 +4480,14 @@
   }
 
   function updateConventionSelectsAfterCatalogReload(preferredId = "") {
-    const selectedId = preferredId || str("convention", "camioneros");
+    const fallbackId = firstConventionId();
+    const selectedId = preferredId || str("convention", fallbackId);
     const conventionSelect = $("convention");
     if (conventionSelect) {
       conventionSelect.innerHTML = Object.values(DATA.conventions)
         .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
         .join("");
-      conventionSelect.value = DATA.conventions[selectedId] ? selectedId : (DATA.conventions.camioneros ? "camioneros" : Object.keys(DATA.conventions)[0]);
+      conventionSelect.value = DATA.conventions[selectedId] ? selectedId : fallbackId;
       updateConvention();
     }
     const empConvention = $("empConvention");
@@ -3977,20 +4514,20 @@
 
     const button = $("buildConventionBtn");
     if (button) button.disabled = true;
-    setConventionBuilderStatus("leIA esta estructurando el convenio en JSON ejecutable...", "");
+    setConventionBuilderStatus("leIA está estructurando el convenio para auditoría humana...", "");
     try {
       const response = await fetch(apiUrl("/api/convention-drafts/upload"), {
         method: "POST",
         body: formData
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "No se pudo estructurar el convenio.");
+      if (!response.ok) throw new Error(conventionErrorMessage(payload));
       conventionBuilderState.selected = payload;
       if ($("builderCctPdf")) $("builderCctPdf").value = "";
       if ($("builderScalePdf")) $("builderScalePdf").value = "";
       await loadConventionDrafts();
       await selectConventionDraft(payload.id);
-      setConventionBuilderStatus(payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "Convenio estructurado. Revisalo y aproba cuando este perfecto." : "Borrador creado con advertencias. Revisar JSON.", payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "ok" : "bad");
+      setConventionBuilderStatus(payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "Convenio estructurado. Revisalo y aprobá cuando esté perfecto." : "Borrador creado con advertencias. Revisar datos extraídos.", payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "ok" : "bad");
     } catch (error) {
       setConventionBuilderStatus(error.message, "bad");
     } finally {
@@ -4583,22 +5120,22 @@
 
       $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card">
         <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
-        <div class="generic-section-title">Base del convenio JSON</div>
+        <div class="generic-section-title">Base del convenio IA</div>
         <div class="grid three">
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Hs extra 50%</span><input id="genExtra50" type="number" min="0" step="0.01" value="0"></label>
           <label class="field"><span>Hs extra 100%</span><input id="genExtra100" type="number" min="0" step="0.01" value="0"></label>
         </div>
         <div class="check-grid generic-checks">
-          <label class="check-row"><input id="genSeniority" type="checkbox" ${rules.seniority?.enabled !== false || (rules.nonRemunerativeScale?.seniorityEnabled !== false && Number(rules.nonRemunerativeScale?.seniorityPercentPerYear || 0) > 0) ? "checked" : ""}><span>Antiguedad segun JSON</span></label>
-          <label class="check-row"><input id="genPresentism" type="checkbox" ${rules.presentism?.enabled || (rules.nonRemunerativeScale?.presentismEnabled !== false && Number(rules.nonRemunerativeScale?.presentismPercent || 0) > 0) ? "checked" : ""}><span>Presentismo segun JSON</span></label>
+          <label class="check-row"><input id="genSeniority" type="checkbox" ${rules.seniority?.enabled !== false || (rules.nonRemunerativeScale?.seniorityEnabled !== false && Number(rules.nonRemunerativeScale?.seniorityPercentPerYear || 0) > 0) ? "checked" : ""}><span>Antiguedad segun convenio</span></label>
+          <label class="check-row"><input id="genPresentism" type="checkbox" ${rules.presentism?.enabled || (rules.nonRemunerativeScale?.presentismEnabled !== false && Number(rules.nonRemunerativeScale?.presentismPercent || 0) > 0) ? "checked" : ""}><span>Presentismo segun convenio</span></label>
           <label class="check-row"><input id="genNonRemScale" type="checkbox" ${rules.nonRemunerativeScale?.enabled === false ? "" : "checked"}><span>No remunerativo de escala</span></label>
         </div>
         ${conceptHtml || `<p class="generic-note">Este convenio no tiene conceptos variables adicionales. Pod&eacute;s editarlos desde Convenios IA.</p>`}
         ${deductionHtml}
         ${retentionHtml}
         <p class="generic-note">
-          <strong>Motor JSON leIA:</strong> usa reglas aprobadas del convenio, escala vigente si existe, conceptos variables y auditoria automatica del recibo.
+          <strong>Motor leIA:</strong> usa reglas aprobadas del convenio, escala vigente si existe, conceptos variables y auditoria automatica del recibo.
         </p>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));
@@ -4794,6 +5331,7 @@
 
   function updateConvention() {
     const conv = getConvention();
+    if (!conv) return;
     renderConventionCards();
     const currentPeriod = str("period") || getCurrentPeriodId();
     setOptions($("period"), conv.periods, currentPeriod);
@@ -4819,7 +5357,7 @@
     conventionSelect.innerHTML = Object.values(DATA.conventions)
       .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
       .join("");
-    if (DATA.conventions.camioneros) conventionSelect.value = "camioneros";
+    conventionSelect.value = firstConventionId();
 
     $("payrollForm").addEventListener("input", () => {
       markDirty();
@@ -5336,7 +5874,7 @@
 
     try {
       // Filter by currently selected convention so only relevant employees appear
-      const convId = str("convention", "uocra");
+      const convId = str("convention", firstConventionId());
       const url = apiUrl(`/api/employees/search?q=${encodeURIComponent(q)}&conventionId=${encodeURIComponent(convId)}`);
       const response = await fetch(url);
       if (response.ok) {
