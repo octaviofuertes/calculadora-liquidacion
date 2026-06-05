@@ -1,1565 +1,869 @@
-### 1
-CONVENCIÓN COLECTIVA DE TRABAJO N°730/15
-TRABAJADORES DE PELUQUERÍAS UNISEX, DAMAS PROVINCIA DE
-BUENOS AIRES, CABALLEROS Y NIÑOS, ESTÉTICA Y ACTIVIDADES
-### AFINES
-### TITULO I
-### DEL  ENCUADRE Y LA VIGENCIA
-### CAPITULO I
-### DE LOS SIGNATARIOS
-### Articulo    1º- Partes    intervinientes:
-La    Federación    Nacional    de
-Trabajadores   de   Peluquería,   Estética   y   Afines   por   parte   de   los
-trabajadores,  y  por  el  sector  empresario  la  Confederación  General  de
-Peluqueros   y   Peinadores   de   la   República   Argentina,   la   Federación
-Bonaerense  de  Peluqueros  y  Peinadores  y  Afines  y  el  Centro Patrones
-Peluqueros y Peinadores de Buenos Aires.
-### CAPITULO II
-### DE LAS ACTIVIDADES Y TRABAJADORES COMPRENDIDOS
-Artículo 2º-  Actividad a la que se refiere:
-Comprende las actividades y/o
-servicios exclusivamente para Damas de: Peluquería, Belleza, Estética en
-general  y  las  actividades  afines  a  los  servicios  mencionados,  que  se
-presten  en  todo  tipo  de  establecimientos  en  el  ámbito  de  la  Provincia  de
-Buenos  Aires  y  las  actividades  y/o  servicios  para  Caballeros,  Niños  y
-Damas  que  se  presten  en  los  denominados  establecimientos  para  Niños,
-para Caballeros y en los denominados Unisex  (para Damas y Caballeros)
-de:  Peluquería,  Belleza,  Estética  en  general  y  las  actividades  afines  a  los
-servicios mencionados que se describen en el presente Convenio, que se
-desarrollen  en  todo  tipo  de  establecimientos  en  el  ámbito  del  territorio
-nacional.
-Abarca  en  sus  distintas  especialidades,  las  siguientes  actividades  que  se
-mencionan  a  título  meramente  enunciativo  y  no  taxativo:  Peluquería,
-coloración     de     cabello,     permanentación,     posticería,     fabricación,
-implantación  y  service  de  prótesis  capilares,  entretejidos,  extensiones,
-recuperación  capilar,  masajes  capilares,  tintura,  permanente  y  colocación
-de  pestañas,  cosmetología,  maquillaje,  dermopigmentación,  estética  en
-general,  facial  y  corporal,  tratamientos  de  belleza  en  general,  faciales  y
-corporales, masajes corporales en general que persigan fines estéticos y/o
-relajantes, gimnasia   reductora y/o   modeladora,   con   fines   estéticos,
-### 2
-tratamientos  contra  celulitis,  flaccidez  y  adiposidad  con  fines  estéticos,
-drenaje        linfático,        electroterapia,        electrólisis,        presoterapia,
-fangoterapia,ozonoterapia,     hidroterapia,     endermología,     mesoterapia,
-ultracavitación,  baños  en  cualquier  de  sus  tipos,  saunas,  bronceado  sin
-sol,  depilación  en  todas  de  sus  formas,  sea  temporaria  o  definitiva,
-manicuría, pedicuría, lavado de batas protectoras para clientes, uniformes,
-toallas,   que,   pertenezcan   a   algún   establecimiento   de   la   actividad   y
-procedan  a  la  limpieza  de  elementos  de  tela  de  uso  exclusivo  para  estos
-salones, etc.
-Comprende      asimismo      las      actividades      de      enseñanza      y/o
-perfeccionamiento  de  todos  los  servicios  mencionados  precedentemente,
-que  se  presten  en  forma  independiente  o  conjunta,  en  todo  tipo  de
-establecimientos  en  el  ámbito  del  territorio  nacional.  Es  de  aplicación  a
-todas   las   actividades   y   servicios   mencionados,   cualquiera   sea   la
-denominación que se dé a los establecimientos en los cuales los referidos
-servicios se prestan y aunque se hallen instalados en shoppings o paseos
-de  compra,  clubes,  bares,  confiterías,  hoteles,  estaciones  de  ferrocarril  y
-aeroportuarias,  mutuales,  obras  sociales,  sindicatos,  clínicas  o  centros
-médicos  de  estética  y  en  general  en  toda  institución,  cualquiera  sea  su
-naturaleza donde se desarrollen las actividades mencionadas.
-Artículo   3º:   Trabajadores   comprendidos:   Es   de   aplicación   a   todo
-personal sin exclusión que se desempeñe en la prestación y/o venta de los
-servicios indicados en el artículo anterior para empresas del sector, en sus
-distintas    especialidades    y    cualquiera    fuere    la    denominación    del
-establecimiento, a título ejemplificativo se mencionan: Peluquería, Coiffure,
-Peluquería  para  niños,  Peluquería  Unisex,  Peluquería  para  Caballeros,
-Centro  de  recuperación  capilar,  Salón  o  Instituto  de  belleza,  Spa  de
-Belleza, Centro de estética corporal, Centro de masajes estéticos, Instituto
-de  tratamientos  reductores,  Instituto  de  gimnasia  reductora  y/o  estética,
-Centro de asesoramiento estético, Instituto de depilación,  Spa de manos y
-pies, baños,   saunas,   Fábrica   de   pelucas   y/o   postizos,   Centro   de
-entretejidos, Centro de implantación, Escuela o Academia de Peluquería y
-Estética, etc.
-Resulta  asimismo  de  aplicación  a  todos  los  trabajadores  que  desarrollen
-actividades  de  la  profesión  en  establecimientos  instalados  en  clubes,
-bares,   hoteles,   mutuales,   Sindicatos,   e   instituciones   de   cualquier
-naturaleza donde se presten los servicios aludidos ya sea para caballeros,
-niños, damas y/o unisex.
-Asimismo  se  aplicará  a  todos  los  trabajadores  que  desarrollen  sus  tareas
-en establecimientos donde se imparta la enseñanza y/o perfeccionamiento
-de los oficios comprendidos en el presente Convenio Colectivo de Trabajo.
-### 3
-### CAPITULO III
-DEL ÁMBITO TERRITORIAL DE APLICACIÓN-VIGENCIA-
-CONDICIONES DE NEGOCIACIÓN
-Artículo 4º  : Ámbito territorial de aplicación:
-El presente convenio es de
-aplicación   en   todo   el   territorio   de   la   República   Argentina   para   las
-actividades  y  servicios  detallados  en  el  artículo segundo,  destinados  a
-Caballeros,   Niños   y   Unisex,   y   a   las   actividades   de   enseñanza   y
-perfeccionamiento  también  descriptas  en  el  artículo  segundo  y  tercero,  y
-es  de  aplicación  en  el  territorio  de  la  Provincia  de  Buenos  Aires  para  las
-actividades  y  servicios  detallados  en  los  artículos  segundo  y  tercero,
-destinados a Damas exclusivamente.
-Artículo 5º: Período de vigencia: Las partes acuerdan que la vigencia del
-presente  convenio  será  por  el  plazo  de  cuatro  (4)  años  a  partir  de  su
-homologación  por  la  autoridad  de  aplicación.  Con  relación  a  las  escalas
-salariales,  las  partes  acuerdan  que  se  reunirá  la  comisión  negociadora,
-cada  seis  (6)  meses  a  partir  de  la  entrada  en  vigencia  del  presente
-### convenio  colectivo  para  revisar  y  actualizar  de  resultar  necesario  los
-salarios  de  convenio.  Asimismo,  en  forma  expresa  las  partes  acuerdan  la
-ultractividad  convencional  del  presente  Convenio  Colectivo Trabajo  y  de
-cada  una  de  sus  cláusulas,  tanto  las  obligacionales  como  las  normativas,
-de  manera   que  la  totalidad  de  sus  cláusulas  quedarán  automáticamente
-prorrogadas,  para  el  supuesto  que  no  se renovara  el  convenio  en  su
-totalidad, al momento de su vencimiento; hasta que una nueva convención
-colectiva la reemplace. Sin perjuicio de ello, las partes se comprometen a
-comenzar las negociaciones de renovación del presente, con noventa (90)
-días de anticipación al vencimiento del mismo.
-Artículo   6º:   Negociación   de   Buena   Fe:   Las   partes   establecen   el
-compromiso de negociar de buena fe obligándose a:
-a) Concurrir a las reuniones fijadas de común acuerdo o convocadas  por
-organismos paritarios  o   por una de las entidades signatarias por medio de
-la Autoridad Administrativa del Trabajo o por propia iniciativa de esta o por
-terceros  mediadores,  árbitros,  componedores  en  el  marco  de  la  solución
-de conflicto  o de la renovación del C.C.T.
-b)  Designar,  a  los  fines  de  la  negociación,  representantes  con  mandato
-suficiente.
-c)  Intercambiar  la  información  necesaria  para  poder  llevar  a  cabo  una
-discusión seria y fundada.
-d) Realizar todos los esfuerzos y propuestas necesarias conducentes a la
-suscripción del acuerdo.
-### 4
-### TITULO II
-### DE LAS CONDICIONES GENERALES DEL TRABAJO
-### CAPITULO  I
-Artículo 7º  : Las disposiciones contenidas en el presente convenio son de
-alcance  general  y  de   aplicación  obligatoria  para  todos  los  trabajadores  y
-empleadores  comprendidos  en  esta  Convención  Colectiva  de  Trabajo,
-cualquiera  fuere  su  agrupamiento  y/o  categoría  laboral  y/o  rama  de  la
-actividad  en  la  que  presten  servicios,  con  la  única  salvedad  de  cláusulas
-especiales  que  se  dispongan  en  esta  misma  C.C.T.    para  una  rama
-especial  de  la  actividad  en  cuanto  las  mejore,  modifique  en  razón  de  la
-especialidad o suprima expresamente. Por lo demás los artículos del  título
-operarán  como  marco  específico  e  inviolable  de  los  derechos  de  los
-trabajadores.
-### CAPITULO II
-### DE LA JORNADA DE TRABAJO Y   LA INTEGRIDAD DE LOS
-### APORTES.
-Artículo  8º:  De  la  jornada  de  trabajo:  En  cuanto  al  régimen  de  jornada
-máxima  y  horarios  de  trabajo  se  establecen,  según  la  rama,  forma  de
-retribución    y  categoría  laboral  del  trabajador,  las  siguientes  jornadas
-máximas legales de labor semanal:
-Inc.  1°)  Trabajadores  que  además  de  salario  básico  mensual  perciban
-comisión  por  producción,  una  jornada  máxima  de  cuarenta  y  ocho  (48)
-horas semanales.
-Inc.  2°)  Trabajadores  con  retribución  fija,  sin  comisión  por  producción,
-cuarenta y cuatro (44) horas semanales.
-Inc.   3°)   Integridad   de   los   aportes:   En   todos   los   casos   en   que   los
-trabajadores cumplan por excepciones contractuales autorizadas por ley o
-por  convenio  jornadas  inferiores  a  las  precedentemente  establecidas  y
-consecuentemente  se  le  abonen  remuneraciones  proporcionales  a  las
-horas trabajadas, todos los aportes y contribuciones sean por obra social,
-cuotas  sindicales,  seguros  de  sepelio,  aportes  solidarios  y  contribuciones
-de  convenio  colectivo,  no  podrán  ser  inferiores  a  las  que  corresponde
-realizar por los trabajadores que cumplan la jornada máxima  convencional
-y en base al salario mínimo garantizado íntegro vigente en el momento del
-pago como  mínimo  imponible  para  el  cálculo.  Los  trabajadores  que
-cumplan    jornadas    inferiores    a las    estipuladas precedentemente
-### 5
-conservarán  tal  beneficio  sin  disminución  de  las  remuneraciones  que
-vinieran percibiendo.
-Artículo 9º: Alcance de la fijación de la jornada - descanso semanal:
-Los  trabajadores  que  laboraran  los  sábados  después  de  las  trece  (13)
-horas  serán  beneficiarios  de  un  descanso  compensatorio  durante  toda  la
-jornada  en  el  día  lunes  siguiente,  no  pudiendo  dicho  día  de  descanso
-variarse y o sustituirse ni por acuerdo de partes ni de modo alguno, siendo
-obligatorio  su  goce.  En  el  caso  en  que  por  Ley  Nacional  o  Provincial  se
-decretara o trasladara feriado a los días lunes, el descanso compensatorio
-de la actividad será gozado por los trabajadores en la misma semana, en
-un  día  hábil  de  martes  a  jueves,  siendo  facultativo  del  empleador  la
-designación del día.
-Artículo   10º: Descansos   diarios: Se   establecen como   descansos
-intermedios  diarios,  por jornada,  de  goce  obligatorio  para  refrigerio  y
-almuerzo, los siguientes lapsos mínimos:
-a)   Almuerzo,  en  caso  de  jornada  continua  o  corrida:  treinta (30)
-minutos.
-b) Almuerzo,  en caso de jornada discontinua: una (1) hora.
-c)   Refrigerio:  independientemente  de  las  dos  anteriores,  treinta  (30)
-minutos
-d)  Derecho   al   reposo:   Los   empleadores   deberán   permitir   a   los
-trabajadores  reposar  en  una  silla    en  los  momentos  en  que  estos
-no tuvieran trabajos que realizar por no tener clientela que atender
-y de ningún modo podrán obligar a los trabajadores a permanecer
-de pie durante toda la jornada.
-Los   mayores   beneficios   que   vinieran   otorgando   las   empresas   se
-mantendrán  en  un  todo  como  derechos  adquiridos.  Se  entiende  que  los
-lapsos  de  descanso  diario  se  encuentran  comprendidos  dentro  de  la
-jornada  de  trabajo  y  que  se  establecen  para  su  absoluto  e  insustituible
-goce,  no  pudiendo  el  trabajador  durante  su  descanso  ser  empleado  para
-ninguna  tarea  sea  dentro  o  fuera  del  establecimiento,  por  lo  que  la
-violación, supresión o sustitución injustificada del descanso durante dos (2)
-jornadas consecutivas o tres (3) alternadas, y si el empleador no rectificare
-su  incumplimiento  ante  la  intimación  fehaciente  del  trabajador,  dicha
-conducta  constituirá  causal  de  injuria  grave  para  éste  último,  sin  perjuicio
-de las  sanciones  que  prevén  los  regímenes  de  seguridad  e  higiene  del
-trabajo al respecto.
-Artículo   11º: Obligatoriedad   del   otorgamiento   y   pago   de   los
-descansos  compensatorios:  Los  empleadores  deberán otorgar a  los
-trabajadores, en  tiempo  y  modo,  los  descansos  y  francos  compensatorios
-### 6
-que establecen el presente convenio y las leyes vigentes. Sin perjuicio de
-ello,  y  de  las  horas  extraordinarias  que  se  le  hubieren  abonado  al
-trabajador  en  cada  periodo,  finalizada  la  relación  laboral  el  trabajador
-tendrá  derecho  a  que  se  le  abonen  con  el  cien  por  ciento  (100%)  de
-recargo  los  días  francos  compensatorios  trabajados  no  gozados.    Aun  en
-el  supuesto  de  que  no  hubiese puesto  fin  al  vínculo  laboral la  sumas  que
-pudieran  corresponder  deberán  ser  puesta  a  disposición  del  trabajador
-fehacientemente    juntamente  con  la  liquidación,  sea  mensual  o  final,
-momento  desde  el  cual  comenzara  a  correr  el  plazo  establecido  en  el
-artículo 256 de la Ley de Contrato de Trabajo.
-Artículo  12º: Horario  de  cierre  de  los  establecimientos:  Se  establece
-que   las   empresas   comprendidas   en   este   convenio   finalizarán     sus
-actividades  diarias  a  las  19:30  hs,  aceptándose  una  tolerancia  de  treinta
-(30)  minutos  para  terminar  los  servicios  comenzados  con  anterioridad.  El
-tiempo  de  tolerancia  se  establece  a  modo  de  excepción  no  significando
-ello  que  los  empleadores  puedan  admitir  el  ingreso  de  clientes  hasta  la
-hora de finalización de la jornada, sino que, por el contrario, deberán tomar
-las  previsiones  necesarias  para  no  prolongar  el  horario  de  trabajo  de  los
-empleados.
-Artículo  13º:  Notificación  del  horario:  Al  incorporarse  el  trabajador
-como  dependiente  de  la  empresa  y  a los  que  estuvieran    laborando  al
-momento  de  la  puesta  en  vigencia  de  este  convenio,  se  les  notificará
-individualmente  por  escrito  y  con  copia  el  horario  que  deberá  cumplir
-dentro del establecimiento. El horario a cumplir por los trabajadores deberá
-estar encuadrado dentro del horario de jornada autorizada por el presente
-### convenio  y    el  Ministerio  de  Trabajo,  Empleo  y  Seguridad  Social  de  la
-Nación,   como   de   funcionamiento   del   establecimiento,   cuya   planilla
-rubricada deberá estar en exhibición permanente para conocimiento de los
-trabajadores. La falta de notificación del horario, su no encuadramiento en
-el horario autorizado, o la falta de exhibición de la planilla rubricada, creará
-una  presunción  a  favor  de  las  afirmaciones  del  trabajador  en  caso  de
-conflicto.
-Artículo  14º: Excepción  de  cumplimiento  de  jornada  para  zonas
-específicas:  Queda  establecido  como  excepción  que,  en  zonas  turísticas
-y  durante  la  temporada  de  turismo,  y  en  las  provincias  en  que  así  se
-establezca   por   la   entidad   sindical   representativa   y   adherida   a   la
-Federación Nacional de Trabajadores de Peluquería, Estética y Afines con
-entidades  patronales  firmantes  de  este  Convenio  por  las  modalidades  del
-lugar que no será obligatorio el cumplimiento de las disposiciones de este
-### convenio en lo relativo a la jornada de trabajo y la máxima legal.  En caso
-### 7
-de superarse las  mismas, serán liquidadas como horas extras, calculadas
-al ciento por ciento (100%).
-La  jornada  máxima  legal  fijada  en  este  convenio  no  modifica  ni  inhibe  los
-mejores derechos que en cuanto al horario puedan estar establecidos y/o
-establecerse por Leyes Nacionales y/o Provinciales.
-Artículo 15º: De las horas extraordinarias:
-Inc. 1°  ) Encuadre  de  horas  extraordinarias:  Serán  consideradas  horas
-extraordinarias las trabajadas en exceso a la jornada legal o   convencional
-del trabajador las que serán abonadas con los recargos previstos en la Ley
-de  Contrato  de  Trabajo  o  en  este  convenio  en  cuanto  resulte  más
-beneficioso.
-Los   trabajadores   no   estarán   obligados   a   la   realización   de   horas
-extraordinarias   en   forma   habitual,   salvo   que   mediare   notificación
-fehaciente del empleador y consentimiento expreso del trabajador.
-En  los  casos  en  que  de  hecho  el  trabajador  hubiere  realizado  jornadas
-superiores  a  las  diarias  y/o  semanales  fijadas  como  máximas  en  este
-### convenio  se  entenderá  que  el  exceso  horario  se  realizó  con  carácter  de
-hora extraordinaria.
-Inc.   2°  ) Base  y  forma  de  liquidación  de  horas  extraordinarias: Las
-horas  extraordinarias  se  liquidarán  tomando  como  base  la  remuneración
-total, bruta por todo concepto que deba percibir el trabajador en el mes de
-su realización (exceptuando el rubro horas extras). A los fines de calcular
-el valor de las horas extraordinarias se dividirá el total de las retribuciones
-indicadas  en  el  párrafo  anterior  por  las  horas  que  conformen  la  jornada
-habitual  de  trabajo,  establecida  en  el  presente  convenio  colectivo  de
-trabajo.   Sobre   ese   valor   se   aplicará   el   porcentaje   de   recargo   que
-corresponda  y  se  multiplicará  por  las  horas  extraordinarias  trabajadas.  El
-número  máximo  de  horas  extraordinarias  a  cumplir  anualmente  por  los
-trabajadores  se  regirá  por  la L.C.T.,  el  decreto  16.115/33  y  el  decreto
-### 484/2000.-
-Artículo  16º: Horas  nocturnas  -   encuadre  y  pago:  Pago  especial  por
-tareas realizadas entre las 21 y 6 horas: Además de lo dispuesto en el art.
-9º  del  Decreto  16.115/33  con  relación  a  la  jornada  nocturna,  el  personal
-que realizase trabajos entre las 21.00 y 6.00 horas percibirá los adicionales
-siguientes:
-| a) | Un | adicional | del | 25% | (veinticinco | por | ciento) | sobre | el | salario | mínimo |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-garantizado al personal que realice tareas normales en el turno de trabajo,
-incluidas las tareas típicas del sereno.
-b)  Cuando  el  personal  realice  horas  extraordinarias  en  el  citado  horario
-percibirá las mismas con un incremento adicional del 25% (veinticinco por
-### 8
-ciento)   además   del   recargo   establecido   para   el   pago   de   las   horas
-extraordinarias.
-c) En aquellas empresas en que rijan beneficios superiores a los otorgados
-en el presente artículo se mantendrá dicha modalidad.
-### CAPITULO  III
-### DE LOS AGRUPAMIENTOS Y CATEGORIAS DE TRABAJADORES
-Artículo  17º:  Principio  general: Se  establece  como  principio  general
-inviolable para la totalidad del personal incluido en la presente Convención
-Colectiva de Trabajo que la tarea que realmente desempeña el trabajador
-determina su agrupamiento y categoría laboral.
-Artículo  18º:   Agrupamiento: Se  establece  que  todo  el  personal  incluido
-en el presente convenio deberá estar encuadrado dentro de las categorías
-laborales generales que a continuación se detallan:
-Inc. 1°) Personal técnico especializado.
-Inc. 2°) Personal administrativo y de servicios.
-Inc. 3º) Personal de Fábrica.
-Consecuentemente,  en  adelante  el  agrupamiento  de  cada  trabajador  se
-identificará en los libros y registros así como en los recibos de haberes la
-categoría  laboral  general  y  luego  la  específica.    A  modo  de  ejemplo:
-“”Personal Técnico Especializado” –   “Manicura”.
-Artículo 19º: Prevalencia de la categoría superior: Se establece que en
-el  caso  en  que  el  trabajador  desempeñe  tareas  inherentes  a  más  de  una
-categoría laboral se entenderá que reviste en la categoría laboral a la que
-mayor  remuneración  se  asigna,  conforme este  convenio  colectivo.  Este
-principio sólo admite la excepción del caso de “suplencias transitorias” las
-que no podrán durar por un plazo mayor de noventa (90) días, continuos o
-discontinuos  computables  dentro  del  primer  día  que  ejerza  la  función,  y
-deberán  ser  remuneradas  con  el  salario  fijado  para  la  categoría  de  cuya
-suplencia  se  trate,  como  plus  por  “mayor  función”.  Transcurridos  los
-noventa (90) días  de  suplencia  y  en  caso  de  que  el  trabajador  continúe
-desempeñando  tales  funciones  adquirirá  estabilidad  de  pleno  derecho  en
-la categoría superior.
-Artículo   20º.- Clasificación   de   tareas   no   contempladas: Queda
-convenido  entre  las  partes  que,  con  objeto  de  evitar  interpretaciones
-erróneas  y  para  encontrar  soluciones  en  los  casos  de  conflictos  que
-### 9
-puedan  plantearse,  la  Comisión  Paritaria  de  Interpretación  y  Solución  de
-Conflictos  (CoPARSCo),  con  la  información  que  le  proveerán  las  partes
-signatarias, podrá crear nuevas Categorías laborales que se correspondan
-con las tareas  que dieron lugar a la controversia a los fines de solucionar
-la misma.
-### CAPITULO IV
-### CLASIFICACION DE LAS ESPECIALIDADES Y DESCRIPCION DE
-### TAREAS
-Artículo  21º.-    Clasificación  de  las  especialidades: Sin  que  resulte
-taxativa,   se   establece   el   siguiente   agrupamiento   para   todos   los
-trabajadores de la actividad:
-Inc. 1°) Personal Técnico especializado.
-Oficial peluquero/a.
-Oficial peluquero/a estilista.
-Oficial entretejedor/a  / Adaptador/a.
-Peinador/a Exclusivo/a.
-Peinador/a Todo Servicio.
-Colorista.
-Permanentista.
-Entretejedor/a.
-Depilador/a
-Maquillador/a  y/o Experto/a en belleza y/o Cosmetólogo/a.
-Masajista Corporal.
-Ayudante de peinador/a.
-Ayudante de depilación.
-Instructor/a de gimnasia.
-Auxiliar de instructor/a.
-Promotor/a   y/o consultor/a de tratamiento.
-Encargado/a con producción.
-Manicura.
-Pedicura.
-Masajista capilar.
-Ayudante de oficial.
-Asistente de sauna o baño.
-Profesor/a de Peluquería y/o Cosmetología y/o Maquillaje y/o Manicuría
-y/o Pedicuría y/o Depilación y/o Masajes y/o de elaboración e implantación
-de prótesis capilares, en cualquiera de sus formas.
-Ayudante de profesor/a.
-Inc. 2°) Personal Administrativo y de Servicios.
-### 10
-Director/a.
-Secretario/a.
-Encargado/a administrativo de salón sin producción.
-Encargado/a de lavandería / lavandero/a.
-Cajero/  a.
-Recepcionista.
-Empleado/a oficinista.
-Auxiliar de lavandería.
-Maestranza.
-Cadete.
-Inc. 3º) Personal de Fábrica
-Armador/a.
-Teñidor/a.
-Maquinista.
-Implantador/a.
-Cofiador/a
-Artículo 22º.-  Descripción de tareas: A los efectos de fijar los derechos y
-deberes de los trabajadores comprendidos en este convenio, se establece
-la  siguiente  especificación  de  las  funciones  inherentes  a  cada  categoría
-laboral:
-Oficial Peluquero/a: Comprende a todo trabajador cuya tarea consista en
-la  realización  de  cortes,  modelación  y  peinado  de  cabello,  y  afeites  o
-arreglo  de  barba  y  bigote  valiéndose  de  conocimientos  propios,  pudiendo
-realizar lavados de cabezas.
-Oficial  Peluquero/a  Estilista: Comprende  a  todo  trabajador  cuya  tarea
-consista  en  la  realización  de  las  tareas  enunciadas  para  la  categoría
-anterior,   y   además   efectúe   entretejidos   de   cabello   con  aplicación  o
-mantenimiento de   extensiones,   cortinas,   mechas,   pudiendo   realizar
-lavados de cabezas.
-Oficial  Entretejedor/a /  Adaptador/a: Comprende a todo trabajador cuya
-tarea consista exclusivamente en la realización de tareas de aplicación y/o
-mantenimiento  de  entretejidos,  pelucas,  extensiones,  cortina,  mechas,  de
-cabello  cualquiera  fuere  la  técnica  empleada,  adaptándolas  sobre  modelo
-vivo,  recortándolas  y/o  peinándolas  y  efectuando  los  correspondientes
-servicios de mantenimiento.
-### 11
-Peinador/a   Exclusivo/a: Comprende   a   todo   trabajador   cuya   tarea
-consista   en   la   realización exclusivamente   de   cortes,   modelación,   y
-peinados de cabello pudiendo además realizar lavado de cabeza.
-Peinador/a  Todo  servicio:  Comprende  a  todo  trabajador  cuya  tarea
-consista   en   realizar   en   forma íntegra   y   valiéndose   de   sus   propios
-conocimientos  la  totalidad  de  los  trabajos  artesanales  de  peluquería,
-entendiéndose  como  tal  aquel  que  como  mínimo  efectúe,  corte,  peinado,
-coloración,    permanente,    brushing,    modelación    de    cabello y    su
-correspondiente lavado de cabeza.
-Colorista: Comprende  a  todo  trabajador  cuyas  tareas  consistan    en  la
-realización   exclusiva,   en   forma   íntegra   valiéndose   de   sus   propios
-conocimientos, de: coloración de cabellos, en cualquiera de sus variedad y
-con  todo  tipo  de  técnicas,  determinación  de  tonos,  preparación  de  los
-productos  aplicándolos  sobre  los  cabellos  y  dándole  terminación  aunque
-fuere asistido por un ayudante.
-Permanentista: Comprende  a  todo  trabajador  cuya  tarea  consista  en  la
-realización  exclusiva,  y  valiéndose  de  sus  propios  conocimientos,  de
-trabajos   de   modelación,   ondulación,   planchado,   permanentación   de
-cabellos,   utilizando   las   técnicas   de   la   especialidad   y   aplicando   los
-productos  necesarios  aunque  fuere  ayudado  por  otro  personal  que  siga
-sus  indicaciones  técnicas  especificas,  con  su  correspondiente  lavado  de
-cabeza.
-Entretejedor/a: Comprende  a  todo  trabajador  cuya  tarea  consista  en  la
-realización  exclusiva  y  valiéndose  de  conocimientos  propios,  de  trabajos
-de  entretejidos,  extensiones,  cortinas,  mechas  de cabellos  naturales  o
-sintéticos, modelación del peinado de los mismos, mantenimiento periódico
-de    entretejidos,    cualquiera    sea    la    técnica    utilizada    y    con    su
-correspondiente lavado.
-Depilador/a: Comprende  a  todo  trabajador  cuya  tarea  consista  en  la
-realización  en  forma  exclusiva  y  valiéndose  de  conocimientos  propios,  de
-trabajos de depilación corporal, temporaria o definitiva, cualquiera fuere la
-parte  del  cuerpo  tratada,  la  técnica  empleada,  o  los  medios  y  materiales
-utilizados.
-Maquillador/a y/o experto/a en belleza y/o Cosmetólogo/a: Comprende
-a   todo   trabajador   cuya   tarea consista   en   la   realización   exclusiva   y
-valiéndose de conocimientos propios de trabajos de belleza corporal, tales
-como  limpieza  de  cutis,  tratamientos  faciales,  aplicación  de  técnicas  de
-### 12
-maquillaje, aplicación de pestañas postizas, bronceados de piel, cualquiera
-fuere la técnica utilizada.
-Masajista corporal: Comprende a todo trabajador cuya tarea consista en
-la  realización  exclusiva  de  trabajos  de  masajes  corporales  con  fines
-estéticos,  ya  sea  que  se  valga  de  sus  propios  conocimientos  o  bajo  la
-supervisión  de  algún  profesional  y  cualquiera  fuere  la  técnica  empleada  y
-aunque  se  utilice  cualquier  medio  técnico  instrumental  o  las  propias
-manos.  En  éste  último supuesto  deberá  mediar  un  descanso  de  diez  (10)
-minutos entre masaje y masaje.
-Ayudante   de   peinador/a:   Comprende   a   todo   trabajador   cuya   tarea
-consista   en   asistir   de   cualquier   forma   a:   “peinadores",   "coloristas",
-"permanentistas"  o  "entretejedores",  para  la  realización  de  sus  trabajos
-aplicando  las  directivas  que  éstos  le  impartan  en  cuanto  a  la  técnica  y/o
-modalidad  a  utilizar.  Es  obligación  accesoria  del  ayudante  mantener
-limpios  y  en  orden  el  lugar  del  trabajor  al  cual  asisten  y las  herramientas
-que  éste  utilice  no  implicando  tal  obligación  la  realización  de  tareas  de
-limpieza general del salón o   instalaciones accesorias. Podrá hacer lavados
-y secados de cabellos con supervisión del peinador, así como trabajos de
-brushing  de  igual  forma.  La  simple  aplicación  de  ampollas  no  significa
-masaje capilar, salvo que fuere tarea única y permanente del trabajador.
-Ayudante   de   depilación:   Comprende   a   todo   trabajador   cuya   tarea
-consista  en  asistir  de  cualquier  forma  a  trabajadores  con  categoría  de
-"depilador/a"  para  la  realización  de  sus  trabajos  y  aplicando  las  directivas
-impartidas  por  estos  en  cuanto  a  la  técnica  y/o  modalidad  a  utilizar.
-Preparará  los  productos  según  indicación  del  trabajador  al  cual  asista  y
-mantendrá  en  condiciones  de  orden  y  limpieza  las  herramientas  y  el
-camarín del trabajador, no implicando tal obligación la realización de tareas
-generales de limpieza del establecimiento o instalaciones accesorias.
-Instructor/a  de  gimnasia:  Comprende  a  todo  trabajador  cuya  tarea
-consista  en  la  realización  de  trabajos  de  coordinación  grupal  y  dirección
-para la enseñanza de todo tipo de gimnasia, incluyendo la modeladora y la
-reductora  con  fines  estéticos,  valiéndose  de  sus  propios  conocimientos  y
-cualquiera fuere la técnica o modalidad empleada.
-Auxiliar   de   instructor/a: Comprende   a   todo   trabajador   cuya   tarea
-consista  en  asistir  de  cualquier  forma  a  los  "instructores  de  gimnasia"
-aplicando  las  directivas  que  estos  le  impartan  en  cuanto  a  la  técnica  y/o
-modalidad  a  utilizar.  Las  obligaciones  de  este  trabajador  no  incluyen  la
-### 13
-realización   de   tareas   generales   de   limpieza   del   establecimiento   o
-instalaciones accesorias.
-Promotor/a y/o   consultor/a   de   tratamiento:   Comprende   a   todo
-trabajador cuya tarea consista exclusivamente en la realización de trabajos
-de:  evacuar  consultas    y/o  promover  y/o  asesorar  y/o  interesar  y/o
-contratar y/o tomar turnos con el posible cliente un tratamiento, informando
-sobre sus condiciones generales, sea en forma telefónica o personal,  sin
-realizar otra tarea técnica en particular.
-Encargado/a con producción: Comprende a todo trabajador que además
-de ocuparse de la supervisión general del salón o establecimiento, realice
-tareas comprendidas en cualquier otra de las categorías incluidas en este
-### convenio.
-Manicura: Comprende   a   todo   trabajador   cuya   tarea   consista   en   la
-realización  de  trabajos  de  estética  de  manos  y  uñas,  cualquiera fuera  la
-técnica utilizada.
-Pedicura: Comprende   a   todo   trabajador   cuya   tarea   consista   en   la
-realización de trabajos de estética de los pies y sus uñas, cualquiera sea la
-técnica utilizada.
-Masajista Capilar: Comprende a todo trabajador cuya tarea consista en la
-aplicación  de  masajes  sobre  el  cuero  cabelludo,  con  fines  estéticos,
-cualquiera  fuere  la  técnica,  medios  o  materiales  empleados,  y  la  finalidad
-de los mismos.
-Ayudante de oficial: Comprende a todo trabajador cuya tarea consista en
-auxiliar o asistir a los oficiales para la realización de los trabajos, aplicando
-las técnicas que éstos le indiquen. Es obligación accesoria del ayudante el
-mantener limpios y en orden el lugar o boxes del trabajador al cual asista y
-las herramientas que éste utilice, no implicando tal obligación la realización
-de  tareas  de  limpieza  general  del  salón  o establecimiento  e  instalaciones
-accesorias las que quedan excluidas expresamente.
-Asistente  de  Sauna  o  Baño:  Comprende  a  todo  trabajador  cuya  tarea
-consista  en  atender  las    necesidades  de  los  clientes  que  hagan  uso  de
-saunas  o  baños  (caballeros  y/o  damas),  entregando  turnos  y  elementos
-tales como toallas, etc.
-Profesor/a: Comprende   a   todo   trabajador   que   habiendo   adquirido
-conocimientos  y  práctica  de  cualquiera  de  las  ramas  del  oficio,  preste
-### 14
-servicios instruyendo a alumnos e impartiéndoles conocimientos sobre las
-técnicas de la actividad, ya sea en cursos básicos o de perfeccionamiento
-y profundización.
-Ayudante   de   profesor/a: Comprende   a   todo   trabajador   cuya   tarea
-consista en secundar a un profesor para el dictado de los cursos.
-Director/a: Comprende   a   todo   trabajador   cuya   tarea   consista   en
-administrar   un   establecimiento   teniendo   funciones   de   supervisión   y
-dirección   del   personal,   responsabilizándose   por   la   administración   y
-dirección  de  los  recursos  humanos  y  físicos  de  las  áreas  y/o  sectores  del
-establecimiento  cualquiera  sea  la  denominación  con  que  se  lo  identifique,
-por ejemplo, Director/a, Gerente, etc
-Secretario/a: Comprende   a   todo   trabajador   cuya   tarea   consista   en
-secundar  a  un  director  en  las  tareas  administrativas  del  establecimiento,
-estando al servicio y bajo las directivas inmediatas del director.
-Encargado/a  administrativo/a  de  salón  sin  producción: Comprende  a
-todo trabajador cuya tarea consista exclusivamente en supervisar el salón
-o  establecimiento,  teniendo  facultades  de  supervisión  del  personal  y  de
-distribución  de  los  trabajos  y  cliente,  pero  que  no  realiza  ninguna  de  las
-actividades descriptas en las restantes categorías laborales incluidas en el
-presente convenio.
-Encargado/a de lavandería -  lavandero/a: Comprende a todo trabajador
-cuya tarea consista exclusivamente en la limpieza y aseo de uniformes del
-personal,   batas,   toallas,   toallones   y   toda   otra   prenda   de   utilización
-exclusiva  en  el  establecimiento  de  que  se  trata.  Para  la  prestación  de  un
-adecuado  servicio  al  cliente,  garantizando  condiciones  adecuadas  de
-higiene a la clientela y al personal.
-Cajero/a: Comprende     a     todo     trabajador     cuya     tarea     consista
-exclusivamente en la realización en el salón o establecimiento de trabajos
-de cobranza de servicios, control de facturas y/o tickets, rendición de cajas
-y tenga responsabilidad sobre el dinero de la cobranza, pudiendo además
-realizar tareas de recepción.
-Recepcionista: Comprende   a   todo   trabajador   cuya   tarea   consista
-exclusivamente  en  la  atención  al  público  que  ingrese  al  local  para  su
-orientación,  o  la  entrega  de  número  o  turnos  de  atención  conforme  las
-directivas  que  se  le  impartan,  o  la  atención  de  los  teléfonos  o  la  atención
-del guardarropas.
-### 15
-Empleado/a Oficinista: Comprende a todo trabajador cuya tarea consista
-en  la  realización  de  trabajos  administrativos  y/o  contables  en  las  oficinas
-de la empresa.
-Auxiliar de lavandería: Comprende a todo trabajador cuya tarea consista
-en  asistir  de  cualquier  forma  al  Encargado  de  lavandería  en  la  limpieza  y
-aseo de uniformes del personal, batas, toallas, toallones y toda otra prenda
-de utilización  exclusiva    en  el  establecimiento  de  que  se  trata,  para  la
-prestación  de  un  adecuado  servicio  al  cliente,  garantizando  condiciones
-adecuadas de higiene a la clientela y al personal.
-Maestranza: Comprende a todo trabajador que realice en forma exclusiva
-tareas de limpieza y mantenimiento general del establecimiento, cafetería y
-colabore en tareas generales no administrativas.
-Cadete: Comprende  a  todo  trabajador  que  cumpla  tareas  administrativas
-complementarias   de   oficina   y   además   realice   diligencias   fuera   del
-establecimiento para su empleador.
-Armador/a: Es aquel trabajador cuya tarea consiste en la preparación de
-los  materiales  a  emplear  como  fase  primera  de  la  confección  de  las
-pelucas, entretejidos, extensiones, cortinas o mechas. También procederá
-al   corte que es la operación de uniformar el largo y el peso del pelo o fibra
-a emplearse en la prótesis.
-Teñidor/a: Es  aquel  trabajador  cuya  tarea  consiste  en  colorar  el  cabello
-exclusivamente  de  prótesis  capilares  realizadas  en  cabello  natural  o
-sintético para llevarlo al tono que se desea.
-Maquinista: Es aquel trabajador cuya tarea consiste en proceder al cocido
-y  doblado  del  material  (artificial  y/o  natural)  en  sucesivas  pasadas  a
-máquina. Esta tarea se realiza y completa en tres (3) etapas a saber:
-1ª) Construcción de hiladas; 2º) Repaso; 3ª) Prolijación.
-Implantador/a:  Es  aquel  trabajador  cuya  tarea  consiste  en  adherir  a
-máquina o  manualmente  el  cabello  natural  o  sintético  al  casco  o  cofia,
-modelando la prótesis con todos sus elementos.
-Cofiador/a: Es aquel trabajador cuya tarea consiste en la construcción de
-la cofia o casco que servirá de base a la adhesión del pelo natural y/o fibra
-artificial.
-### 16
-Artículo 23º: Exclusión de tareas de limpieza: Única y exclusivamente el
-personal  clasificado  como  empleado  o  trabajador  de  maestranza  tiene
-obligación  de  realizar  tareas  generales  de  limpieza  del  establecimiento  e
-instalaciones anexas, el resto del personal comprendido en este convenio
-queda    exceptuado    expresamente    de    tales    trabajos    no    pudiendo
-imponérsele la realización de los mismos bajo ningún concepto.
-### CAPITULO V
-### DE LAS REMUNERACIONES
-Artículo  24º: Principio  general:  Se  establece  como  principio  general
-inviolable el de igual remuneración por igual tarea, prohibiéndose además
-toda  conducta  discriminatoria  en  razón  de  la  edad,  el  sexo,  nacionalidad,
-raza, religión, género, condición política o actividad sindical legal.
-Artículo   25º:   Retribución   mensual   -    Fecha   de   pago:   Todos   los
-trabajadores  de  la  actividad  serán  remunerados  en  forma  mensual  y
-acorde con su agrupamiento y clasificación de categoría laboral, debiendo
-percibir sus haberes en dinero efectivo entre el primer y quinto día hábil del
-mes subsiguiente al que corresponda el pago.
-Artículo  26º:  De  la  forma  de  remuneración:  Se  establece  para  los
-trabajadores comprendidos en los distintos agrupamientos y clasificaciones
-de  categoría  laborales especificados  en  los  Capítulos  III    y  IV  del  Título  II
-del presente convenio, la siguiente forma de remuneración normal, habitual
-y permanente, independiente de los otros adicionales que se especifiquen
-en este convenio:
-Inc.  1°)  Personal  Técnico  Especializado:  Percibirá  una  remuneración
-mensual compuesta  de  los  rubros:  “SALARIO  BASICO”  con  más  un
-porcentaje de su producción bruta mensual en concepto de “COMISION”.
-Inc.   2°)   Personal   Administrativo   y   de   Servicios:   Percibirá   una
-remuneración mensual  compuesta  de  los  siguientes  rubros:  “SALARIO
-MÍNIMO  GARANTIZADO”  y  un  “ADICIONAL  POR  FUNCIÓN”  en  caso  de
-responsabilidad  específica,  excepción  hecha  de  las  categorías  laborales
-mencionadas en el art.42 del presente convenio respecto de las cuales el
-plus por función integrará la remuneración.
-Inc.   3º)   Personal   de   Fábrica:   Percibirá   una   remuneración   mensual
-integrada por los rubros: “SALARIO MÍNIMO GARANTIZADO” con más un
-porcentaje  del  diez  (10)  por  ciento  de  su  producción  bruta  mensual  en
-concepto de “COMISION”.
-### 17
-Todo  aumento  de  sueldo  que  le  corresponda  percibir  al  trabajador  por
-motivo  de  ascenso,  promociones,  cambio  de  categoría  o  cualquier  otra
-forma que modifique su situación de revista se aplicará indefectiblemente a
-partir  de  la  fecha  en  que  comience  a  desempeñar  el  nuevo  cargo,
-debiéndosele  hacer  efectivo  el  pago  con  las  remuneraciones  de  mes  al
-que corresponda el cambio.
-Artículo  27º:  Remuneraciones  - Comisiones: Se  fijan  para  la  actividad
-los  siguientes  “porcentajes  de  comisión”  que  integran  la  remuneración
-permanente,   normal   y   habitual   de   los   trabajadores   en   sus   distintas
-especialidades:
-Inc. 1°) Personal Técnico Especializado:
-### CLASIFICACION
-### PORCENTAJE
-### DE COMISION
-Oficial Peluquero/a
-32 %
-Oficial Peluquero/a Estilista
-32%
-Oficial Entretejedor/a / Adaptador/a
-32%
-Peinador/a Exclusivo/a
-30%
-Peinador/a Todo Servicio
-25%
-Colorista
-27%
-Permanentista
-27%
-Entretejedor/a
-30%
-Depilador/a
-27%
-Maquillador/a y/o Experto/a en belleza y/o
-Cosmetólogo/a
-27%
-Masajista Corporal
-25%
-Ayudante de Peinador/a
-25%
-Ayudante de Depilación
-20%
-Instructor/a de Gimnasia
-25%
-### 18
-Auxiliar de Instructor/a
-20%
-Promotor/a y/o Consultor/a de Tratamiento
-25%
-Encargado/a con Producción
-34%
-Manicura
-32%
-Pedicura
-32%
-Masajista capilar
-27%
-Ayudante de Oficial
-27%
-Profesor de Peluquería y/o Cosmetología y/o
-Maquillaje y/o Manicuría y/o Pedicuría y/o
-Depilación y/o Masajes y/o de elaboración e
-implantación de prótesis capilares
-25%
-Ayudante de profesor/a
-25%
-Asistente de sauna o baño Salario Mínimo Garantizado más adicionales
-Inc. 2°) Personal Administrativo y de Servicios:
-Director/a Salario Mínimo Garantizado más plus y adicionales
-Secretaria/o Salario Mínimo Garantizado más adicionales
-Encargado/a administrativo/a de salón Salario Mínimo Garantizado más plus y adicionales
-Encargado/a de lavandería
-lavandero/a
-Salario Mínimo Garantizado más adicionales
-Cajero/a Salario Mínimo Garantizado más plus y adicionales
-Recepcionista Salario Mínimo Garantizado más adicionales
-Empleado/a oficinista Salario Mínimo Garantizado más adicionales
-Auxiliar de lavandería Salario Mínimo Garantizado más adicionales
-Maestranza Salario Mínimo Garantizado más  adicionales
-### 19
-Cadete Salario Mínimo Garantizado más  adicionales
-Inc. 3°) Personal de Fábrica:
-### CLASIFICACION
-### PORCENTAJE
-DE COMISIÓN
-Armador/a
-10%
-Teñidor/a
-10%
-Maquinista
-10%
-Implantador/a
-10%
-Cofiador/a
-10%
-Los  porcentajes  de  comisión  están  referidos  al  monto  de  la  producción
-bruta   mensual   del   trabajador,   sobre   el   cual   deberá calcularse.   La
-producción   bruta   mensual   del   trabajador   se   obtendrá   por   la   simple
-sumatoria  de  los  precios  cobrados  a  los  clientes  por  cada  servicio,  sin
-ningún  tipo  de  deducción.  La  comisión  resultante  deberá  abonarse  en
-forma  íntegra.  Los  conceptos  o  rubros  “salario  básico”  y  “comisión”  son
-normales,  habituales  y  permanentes  componentes  de  la  remuneración
-mensual del trabajador y por lo tanto de pago obligatorio e insustituible, y
-son  además  independientes  de  todo  otro  plus  o  adicional  establecido  en
-este convenio.
-Artículo 28º:  Obligatoriedad:  Las  formas  remuneratorias  indicadas  en  el
-artículo  precedente  serán  obligatorias  y  los  rubros  consignados  deberán
-abonarse  en  forma  insustituible  y  con  independencia  de  los  “plus”,  o
-“adicionales”  que  se  fijen  en  este convenio  por  otros  conceptos,  no
-pudiendo   considerarse   cancelado   ninguno   de   los   rubros de   pago
-obligatorio  detallados  en  los  artículos  anteriores  que  no  se  encuentre
-expresamente individualizado en el recibo de haberes.
-Artículo   29º:   Mínimo   garantizado:   Se   establece   como   garantía
-remuneratoria  para  todos  los  trabajadores  comprendidos  en  el  presente
-### convenio   sin   excepción   alguna   el   denominado   “SALARIO   MINIMO
-GARANTIZADO” como remuneración mínima para el personal que perciba
-comisiones.    Se    entienden    como    rubros    únicos    y    exclusivamente
-incorporados  al  salario  mínimo  garantizado  los  siguientes: “SALARIO
-### 20
-BASICO”,  “COMISION”  y  “PLUS  POR  FUNCION”.  Todo  otro  adicional
-deberá  abonarse  en  forma  accesoria  e  independiente  y  ser  debidamente
-identificados en los recibos de haberes.
-Artículo 30º: Salario básico: En los casos en que el “SALARIO BASICO”
-esté  indicado  como  rubro  integrante  de  la  remuneración,  conforme  la
-categoría del trabajador, su pago será obligatorio e insustituible, cualquiera
-fuere el porcentaje de comisión que se le abone al trabajador y/o la jornada
-cumplida por éste siendo nulo todo convenio en sentido contrario.
-Artículo 31º: Comisiones: En los casos en que el trabajador deba percibir
-“COMISION   POR   PRODUCCION”,   conforme   su   categoría   laboral,   el
-porcentaje  de  la  misma  será  el  determinado  en  este  Convenio  y  se
-liquidará  sobre  la  base  de  la  producción  bruta  mensual  realizada  por  el
-trabajador.  Los  mayores  porcentajes  de  comisión  que  eventualmente  el
-trabajador  pudiere  percibir  y/o  pactar  con  su  empleador  no  subsumen  ni
-pueden  contener  ningún  otro  rubro  fijado  en  el  presente  Convenio  ni
-restringen  ni  inhiben  ninguno  de  los  derechos  establecidos  por  este
-### Convenio  y/o  la  Ley  de  Contrato  de  Trabajo,  subsistiendo  de  manera
-especial  la  forma  y  modos  de  conformación  de  las  remuneraciones
-conforme cada categoría y el goce pleno de todos los demás derechos.
-Artículo  32º:  Monto  bruto  de  producción:  Se  entiende  como  “monto
-bruto  de  producción”  mensual  del  trabajador  el  emergente  de  la  simple
-sumatoria   de   los   precios   finales   de   los   servicios   realizados   por   el
-trabajador. Al monto de producción bruta mensual del trabajador no podrá
-efectuársele quita, deducción o reducción por concepto alguno.
-Artículo  33º.-    Precio  del  servicio:  A  los  efectos  del  cálculo  de  la
-producción  bruta  mensual  del  trabajador,  se  considerará  como  “PRECIO
-DEL SERVICIO” el monto final facturado y cobrado al cliente en pago del
-trabajo  realizado.  Sobre  el  precio  final  del  servicio  al  consumidor  no  se
-admitirá  ningún  tipo  de  deducción  por  concepto  alguno,  y  se  computará
-íntegramente  para  el  pago  de  la  comisión  con  independencia  de  la
-modalidad o forma de pago del servicio por el cliente. En los supuestos en
-que el empleador hiciera una atención al cliente y no le cobrara el trabajo
-que se hubiese realizado, subsistirá la obligación de abonarle comisión al
-trabajador conforme el precio de lista del trabajo, sin excepción alguna.
-Artículo   34º:   Fijación   de   montos   y   porcentajes:   Los   montos   y
-porcentajes de los rubros indicados precedentemente serán los fijados de
-manera especial en este convenio.
-### 21
-Artículo 35º: Control de producción: A los fines de un efectivo control de
-la  producción  realizada  por  los  trabajadores  se  deberán  cumplimentar  los
-siguientes requisitos:
-Inc. 1°) Los empleadores llevarán un libro ESPECIAL FOLIADO, registrado
-y  rubricado  en  las  mismas  condiciones  que  se  exigen  para  los  restantes
-libros laborales conforme la normativa legal vigente aplicable al caso y en
-el  cual  constarán  sin  excepción  las  siguientes  anotaciones:  Nombre  y
-Apellido y fecha de ingreso del trabajador, categoría laboral, sueldo básico,
-producción  bruta  mensual,  porcentaje  de  comisión,  importe  de  comisión
-mensual y toda otra remuneración.
-Inc.   2°)   Los   empleadores   proveerán   a   los   trabajadores   talonarios
-individuales   de   boletas   numeradas   y   correlativas   en   las   cuales   los
-trabajadores  consignarán  los  trabajos  realizados  durante  la  jornada  y  el
-valor  de  los  mismos.    Al  finalizar  cada  jornada,  el  trabajador  entregará  la
-boleta debidamente fechada y firmada y con su identificación, en original y
-duplicado,  debiendo  devolver  el  empleador  o  persona  autorizada,  previo
-control,  en  ese  mismo  acto,  el  duplicado  firmado  para  constancia  del
-trabajador.
-Los  talonarios  de  boletas  serán  provistos  al  trabajador  por  parte  del
-empleador  previa  rúbrica  de  los  mismos  por  ante  la  Federación  Nacional
-de Trabajadores de Peluquería, Estética y Afines.
-Artículo   36º:   Obligatoriedad   de   los   registros   y   comprobantes   –
-Presunción:  Las  formalidades  establecidas  en  el  artículo  anterior  son  de
-cumplimiento  total  y  obligatorio  en  su  conjunto.  El  incumplimiento  de
-alguna  de  ellas  invalidará  como  prueba  las  restantes  salvo  que  resulten
-favorables  a  las  pretensiones  del  trabajador,  el  mismo  efecto  tendrá  la
-observancia  parcial  de  las  mismas,  la  falta  de  concordancia,  alteraciones,
-borraduras o cualquier otro defecto de las constancias y/o los asientos. La
-inexistencia,  discordancia  y  defectos  de  los  controles  aludidos  crearán  de
-pleno  derecho  una  presunción  favorable  a  las  pretensiones  del  trabajador
-en   caso   de   controversia.   Con   iguales   alcances   se   establece   una
-presunción   a   favor   de   la   entidad   sindical   de   trabajadores   para   los
-supuestos de  reclamos  de  cuotas  sindicales,  seguros  de  sepelio,  aportes
-solidarios,  contribuciones  de  convenio  colectivo,  como  así  también  por
-reclamos de Aportes y Contribuciones de Obra Social.
-Artículo  37º:  Recibos:  La remuneración  de  los  trabajadores  deberá
-abonarse mediante la entrega de recibos en doble ejemplar y conteniendo
-todas  las  formalidades  previstas  en  la  Ley  de  Contrato  de  Trabajo  de
-manera   especial   lo   referente   a   la   discriminación   de   los   conceptos
-comprendidos en el pago y los importes de los mismos; en lo que hace al
-rubro  comisiones,  adicionales,  plus  remuneratorios,  su  monto  deberá
-### 22
-guardar  absoluta  concordancia  con  los  registros  y  comprobantes  de
-control. La carencia de algunas de las formalidades previstas tornará nulo
-al  recibo  como  medio  probatorio  del  pago,  así  como  se  considerará  nulo
-cualquier  instrumento  que  pretendiere  acreditar  pagos  y  que  estuviese
-otorgado en forma distinta a la estipulada en este convenio y en la Ley de
-Contrato de Trabajo.
-Artículo  38º:  Falta  de  inscripción  de  los  trabajadores  -Existencia  de
-un  recibo  –  Efectos:  En  los  supuestos  en  que  el  trabajador  no  hubiese
-sido  denunciado  por  el  empleador  como  dependiente  o  no  hubiese  sido
-registrado como tal, la existencia de un recibo, cualquiera fuere su forma,
-mediante  el  cual  se  acreditara  un  pago  por  trabajos  realizados,  hará
-presumir  la  existencia  de  la  relación  de  dependencia  y  servirá  además
-para  presumir  la  fecha  de  ingreso  del  trabajador  por  la  fecha  consignada
-en el recibo o el período abonado siempre y cuando esta no sea posterior
-a la fecha de ingreso pretendida por el trabajador.
-| Artículo | 39º: | Anticipos | de | salarios: | Luego | del | día | 15 | de | cada | mes, | y | a |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-solicitud  del  trabajador,  los  empleadores  deberán  abonar  a  modo  de
-anticipo de salario el importe requerido por éste, el que no podrá exceder
-| del | equivalente | al | 50% | de | la | remuneración | bruta | total | liquidada | al |
+### CONVENIO CQLECTIVO DE TRABAJO  2005
+ARTtCULO  1": PARTES  INTERVINIENTES:  Asociacion  Empleados  de
+Fannacia  de  Mendoza  (A.D.E.F.M.)  en  representacion  de   los  Trabajadores;
+Colegio  Farmaceutico  de  Mendoza,  Camara  de  Farmacias  de   Mendoza,  y
+Federacion     Argentina    de    Camaras    de    Farmacias    (F.A.C.A.F.)    en
+representacion  de  los  Empleadores.
+### ARTICULO  2": VIGENCIA:  Esta Convencion  Colectiva  de Trabajo  regira
+por  dos  (2)  anos  a  partir  de  la  fecha  de  su  homologacion,  sin  perjuicio  de
+mantenerse  ia vigencia  de  las  clausulas  normativas  y  obligacionales  hasta  la
+celebracion   de  un  nuevo  Convenio  Coleetivo  de  Trabajo   de  acuerdo  al
+### Articulo  6" de  la Ley  14.250.
+Exceptuando  el  Articulo  45°, el  cual  es  de  caracter   transitorio  y por  tiempo
+'  determinado,  establecido  entre  las  partes  signatarias  del  presente  Convenio
+.s-^^olectivo de  Trabajo.
+ARliCULO   3":   AMBITO    DE    APHCACION:    Sera   el   ambito   de
+aplicacion   de   la   presente   Convencion   Colectiva   de   Trabajo,   todas   las
+I'armacias  privadas,  sindicales,  mutuales, de obras  sociales, de  cooperativas,
+hospitalarias,  y  de  toda  otra  entidad  sin  fines  de  lucro,  establecidas  en  la
+^Ciudad  de  Mendoza  y  en  los  siguientes  departamentos:  Godoy  Cruz,  Las
+d^filjl/    Heras, Guaymallen,  Lujan,  Maipu,  San Martin, Junin, Rivadavia,  Santa Rosa,
+La Paz, Tunuyan, Tupungato y Lavalle de la Provincia de Mendoza.
+### ARTICULO  4": La presente  Convencion  Colectiva  de  Trabajo  alcanza  y es
+de  aplicacion  obligatoria  a todo  el  personal  con  relacion  de dependencia  que
+se  desempene  en  las  Farmacias  privadas,  sindicales,  mutuales,  de  obras
+sociales, de cooperativas, hospitalarias, y toda otra entidad  sin fines de  lucro
+lencionadas  en el  articulo tercero.
+### ARTICULO  5":  CATEGORIA  INICIAL  "A"  y "B":  Comprende  a  esta
+categoria  al empleado mayor de  18 ajios  que realice entre otras, las siguientes
+tareas:
+CATEGORIA INICIAL  ^'A":
+a)  Ayudante de Mostrador:  comprende  al personal  que realice las tareas
+de   asistente,   sin   atencion   al   publico   y/o   laboratorio,   entregas   a
+domicilio y retire de pedidos a droguerias u otros proveedores.
+b)  Porteria:  comprende  al personal  encargado de la atencion y vigilancia
+de las puertas  de acceso  al  establecimiento.
+)  Sereno:  comprende  al  personal  que  tiene  a  su  cargo  la  vigilancia  del
+establecimiento  en horario nocturno.
+d)  Ascensoristas:  son  los  encargados  de  la  |tenci6n^  conduccion  del
+ascensor.
+### CATEGORIA INICIAL "B":
+e)  Empaqiie:  comprende  al  personal  que  tenga  a  su  cargo  tareas  de
+control, empaque y entrega de mercaderias  al publico.
+t)   Repartidores:  comprende  al  personal  que  tenga  a  su  cargo  tareas  de:
+reparto,    entrega    de    facturacion    a    Obras    Sociales,    cobranzas,
+diligencias, carga y descarga de mercaderias.
+g)  Cliofercs:  comprende   al  personal  que  tenga  a  su  cargo  tareas  de:
+reparto,    entrega    de    facturacion    a    Obras    Sociales,    cobranzas,
+diligencias,   carga   y  descarga   de   mercaderias   con   conduccion   de
+vehiculos.
+h)  Maestranza  y Limpieza:  comprende  al  personal  que tenga  a su  cargo
+tareas de conservacion  y limpieza del edificio,  instalaciones, muebles y
+utiles  del  establecimiento  y otras tareas afines.                                     M
+Cuando se trate de may ores de catorce (14) aiios y menores  de dieciocho  (18)
+aiTos,  su Jornada  de  trabajo  sera  de  seis  (6) horas  diarias  y treinta  y tres  (33)
+horas  semanales,  no pudiendo  realizar  las tareas comprendidas  en los  incisos
+b), c), d) y g) del presente  articulo
+### ARTICULO  6"; CATEGORIA  EMPLEADO  CAJERO,  PERFUMER!
+Y  ADMINISTRATIVO:  (Comprende  a  esta  categoria  al  personal  que  d€
+manera exclusiva cumpla con alguna de las siguientes   funciones:
+a)  Cajero:  todo  personal  que  realice  tareas  vinculadas  directamente  con
+la  caja  y  efectue  el  fichado  de  ventas  en  forma  manual,  mecanica,
+electronica  o  computarizada.   En  todos  los  casos  tales  funciones  y
+tareas  se cumpliran  con prescindencia  del despacho  al publico.
+b)  Personal  de  Perfumeria:  comprende  al  personal  asignado  en  forma
+especifica  a la seccion perfumeria  y que efectue  la venta de articulos de
+cosmetica,   perfumeria,    tocador   y   accesorios   de   perfumeria,    con
+prescindencia   del   expendio   de   medicamentos,   accesorios   y   otros
+elementos de la actividad  especifica  a la  farraacia.
+c)  Personal  Administrative:  comprende  a  todo  personal  que  realice  en
+forma  permanente  tareas  y  funciones   de  caracter  administrativas  o
+contables,  en  forma   manual,  mecanica,  electronica,   computarizada,
+liquidacion  de  Obra  Sociales,  validaciones  en  linea  y  fuera  de  linea,
+entre   otras,   con   prescindencia    del   expendio   de   medicamentos,
+accesorios y otros elementos  de la actividad  especifica  a la  farmacia
+### ARTICULO    7°:   EMPLEADO    DE    FARMACIA:    Comprende    est
+categoria  a todo  el  personal  que  se encuadre  entre  otras,  las  especificacione
+detalladas  a continuacion,  las que se ajustaran  confomie  a las instrucciones y
+directivas  del  Empleador,  en  lo  que  respecta  a  su  funcion  especi||ca  y  al
+Profesional   FarmaceL^ioei  en  lo  atinente  a  la  incumbencia  profesil^nal  del
+mismo.
+a)  Este  personal  estara  afectado  entre  otras  a:  la  atencion  al  publico,
+facturaciones    a   Obras    Sociales    o   Entidades    similares   con    su
+correspondiente  llenado  de  formularios,  a  las  validaciones  por  medios
+electronicos,  en  linea  y  fuera  de  linea  y    a  la  realizacion  de  tareas
+inherentcs  al  laboratorio  de  Farmacia.
+b)  Control, reposicion  y acondicionamiento  de especialidades  medicinales
+y otros productos, actualizacion  de codigos y precios.
+c)  Atencion    de    visor    microfilm,     fotocopiadoras,    valorizacion    y
+arancelamiento  de  las  preparaciones  a  traves  de  medios  mecanicos  o
+electronicos, copiadores y computarizados  de recetas.
+d)  Preparacion, control y expedicion  de productos para entrega de pedidos
+a domicilio.
+c)  Atencion  del telefono,  con o sin venta al exterior del  establecimiento.
+I)   Realizar  en  forma  manual,  mecanica,  electronica  o  computarizada,  en
+cl   mostrador   de   atencion   al   publico   facturaciones   a   tarjetas   de
+consumo, credito, debito o similar  que  se implementen  en e!  futuro.
+g)  Realizar en forma  ocasional  o permanente tareas de fichador.
+### ARTICULO  8°;  EMPLEADO  ESPECIALIZADO  DE  FARMACIA:  El
+personal  comprendido  en  esta  categoria  realizara  las  tareas  descriptas  en  el
+### articulo  1°  del  presente  Convenio  coleetivo  de  Trabajo,  quienes  deberan
+actuar  conforme  a  las  instrucciones  o  directivas  del  Empleador  en  lo  que
+fspecta  a  sus  funciones  especificas  o  al  Profesional   Farmaceufico,  en  lo
+CI^J^EVM atinente  a  la  incumbencia  profesional  del  mismo  y  que  ademas  cumpla  con
+los requisitos a) y b) o a) y c) de los siguientes  items:
+a)  Acreditar    haberse     desempehado     en     las     funciones     o    tareas
+correspondientes  a  la  categoria  Empleado  de  Farmacia  durante  cinco
+(5)  afios  en  el  mismo  establecimiento  farmaceutico  o  seis  (6)  afios  en
+varios  establecimientos,  con  un  minimo  de  tres  (3)  afios  en  un  mismo
+establecimiento  farmaceutico.
+b)   Poseer  titulo  de  Auxiliar  de  Farmacia  dependiente  o  aprobado  por
+Ministerios,  Secretarias  o  Subsecretarias,  Nacionales,  Provinciales  u
+otros    organismos    de    capacitacion    profesional    dependientes    o
+aprobados  por  el  Ministerio  de  Salud  y  Ambiente  de  la  Nacion  y/o
+Ministerio  de Educacion.
+c)  Quien certifique  haber aprobado todas  las asignaturas  correspondientes
+al  segundo  ano  de  la  carrera  de  farmacia  en  las  facultades  de  una
+Universidad Nacional  o Privada reconocida  oficialmente.
+%m^^.
+Se exceptua  de esta categoria  al personal  comprendido  en
+### Convenio Coleetivo de  Trabajo.
+culos  5° y 6°
+### ARTICULO  9°: FARMACEUTICOS:  Se encuadra  en esta categoria  a todo
+personal   en   relacion   de   dependencia   que   posea   titulo   de   Farmaceutico
+Nacional  o  Provincial   u  obtenido  en  otro  Pais,  que  haya  sido  otorgado  o
+revalidado  por  una  Universidad  Nacional  o Privada  reconocida  oficialmente,
+que  preste  servicio  Profesional   en  las  Farmacias  que  se  mencionan   en  el
+### Articulo  3" dc  la presente  Convencion  Colectiva  de  Trabajo.
+f
+J  I b I
+V  •v.>.--«.»_„-.
+### ARTICULO 10": REGIMEN DE REEMPLAZOS Y COBERTURA DE
+VAC ANTES:  Todo  empleado  que  por  cualquier  motive  reemplazare  a  otro
+de una  categoria  superior  o realizare tareas  o funciones  inherentes  a esta,  o de
+otra  categoria  mejor  remunerada,  percibira  la  retribucion  correspondiente  a
+"as mismas,                                                                                                                  rx
+Cuando   el  reemplazo  se  prolongue   por  mas  de  tres  (3)  meses  en   form,ai,,
+continuada   o  de  cuatro   (4)  meses   en   forma   discontinua  dentro   del   aiio
+aniversario,    cl   empleado    reemplazante    quedara    definitivamente    en    la
+categoria  superior  o  la  mejor  remunerada,  segun  sea  el  caso,  siempre  que  el
+reemplazo  no obedezca  a razones  de enfermedad  o maternidad  del  trabajador,.''*^
+| >^ | de | la trabajadora | reemplazado/a | (conforme | el | Art. | 208, Art. | 183 y | Art. | 17 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-trabajador  por  el  mes  anterior  al  de  la  solicitud.  El  requerimiento  del
-trabajador  deberá  efectuarse  con  una  anticipación  mínima  de  dos  días  al
-momento del pago del anticipo.
-Artículo  40º:  Jornada  mínima  de  pago:  En  los  casos  en  que  los
-trabajadores  de  la  actividad  laboren  jornadas  inferiores  a  la  máxima  legal
-establecida   en   este   convenio   se   le   deberá   abonar   la   remuneración
-proporcional a las horas trabajadas rigiendo para el cálculo de los aportes
-y  contribuciones  lo  previsto  sobre  la  integridad  de  los  mismos  en  el
-presente convenio.
-### CAPITULO VI
-### DE OTROS ADICIONALES Y PLUS REMUNERATORIOS
-Artículo  41º: Conceptos  y  porcentajes:  Se  establecen  con  carácter
-remuneratorio normal y habitual para todos los trabajadores comprendidos
-en  la  presente  convención  que  cumplan  los  requisitos  para  su  goce,  los
-siguientes  adicionales  que  se  abonarán  como  conceptos  separados  e
-independientes, a saber:
-### 23
-Inc.  a)  Antigüedad:  El  dos  por  ciento  (2%)  del  salario  mínimo  garantizado
-### vigente para el mes correspondiente al pago, por cada año aniversario de
-servicio.
-El incremento del adicional por antigüedad se abonará en el mes en que el
-trabajador  alcance un  nuevo  año  de  antigüedad  en  la  prestación  de
-servicios.
-Inc. b) Puntualidad: El uno por ciento (1%) del salario mínimo garantizado
-### vigente en el mes correspondiente al pago.
-Inc. c) Presentismo: el uno por ciento (1%) del salario mínimo garantizado
-### vigente en el mes correspondiente al pago.
-Los  adicionales  de  los  incisos  b)  y  c)  se  abonarán  en  el  caso  de
-puntualidad y asistencia perfecta respectivamente.
-En   el   supuesto   en   que   corresponda   al trabajador   por   cualquier
-circunstancia  la  percepción  única  del  Salario  Mínimo  Garantizado,  a  éste
-deberán sumarse los adicionales establecidos precedentemente.  En todos
-los   casos   la   base   de   cálculo   del   adicional   será   el   Salario   Míni mo
-Garantizado correspondiente al mes en que se efectivice el  pago.
-Artículo  42º.-   Plus  por  función:  Se  establecen  los  siguientes  “Plus  por
-función”  como  concepto  remuneratorio  adicional  a  los  salarios  mínimos
-garantizados  para  las  categorías  que  a  continuación  se  detallan  del
-agrupamiento “Personal Administrativo y de Servicios”.
-Inc.  1°)  Director/a:  cobrará  el  salario  mínimo  garantizado  más  un  quince
-(15) por ciento del mismo.
-Inc.  2°)  Encargado/a  administrativo/a  de  salón  sin  producción:  cobrará  el
-salario mínimo garantizado más un quince (15) por ciento del mismo.
-Inc.  3°) Cajero/a:  cobrará el  salario  mínimo  garantizado  más  un  diez  (10)
-por ciento del mismo.
-Los  citados  porcentajes  adicionales  al  salario  mínimo  garantizado  serán
-abonados en forma mensual y con carácter remuneratorio.
-### CAPITULO VII
-### DE LOS SUBSIDIOS ESPECIALES Y OTRAS GRATIFICACIONES
-### REMUNERATORIAS
-Artículo  43º:  Gratificaciones  especiales:  Se  establecen  las  siguientes
-gratificaciones  especiales  que  serán  abonadas  a  los  trabajadores  con
-independencia de sus remuneraciones normales y habituales, con carácter
-remuneratorio,  y  con  independencia  de  otros  montos  o  conceptos  que
-deban ser abonados en virtud de leyes especiales.
-| Inc. | a) | - Por | casamiento, | el | 35 | % | del | salario | mínimo | garantizado | de | la |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+de  la  Ley  de Contrato  de  Trabajo).
+COBERTURA  DE  VACANTES:  Cuando  dentro  de  un  establecimiento  de
+fannacia  se  produjera  una  vacante,  tendra  prioridad  para  cubrir  el  cargo,  el
+personal   del  mismo  que  reuna  las  condiciones  tecnicas  previstas  para  la
+categoria  a  la  que  se  accede.  Dicho  criterio  no  sera  aplicable  cuando  se  trate
+de  vacantes  producidas   en   el  personal   de  encargados  y/o  Direccion   del
+establecimiento.
+### ARTICULO  U":  DE  LAS  REMUNERACIONES:  Todo  pago  que  deba
+efectuarse  al  trabajador  por  cualquier  concepto  debera  constar  en  los  recibos
+de   sueldos   conforme   se   preve   en   la   legislacion   vigente,   discriminado
+claramente   las  sumas  correspondientes   a  basicos,  escalafon,   adicionales,
+horas   suplementarias,   noctumas    y   todo   otro   concepto   que   devengue.
+Asimismo  deberan  consignarse  claramente  los  importes  correspondientes  a
+deducciones  y  la  suma  neta  a  percibir  por  el trabajador.  El  empleador  debera
+entregar  copia   del  recibo   de  haberes   debidamente   firmado   por   el   o  por
+persona  autorizada.
+### ARTICULO   12":  ESCALA   SALARIAL   BASICA:   Los  sueldos   fijados
+para  cada  categoria  en  la  escala  que  a  continuacion  se  detalla  son  basicos  y
+deberan   ser  tenidos  en  cuenta  para  calcular  y  adicionarles   los   beneficios
+porcentuales   o   fijos   que  determina   la  presente  Convencion  Colectiva   de
+Trabajo  y  los  establecidos    por  la  legislacion  vigente.  Cuando  se  trate  de
+mayores  de  catorce  (14)  anos  y  menores  de  dieciocno  (18)  anos,  percibiran
+los   basicos   de  l^^tegoria    Inicial   en   forma   prppop^on^   a^j las   horas
+\/^
+trabajadas   de   acuerdo   a   lo   establecido   en   el   Articulo   5°   del   presente
+### Convenio Coleetivo  de  Trabajo.
+### ESCALA SALARIAL  BASICA:
+### ATEGORIA  INICIAL  "A":
+### 1) AYUDANTE DE  MOSTRADOR.
+### -    2) PERSONAL DE  PORTERIA.
+### -    3) PERSONAL DE SERENO.
+### -    4) PERSONAL  ASCENSORISTA.
+t)  CATEGORIA  INICIAL "B":
+### -     1) PERSONAL  DE  EMPAQUE.
+### -    2) PERSONAL  DE REPARTO.
+### "''        -    3)CHOFER.
+### 4) PERSONAL  DE MAESTRANZA  Y LIMPIEZA.
+,^~..   ^     2) EMPLEADOS:
+^<Mf)                          a)  CAJERO.
+€^liU/                  b)  PERSONAL  DE  PERFUMERIA.
+c)   PERSONAL  ADMINISTRATIVO.
+### 3) CATEGORIA:  EMPLEADO  DE  FARMACIA.
+### 4) CATEGORIA:  EMPLEADO  ESPECIALIZADO  DE  FARMACIA.
+^#)  CATEGORIA:  FARMACEUTICO.
+### Escala  Salarial  hasta  el dia 31/08/2.005:
+CATEGORIAS Basicos
+Inicial  "A"
+Inicial "B"
+Cajero,  Perfumeria  y  Administrative
+Empleado  de  Farmacia
+Empleado  Especializado  de  Farmacia
+Farmaceutico
+### Escala Salarial  a partir  del dia 01/09/2.005:
+| $ | 780,00 |
+| --- | --- |
+| $ | 820,00 |
+| $ | 850,00 |
+| $ | 870,00 |
+| $ | 1.040,00 |
+| $ | 1.150,00 |
 
-categoría del trabajador vigente al momento del acontecimiento.
-### 24
-| Inc. | b) | - Por | nacimiento | o | adopción | de | cada | hijo, | el | 35 | % | del | salario |
+### CATEGORIAS
+Inicial "A"
+Inicial "B"
+Diferencia
+%  con  la
+at.In."A"
+Basicos
+| 8,97 | % |
+| --- | --- |
+| $ | 780,00 |
+| $ | 850,00 |
+
+Cajero,  Perfumeria  y  Administrative
+Empleado  de  Farmacia
+Empleado  Especializado  de  Farmacia
+Farmaceutico
+| 12,82 | % |
+| --- | --- |
+| 15,38 | % |
+| 37,18 | % |
+| 50,00 | % |
+| $ | 880,00 |
+| $ | 900,00 |
+| $ | 1.070,00 |
+| $ | 1.170,00 |
+
+### ARTICULO  13": ESCALAFON  POR  ANTIGUEDAD:  Todo  empleador
+se obliga  a reconocer  la antigijedad  de  sus empleados  en  las categorias  y  los
+puestos  que  ocupen   en   su  establecimiento,  abonando  sobre  sus  sueldos
+basicos  los  importes resultantes  de  la aplicacion  de la siguiente  escala:
+Al  afio                                                                                     5 %
+| A los dos (2) anos | 10% |
+| --- | --- |
+| A los cinco (5) alios | 20% |
+| Alosdiez(lO)ahos | 25% |
+| A los quince (15) afios | 30% |
+
+A los veinte (20) aiios en adelante                                        35 %                       "/d-y
+f       i,  • -y£,^^-
+Por  la  vigencia  de  esta  escala  no  se  podran  disminuir  importes  apUcados "ar^'
+antigiiedades  por  el  regimen  anterior.  La  nueva  escala  se  aplicara  en  fonna
+completa  a  los  que  ingresen  a  partir  de  la  firma  de  este  Convenio.  Durante
+dos aiios a partir de la firma de este Convenio  las categorias  se  increraentaran
+por  el regimen  anterior.
+### ARTICULO   14°:  JORNADA   LABORAL;   La  duracion   de   la  jomada
+| laboral | no | podra | exceder | de | ocho | (8) | horas | diarias | 6 | cuarenta | y | cinco | (45) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-mínimo garantizado de la categoría del trabajador vigente al momento del
-nacimiento o adopción.
-Artículo   44º.- Subsidios   por   jubilación:   Se   establece   para   los
-trabajadores  que  deban  retirarse  de  la  empresa  para  acogerse  a  los
-beneficios  de  la  jubilación  y  con  independencia  de  las  obligaciones  que
-establezcan  otras  leyes,  un  subsidio  remuneratorio  consistente  en  un  (1)
-mes   de   sueldo   adicional,   monto   que   deberá   ser   igual   a   la   última
-remuneración  por  mes  completo,  bruto,  normal  y  habitual  que  perciba  el
-trabajador antes del cese de servicio, momento este último en que le será
-abonado el presente beneficio.
-Artículo 45º: Subsidio por fallecimiento o incapacidad del trabajador:
-Se  establece  para  todos  los  trabajadores  comprendidos  en  el  presente
-### convenio, y con independencia de lo dispuesto en las leyes especiales, los
-siguientes subsidios remuneratorios especiales y adicionales:
-Inc.   a)   -   Por   fallecimiento   del   trabajador,   por   cualquier   causa   o
-circunstancia que fuere, un (1) salario mínimo garantizado.
-Inc.  b)  -   Por  incapacidad  total  del  trabajador,  por  cualquier  causa  o
-circunstancia que fuere, un (1) salario mínimo garantizado.
-Los    montos    de    los    salarios    mínimos    garantizados    serán    los
-correspondientes a la categoría laboral del trabajador vigente al momento
-del deceso en el caso de fallecimiento, y el vigente a la fecha del distracto
-en  el  caso  de  incapacidad.  En  caso  de  muerte  los  beneficiarios  serán  los
-determinados en la Ley de Contrato de Trabajo.
-### CAPITULO VIII
-### DE LAS LICENCIAS ORDINARIAS
-Artículo  46º.-   Vacaciones  anuales:  Los  trabajadores  gozarán  de  un
-período  mínimo  y  continuado  de  descanso  anual  remunerado  por  los
-siguientes plazos:
-Inc. 1º) -  De quince (15) días corridos cuando la antigüedad en el empleo
-no exceda de cinco (5) años.
-Inc.  2º)  -   De  veinticinco  (25)  días  corridos  cuando  siendo  la  antigüedad
-mayor de cinco (5) años no exceda de diez (10).
-Inc. 3º) -  De treinta (30) días corridos cuando siendo la antigüedad mayor
-de diez (10) años no exceda de veinte (20).
-Inc.  4º)  -   De  cuarenta  (40)  días  corridos  cuando  la  antigüedad  exceda  de
-veinte (20) años.
-### 25
-El  goce  del  período  vacacional,  para  los  supuestos  en  los  cuales  el
-establecimiento labore los días lunes, deberá iniciarse obligatoriamente en
-día martes o en el día hábil inmediato posterior si este fuese feriado.
-En  el  caso  del  inciso  4º)  a  solicitud  del  trabajador  se  podrá  fraccionar  el
-período vacacional en dos partes, no pudiendo la primera parte ser inferior
-a quince (15) días.
-Para gozar del beneficio vacacional del inc. 1º) el trabajador deberá haber
-trabajado  durante  seis  (6)  meses  y  un  (1)  día  como  mínimo  en  el  año  al
-cual correspondan las vacaciones.
-En  los  demás  supuestos  se  regirá  por  lo  dispuesto  en  la  Ley  de  Contrato
-de Trabajo.
-Las  vacaciones  serán  otorgadas  por  el  empleador  dentro  del  período
-| comprendido | entre | el | 1ro. | de | octubre | al | 30 | de | abril | debiendo | notificar | al |
+horas  semanales.  No  se  incluiran   en   la  Jornada   las  pausas  dedicadas  a
+almuerzo 6 cena.
+### ARTICULO    15°;   JORNADA    INSALUBRE:    Cuando    el    empleado
+cumpliese  en  forma  permanente  en  laboratorio,  tareas  como  elaboracion  de
+comprimidos,  envasamiento  de  hierbas,  fraccionamiento  de  acidos,  alcalis y
+otras  sustancias  toxicas,  sin   la  tecnologia   adecuada,  cuya  manipulacion
+pudiese  resultar  insalubre,  su jomada  sera  de seis (6) horas diarias o treinta y
+tres (33) horas  semanales. Al personal  que  cumpla jornadas  de seis (6) horas
+diarias  se  le  abonara  la remuneracion   equivalente  a ocho  (8) horas  diarias y
+al  personal  que  cumpla jornadas  semanales  de treinta  y tres (33) horas   se  le
+abonara  la remuneracion equivalente a cuarenta y cinco (45) horas semanales-
+En  caso  de  divergencia,  la determinacion  de  insalubridad  sera  efectuada  por
+la autoridad  de aplicacion.
+### ARTICULO  16°: JORNADA  LABORAL  NOCTURNA:  Los  emplea
+que  desempefien  su tarea  durante  la noche  en  el  servicio  nocturno  volunt
+percibiran  un adicional del cien por ciento (100 %) de su sueldo, sin  perjMtaP^
+de las leyes laborales vigentes.
+### RTICULO     17°:    SERVICIOS     EN    HORARIOS     NOCTURNOS
+### OLUNTARIOS  U OBLIGATORIOS:
+### J"
+Servicio de Turno  Nocturno  Voluntario: es aquel periodo durante el cual el
+Empleador  decide  mantener  la Fantiacia  abierta durante  las veinticuatro  (24)
+horas, previa  autorizacion  de la Autoridad  de Aplicacion  en materia de Salud
+Publica.
+El   personal    que   cumpla   prestaciones   durante   un   Servicio   Nocturno
+Voluntario  devengara  un  recargo  del  100%) sobre  su  sueldo  basico,  mas  los
+adicionales  que  por  aplicacion  de  las  normas  laborales  vigentes  pudieren
+c9,rresponder.  E!  personal  que  cumpla  horario  mixto,  es  decir  parte  de  una
+Jornada  en  horario  diurno  y parte  en  horario  nocturno, percibira  el  adicional
+del  cien  por  ciento  (100%)) establecido  en  el  presente  Articulo  por  las  horas
+trabajadas  en horario  nocturno.
+Quedan   excluidos   del   derecho   al  cobro   de  este  recargo   los   Serenos  y
+Encargados  de Vigilancia.
+Las   Farmacias   que   trabajaren   durante   las   veinticuatro   (24)   horas,   los
+trescientos sesenta y cinco (365) dias del ano se encontraran dentro de  lo que
+se denomina en este articulo  Servicio Nocturno  Voluntario.
+r© Servicio   de  Turno   Nocturno   Obligatorio:   es   aquel   dispuesto   por   la
+Autoridad   de  Aplicacion   en  materia   de   Salud  Publica  y  que  obliga  al
+Empleador a mantener abierta la Farmacia  en caracter de Turno Obligatorio.
+El   personal    que   cumpla   prestaciones   durante   un   Servicio   Nocturno
+Obligatorio  no  devengara  el  recargo  del  cien  por  ciento  (100%)  establecido
+en  el presente articulo, correspondiendole  todos aquellos que sean fijados por
+las Normas Laborales Vigentes.
+ARTJCULO    18°;   ADICIONALES;    Los    empleadores    se   obligan   a
+reconocer  y  a  abonar  a  sus  empleados  los  adicionales  permanentes  que  se
+especifiquen  en el presente articulo.
+a)  FARMACEUTICOS:     Todo     personal     que    posea    Titulo     de
+Farmaceutico       de     acuerdo     a  lo  establecido    en   el   Articulo  9°
+percibira  un  adicional   por fitulo equivalente   al   treinta y  cinco  por
+ciento       (35%))   calculado    sobre      el     sueldo       basico    de     la
+Categoria    Inicial    "A"  definida   en  el  Articulo     5°    del  presente
+### Convenio Coleetivo  de  Trabajo,  mas  escalafon     por   antiguedad   y
+el     veintitres   por     ciento   (23 %o)  de   la   categoria      imcial     "A"
+definida    en   el      articulo    5to.  del  presente   convenio cole^livo de
+trabajo  por adscripcion,  tomando en cuenta las cuarenta y cinco (45)
+horas semanales  trabajadas.
+b)  ADICIONAL  POR  DIRECCION  TECNICA  CON  BLOQUEO  DE
+TITULO:  Todo  Farmaceutico  que  ejerza   la  Direccion  Tecnica  de  la
+Farmacia  percibira  el  treinta por ciento  y cinco  (35%)) calculado  sobre
+el  sueldo  basico  de  la  Categoria  Inicial  "A"  definida  en  el  Art.  5°  del
+presente Convenio Coleetivo de Trabajo, mas escalafon  por antigiiedad
+y  en  concepto  de  "Bloqueo  por  ejercicio  de  la  Direccion  Tecnica"  un
+adicional  equivalente  al cincuenta y cuatro por ciento (54%), calculado
+sobre el  sueldo basico de  la Categoria   Inicial "A" definida  en el Art.5°
+del  presente  Convenio  Coleetivo  de  Trabajo,   tomando  en  cuenta  las
+cuarenta y cinco (45) horas semanales  trabajadas.
+c)  ADICIONAL  DEL CAJERO:  El  personal  que  se  desempeiie  en  esta
+categoria  de  acuerdo  al  Articulo  6'^   inciso  a)  del  Presente  Convenio
+Coleetivo  de  Trabajo,  percibira  un  adicional  equivalente  al  diez  por
+ciento  (10%)) de  su sueldo basico  mas escalafon  por  antigijedad.
+d)  ADICIONAL     POR     TAREAS     ADMINISTRATIVAS:     Todg
+personal  que  cumpla  con  tareas  administrativas  percibira  un  adicion
+de  5 %  siempre  que  presente  un  titulo  de  perito  mercantil  o  segundo
+afio aprobado de  la carrera  de ciencias economicas o administracion  de
+empresas  en universidades  nacionales o reconocidas  oficialmente,  mas
+| un | 5% | adicional | en | caso | de | tener | una | antigiiedad | de | tres | (3) | aiios |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-trabajador,  por  escrito,  con  cuarenta  y  cinco  (45)  días  de  anticipación,  la
-fecha en que deberá hacer uso de dicha licencia.
-Artículo 47º:  Cierre  por  mayor  período  -   Garantía  remuneratoria:  En
-caso  en  que  la  empresa  permanezca  cerrada  o  cese  en  sus  actividades
-normales  por  un  período  mayor  al  de  la  licencia  anual  ordinaria  que  le
-corresponde  al  trabajador,  se  le  deberán  abonar  a  éste  los  días  que
-excedan   su   período   vacacional   normal   como   si   se   tratase   de   días
-laborados, siguiendo para la liquidación y el pago el mismo procedimiento
-establecido  en  este  convenio  para  las  vacaciones.  El  pago  de  los  días
-excedentes  se  efectivizará  el  mismo  día  en  que  deban  abonarse  los
-haberes correspondientes al mes de que se trate.
-Artículo  48º:  Liquidación  y  pago  de  las  vacaciones:  Para  liquidar  los
-días  de  vacaciones  anuales  al  trabajador  que  perciba  comisiones  como
-parte de   su   retribución   se   tomará   como   base   el   promedio   de   las
-remuneraciones  brutas  totales  por  todo  concepto  percibida  por  éste  en  el
-cuatrimestre  anterior  al  goce  de  las  vacaciones  o  el  salario  mínimo
-garantizado en el mes del goce si resultare mayor. Para obtener el monto
-del  pago  diario  del  período  vacacional  se  dividirá  por  veinticinco  (25)  la
-base  remuneratoria  fijada  precedentemente.  El  pago  al  trabajador  deberá
-efectuarse  el  día  hábil  inmediato  anterior  al  del  inicio  del  goce  de  las
-vacaciones  mediante  recibo  por  separado  y  que  contenga  las  mismas
-formalidades exigidas para la remuneración normal.
-Las  disposiciones  de  este  artículo  no  serán  de  aplicación  a  las  zonas
-turísticas,  durante  la  temporada  o  fuera  de  ella,  cuyos  trabajadores
-quedarán  sujetos  en  cuanto  al  pago  de  las  vacaciones  anuales  a  las
-disposiciones de la Ley de Contrato de Trabajo.
-La   retribución   correspondiente   a   los   períodos   de   vacaciones   será
-satisfecha  a  la  iniciación  de  los  mismos,  o  a  elección  del  trabajador,
-### 26
-conjuntamente  con  sus  haberes  normales.  En  este  supuesto  deberá
-notificarle   por   escrito   al   empleador,   antes   de   iniciar   el   período   de
-vacaciones, con una antelación no menor a quince (15) días corridos.
-Artículo  49º.-   Interrupción  de  las  vacaciones:  La  licencia  ordinaria  se
-interrumpe   cuando   se   produzcan   algunos   de   los   acontecimientos
-excepcionales  como  enfermedad  y/o  accidente  inculpables  y  similares,
-accidentes de trabajo y/o enfermedades profesionales y similares, en cuyo
-caso   el   trabajador   deberá   avisar   fehacientemente   tal   novedad   a   su
-empleador  indicando  el  domicilio  donde  se  encuentra  para  el  control
-médico  que  corresponda.  De  producirse  los  fallecimientos  previstos  en
-este convenio que originan licencias para el trabajador, se le concederá un
-día  de  licencia  paga,  que  se  adicionará  al  período  de  vacaciones  que  se
-encuentra gozando, debiendo dar aviso al empleador de esa circunstancia
-y acreditar fehacientemente la causa invocada al momento de su retorno,
-mediante la presentación de la constancia documentada respectiva.
-### CAPITULO IX
-### DE LAS LICENCIAS ESPECIALES O EXTRAORDINARIAS
-Artículo  50º:  Licencias:  Independientemente  de  las  licencias  ordinarias
-establecidas  en  el  capítulo  anterior  los  trabajadores  gozarán  de  las
-siguientes licencias especiales remuneradas:
-Inc. a)- Por nacimiento o adopción de hijos, cinco (5) días.
-Inc. b)- Por matrimonio, doce (12) días.
-Inc.  c)-   Por  fallecimiento  de  cónyuge  o  la  persona  con  la  cual  estuviese
-conviviendo  en  aparente  matrimonio,  conforme  lo  dispuesto  en  la  L.C.T,
-cinco (5) días.
-Inc. d) -  Por fallecimiento de padres o hijos, cinco (5) días.
-Inc. e) -  Por fallecimiento de hermano, dos (2) días.
-Inc. f) - Por fallecimiento de padres o hijos políticos, dos (2) días.
-Inc. g) - Por enfermedad de hijo, cónyuge o padres a cargo, cinco (5) días
-al  año.  Cuando  el  trabajador  acredite  la  necesidad  de  gozar  un  período
-mayor   que   el   establecido   por   la   causal   precedente   y   en   razón   de
-circunstancias  especiales,  deberá  otorgársele  a  su  solicitud  una  licencia
-sin goce de haberes y con reserva de puesto de hasta treinta (30) días por
-año  calendario,  la  que  no  podrá  ser  repetida  durante  ese  mismo  año  por
-iguales motivos.
-Inc. h) -  Por casamiento de hijos o hermanos, un (1) día.
-Inc. i) - Para donar sangre y/o piel, un (1) día.
-Inc. j) - Por estudio en niveles oficiales primarios, secundarios o terciarios,
-quince  (15)  días  al  año  como  máximo  y  a  razón  de  tres  (3)  días  por
-### 27
-examen como máximo. Esta licencia se refiere a cualquier tipo de estudio
-oficial y reconocido por la autoridad administrativa de educación.
-Inc.  k)  Mudanza  con  boleto  de  compra  –    venta,  escritura,  contrato  de
-locación o constancias de domicilio, 2 (dos) días.
-Todas   las   licencias   especiales   enunciadas   precedentemente   serán
-otorgadas  en  días  hábiles,  laborales  y  mediante  la  acreditación por  parte
-del  trabajador  de  las  circunstancias  invocadas  para  su  goce.  De  manera
-especial se establece para la acreditación:
-1º) -   Licencias  por  estudio  y/o  examen,  el  correspondiente  certificado  de
-curso y el comprobante de examen en su caso firmado por la autoridad del
-establecimiento     educacional     o     instituto     de     capacitación     según
-corresponda.
-2º) -    Licencia  por  enfermedad  de  familiar,  con  el  certificado  médico
-extendido por un profesional de la matrícula o establecimiento sanitario en
-que sea atendido el familiar en cuestión.
-3º) -   Casamiento  personal  o  de  familiar,  con  la  correspondiente  acta  del
-Registro Civil.
-4º) – Fallecimiento, con certificado de defunción.
-Si el familiar afectado por enfermedad o deceso se encontrase fuera de la
-localidad  del  domicilio  del  trabajador  y  éste  tuviere  que  tomarse  por  tal
-razón  una  licencia  mayor  que  la  establecida  en  el  inciso  correspondiente,
-se le concederá una licencia adicional no pudiendo exceder del duplo de la
-licencia  especial.  El  trabajador  en  tales  supuestos  deberá  comunicar  al
-empleador  telegráficamente  el  grado  del  parentesco  del  familiar  afectado,
-la  localidad  en  que  se  encuentra  y  la  cantidad  de  días  adicionales  de  los
-cuales   hará   uso,   sin   perjuicio   de   la   posterior   acreditación   de   las
-circunstancias pertinentes.
-Artículo  51º:  Feriados  nacionales  obligatorios:  Todos los días feriados
-nacionales  serán  de  pago  obligatorio  y  abonados  a  los  trabajadores
-comprendidos  en  el  convenio  como  concepto  independiente  de  los  otros
-rubros integrantes de la remuneración normal y habitual.
-Artículo  52º:  De  la  liquidación  y  el  pago  de  días  feriados  y  licencias
-especiales:  La  liquidación  de  los  días  feriados  como  así  también  de  las
-licencias especiales remuneradas se efectuará en base a la remuneración
-bruta  total  por  todo  concepto  percibida  por  el  trabajador  en  el  emes
-anterior   al   de   su   goce,   dividiéndose   dicha   base   remunerativa   por
-veinticinco (25) para obtener el monto de pago correspondiente a cada día
-a  abonar.    El  pago  de  los  feriados  y  las  licencias  se  efectuará  con  la
-liquidación del mes al cual corresponda su goce salvo disposición especial
-de mejor derecho.
-### 28
-### CAPITULO X
-### DE LA LICENCIA POR MATERNIDAD O ADOPCION
-Artículo  53º:  Licencia  por  Maternidad:  Se  establece  que  la  licencia  por
-maternidad  dispuesta  en  la L.C.T.  se  modifica  y  extiende  de  la  siguiente
-forma:  cuarenta  y  cinco  (45)  días  anteriores  al  parto  y  sesenta  (60)  días
-después  del  mismo.  Por  lo  demás  subsisten  todas  las  obligaciones  y
-derechos  conferidos  en  la  misma  Ley  de  Contrato  de  Trabajo  y  en  el
-presente convenio.
-Artículo 54º:   Pausas diarias para lactancia: Toda trabajadora madre de
-lactante podrá disponer de dos (2) pausas de media hora para amamantar
-a su hijo en el transcurso de la jornada de trabajo, y por un período mínimo
-de un (1)  año  posterior  a  la  fecha  de  nacimiento  salvo  que  por  razones
-médicas sea necesario que la madre amamante a su hijo por un lapso más
-prolongado.  La  trabajadora  y  las  empresas  podrán  de  común  acuerdo
-convenir que las dos pausas de media hora antes referidos se tomen una a
-continuación  de  la  otra,  ya  sea  al  inicio  o  a  la  terminación  de  la  jornada,
-totalizando un descanso diario de una (1) hora.
-Artículo 55º: Opción a favor de la Trabajadora. Estado de Excedencia:
-La  trabajadora  con  más  de  un  (1)  año  de  antigüedad  en  la  Empresa  que
-tuviera  un  hijo,  luego  de  gozar  de  la  licencia  por  maternidad  podrá  optar
-entre las siguientes alternativas: a) Continuar su trabajo en la Empresa en
-las mismas condiciones en que lo venía haciendo.
-b)  Renunciar  a  su  trabajo  en  la  Empresa  percibiendo  una  compensación
-por el tiempo de servicio consistente en el veinticinco (25) por ciento de su
-mejor  haber  mensual  total  por  cada  año  de  servicio  o fracción  mayor  de
-tres (3) meses, la que no podrá exceder de un (1) salario normal, mensual
-y habitual por cada año de servicio o fracción mayor de tres (3) meses.
-c) Quedar en situación de excedencia, sin goce de sueldos, por un período
-no inferior a tres (3) meses ni superior a seis (6) meses.
-d) Para hacer uso de los derechos acordados en los incisos b) y c) deberá
-solicitarlo.
-e) En caso de nacimiento de un hijo con Síndrome de Down, la trabajadora
-| tendrá | derecho | a | los | beneficios | previstos | por | la | ley | 24.716 | para | lo | cual |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-deberá cumplimentar los recaudos exigidos en dicha norma.
-En  todos  los  supuestos  contemplados  en  este  artículo,  el  empleador
-deberá  intimar  fehacientemente  a  la  trabajadora,  antes  de  considerar  que
-ha ejercido la opción prevista en el texto de esta norma.
-### 29
-Artículo 56º: Adopción: En caso de adopción, la trabajadora mujer tendrá
-derecho a  una  licencia  paga  de  treinta  (30)  días  corridos.  Para  tener
-derecho a este beneficio deberá:
-1) Acreditar la decisión legal respectiva. A tal fin se identificará como acto
-de adopción el que otorgue la tenencia provisoria o definitiva.
-2) Tratarse de un menor de hasta seis (6) años.
-### CAPITULO XI
-### DE OTRAS OBLIGACIONES Y DERECHOS
-Artículo 57º: Mejor derecho: Las disposiciones del presente convenio no
-modifican   ni   inhiben   el   derecho   más   favorable   que   acuerden a   los
-trabajadores   comprendidos   en   el   mismo,   otras   disposiciones   legales
-### vigentes.
-Artículo   58º:   Prioridad   de   los   afiliados:   Se   conviene   entre   las
-representaciones  de  trabajadores  y  empresarias  firmantes  del  presente
-convenio,   que   éstas   últimas   darán   prioridad   para   su   ingreso   a   los
-trabajadores  afiliados  a  los  sindicatos  que  nuclea  la  Federación  Nacional
-de Trabajadores de Peluquería, Estética y Afines.
-Artículo 59º: Presunción de contratación permanente -  Prueba: Como
-principio general se presume que el personal incluido en este convenio ha
-sido contratado con carácter permanente. En el supuesto que el empleador
-utilice la figura del período de prueba el mismo se regirá por lo establecido
-y  vigente  en  la  L.C.T.  El  empleador,  podrá  utilizar  la  figura  del  contrato  a
-plazo fijo, regulado en la Ley de Contrato de Trabajo, siempre y cuando se
-encuentren  reunidas  las  circunstancias  establecidas  por  la  misma. Como
-prueba de la precariedad, adicional a las exigidas por la ley, dicho contrato
-deberá celebrarse por escrito, con una copia para el trabajador y otra copia
-deberá ser remitida a la Organización Sindical signataria de este  Convenio
-Colectivo  de  Trabajo.  El  contrato  a  plazo  fijo  no  podrá  extenderse  por  un
-plazo mayor a aquel establecido en la Ley de Contrato de Trabajo.
-Artículo   60º:   Dación   de   Trabajo -    Distribución   equitativa   de   la
-clientela: Los empleadores arbitrarán los medios necesarios para distribuir
-los  turnos  de  la  clientela  del  establecimiento  en  forma  equitativa  para  la
-atención  entre  los  trabajadores  como  una  forma  de  garantizar  el  derecho
-que  éstos  tienen  a  la  dación  de  trabajo  y  al  cobro  de  remuneraciones
-justas y equivalentes.
-### 30
-Artículo 61º: Invariabilidad del lugar de la prestación: En los casos en
-que la empresa para la cual presta servicio el trabajador tuviese más de un
-establecimiento,  se  considerará  como  lugar  estable  y  habitual  de  trabajo
-aquél donde el trabajador inicie la prestación de servicios a su ingreso en
-la empresa, no pudiendo el mismo ser variado salvo que medie notificación
-fehaciente   del   empleador   y   consentimiento   expreso   del   trabajador,
-conforme L.C.T.    No  cumplidos  ambos  requisitos  el  cambio  no  será
-exigible  al  trabajador.  Se  declaran  nulos  todos  los  convenios  que  en  tal
-sentido se hagan firmar al trabajador como condición previa al ingreso a la
-empresa.
-En  el  supuesto  en  que  el  trabajador  acepte  expresamente  el  traslado  el
-empleador  deberá  garantizarle  el  desempeño  en  iguales  condiciones  de
-trabajo, no pudiendo percibir el trabajador remuneraciones inferiores a las
-que percibía en el establecimiento de origen.
-Artículo    62º:    De    los    trabajos    a    domicilio:    Ningún    trabajador
-comprendido  en  este  convenio  está  obligado  ni  podrá  serlo,  a  realizar
-trabajos a domicilio. Tampoco podrá hacerlo por cuenta propia con clientes
-del establecimiento.
-Artículo  63º:  Certificado  de  trabajo:  Los  empleadores  entregarán  a  los
-trabajadores cuando éstos lo requieran para cualquier clase de trámite un
-certificado   de   trabajo   especificando   la   categoría,   la   antigüedad   y   la
-remuneración bruta del trabajador.
-Artículo 64º: De la ropa de trabajo: Los empleadores deberán proveer a
-los trabajadores de dos juegos de ropa de trabajo por año los que deberán
-ser  adecuados  para  las  temperaturas  medias  de  la  temporada  en  que
-deban usarse. La ropa de trabajo podrá consistir en delantales o uniformes
-a  elección  del  empleador.  Esta  obligación  será  por  exclusiva  cuenta  y
-cargo  del  empleador,  no  pudiendo  descontar,  deducir  o  retener  importe
-alguno al trabajador por tal concepto. Al finalizar la relación de trabajo con
-la  empresa  el  trabajador  deberá  restituir  a su  empleador  la  ropa  que
-hubiese recibido durante el año en que se produce el distracto.
-Artículo   65º:   De   los   accidentes   de   trabajo:   El   empleador   deberá
-contratar  una  Aseguradora  de  Riesgos  de  Trabajo  y  notificarla  a  sus
-trabajadores de manera fehaciente. En todo lo atinente a los accidentes de
-trabajo  y  las  enfermedades  profesionales  regirán  las  leyes  laborales
-específicas  en  la  materia  que  se  encuentren  vigentes  en  el  momento  del
-siniestro o la toma de conocimiento de la enfermedad.
-### 31
-Artículo 66º: Servicios de bares o buffet: Cuando en el establecimiento
-existiere  servicio  de  buffet  o  bar  en  el  cual  los  trabajadores  pudieren
-proveerse   y   tomar   sus   refrigerios   y/o   almuerzo   ello   no   obstará   al
-cumplimiento   de   lo   dispuesto   para   el   otorgamiento   del   descanso
-intermedio  diario.  En  tales  supuestos  los  servicios  de  bares  y/o  buffet
-deberán ser otorgados a los trabajadores a costos inferiores a los medios
-de plaza.
-Artículo  67º:  Guardarropas:  Los  empleadores  deberán  proveer  a  los
-trabajadores de un lugar higiénico y seguro para preservar su ropa de calle
-y demás efectos personales.
-Artículo 68º: Derecho al uso del servicio –   compra de productos: Los
-empleadores facilitarán a su personal sin cargo alguno la utilización de los
-servicios  que  se  prestan  en  el  establecimiento.  Tal  beneficio  deberá
-otorgarse  por  lo  menos  una  vez  por  semana  a  los  trabajadores  a  cuyo
-efecto  se  le  deberá  brindar  el  tiempo  prudencial  necesario.  El  trabajador
-deberá suspender su arreglo cuando el empleador se lo requiera salvo que
-ello  resulte  imposible  o  que  el  trabajador  quede  con  la  cabeza  mojada
-debiendo en tal caso suplantarse por otro trabajador. El presente beneficio
-deberá otorgarse dentro de la jornada de trabajo.
-El   personal   que   desee   adquirir   un   artículo   que   se   produzca   en   el
-establecimiento en que trabaje, lo adquirirá a precio de costo y lo abonará
-en cuotas a descontar de sus salarios
-### CAPITULO XII
-### DE LAS AUSENCIAS POR ENFERMEDAD
-Artículo  69º:  Enfermedad  inculpable  -   Justificación:  En  los  casos  de
-enfermedad del trabajador en los que  el  empleador  no  hubiese  efectuado
-el  control  médico  a  que  tiene  derecho,  no  se  podrá  controvertir  la  validez
-del   certificado   médico   que   presente   el   trabajador   sirviendo   éste   de
-justificación plena.
-Artículo 70º: Salarios por enfermedad: En los casos de inasistencia del
-trabajador  por  enfermedad  justificada,  los  empleadores  deberán  abonarle
-los  días  de  ausencia  como  si  fueran  laborados,  no  pudiendo  ser  tal  pago
-inferior a la remuneración que viniera percibiendo el trabajador, o al salario
-mínimo  garantizado  correspondiente  al  mes  de  la  falta  en  cuanto  resulte
-mayor, ambos en su respectiva proporción.
-### 32
-### CAPITULO XIII
-DE LA PROTECCIÓN CONTRA EL DESPIDO Y/O SANCIÓN
-### ARBITRARIOS
-Artículo    71º:    Procedimiento    previo:    Los    empleadores    deberán
-comunicar  en  todos  los  casos  a  la  entidad  sindical  toda  previsión  de
-licenciamiento de personal, reducción de horarios, modificación de tareas,
-despidos,  supresión  de  puestos  con  una  anticipación  de  tres  (3)  meses
-cuando  la  medida  fuera  de  carácter  colectivo,  entendiéndose  por  tal
-cuando  afecte  a  más  de  dos  (2) trabajadores  como  mínimo,  y  con  un  (1)
-mes de anticipación cuando se refiriera a un caso individual.
-### CAPITULO XIV
-### DE LA EXTINCION DEL CONTRATO DE TRABAJO
-Artículo  72º.-   Del  Preaviso:  Sin  perjuicio  de  lo  dispuesto  por  la  Ley  de
-Contrato de Trabajo en tanto autoriza que por acuerdo de partes se fije “un
-término mayor”, se establece para los trabajadores comprendidos en este
-### convenio que el preaviso deberá darse con la siguiente anticipación:
-Inc. a) -  Por el trabajador, quince (15) días.
-Inc. b) -  Por el empleador, de un (1) mes cuando el trabajador tuviera una
-antigüedad  en  el  empleo  que  no  exceda  de  cinco  (5)  años,  de  dos  (2)
-meses cuando no fuere superior a diez (10) años, agregándose un (1) mes
-más por cada diez (10) años de antigüedad o fracción mayor de cinco (5).
-La  indemnización  sustitutiva  de  preaviso  nunca  será  inferior  al  plazo
-establecido  en  los  incisos  anteriores  de  la  mejor  remuneración,  mensual,
-normal y habitual que percibía el trabajador. En el caso de remuneraciones
-variables se establecerá como base la mejor remuneración mensual, en el
-lapso de los últimos seis meses.
-Artículo  73º:  Indemnización  por  antigüedad  o  despido:  Las  partes
-acuerdan    que    la    indemnización    por    antigüedad    se    calculará    de
-conformidad con lo normado en el art. 245 de la L.C.T, o el que lo pudiera
-sustituir, cualquiera sea la fecha de ingreso del trabajador despedido.
-Artículo  74º:  Fuerza  mayor  o  falta  de  trabajo:  El  empleador  que
-disponga  el  despido  de  un  trabajador,  invocando  fuerza  mayor  o  falta  de
-trabajo  no  podrá  invocar  dicha  causal  ante  demanda  promovida  por  el
-trabajador  sino  hubiere  abonado  las  indemnizaciones  previstas  en  la  Ley
-de Contrato de Trabajo para tales supuestos.
-### 33
-Artículo 75  º:  Indemnización  por  precariedad:  En  los  supuestos  en  que
-exista una relación de trabajo precaria o a plazo fijo o eventual, autorizada
-expresamente  por  ley  y  debidamente  acreditada,  a  la  finalización  de  la
-misma  el  trabajador  se  hará  acreedor  a  una  indemnización  por  distracto
-consistente en dos (2) salarios mínimos garantizados de convenio vigente
-al momento del mismo para la categoría del trabajador, cualquiera fuera la
-causa  de  disolución  del  contrato  y  con  independencia  de  las  obligaciones
-emergentes  de  la  disolución  anticipada,  del  derecho a  la  integración  del
-mes  del  despido,  del  pago  del  preaviso  y  de  todos  aquellos  derechos
-reconocidos  al  trabajador  conforme  lo estipulan  las  ley  es  laborales  y  el
-presente Convenio.
-### CAPITULO XV
-### DE LA SIMULACION Y EL FRAUDE
-Artículo   76º:   Nulidad:   Se   declara   nulo   todo   contrato   de   cualquier
-naturaleza   que   fuere   que   reduzca,   modifique   o   elimine   derechos
-establecidos  por  la  presente  Convención y  por  la  Ley  de  Contrato  de
-Trabajo.  De  manera  especial  se  declaran  nulos  los  contratos  de  locación
-de sillón, locación  de  espacio,  comodato,  sociedad  de  hecho  en  la  que  el
-trabajador  aporte  como  capital  principal  su  trabajo  diario,  la  interposición
-de  personas,  etc.,  y,  en  general,  todos  aquellos  que  tiendan  a  simular
-figuras  contractuales  no  laborales.  En  los  casos  de  las  sociedades  de
-hecho, capital e industria, y otros contratos similares, los mismos deberán
-estar   homologados   por   la   autoridad   administrativa   de   trabajo   con
-intervención  de  la  entidad  gremial  representativa  del  trabajador,  bajo
-sanción  de  nulidad  en  caso  de  incumplimiento  de  estas  formalidades.
-Todos    los    trabajadores    que    revisten    categoría    de    auxiliares    o
-colaboradores  de  otro  trabajador  resultan  dependientes  del  titular  de  la
-explotación  comercial.    La  facturación  otorgada  al  cliente  por  persona
-distinta  del  titular  de  la  explotación  comercial  y  que  presta  servicios  en  el
-establecimiento  se  considerará  nula  y  al  otorgante  trabajador  en  relación
-de dependencia del principal.
-Título III
-### DE LAS CONDICIONES DE SEGURIDAD E HIGIENE
-### CAPITULO I
-### DE LAS CONDICIONES GENERALES
-### 34
-Artículo   77º:   Condiciones   generales:   Los   empleadores   deberán
-mantener sus establecimientos en perfectas condiciones para garantizar la
-seguridad  e  higiene,  a  cuyo  efecto  deberán  respetar  estrictamente  las
-leyes vigentes en la materia y las condiciones particulares que se fijan en
-este convenio.
-### CAPITULO II
-### DE LAS CONDICIONES PARTICULARES
-Artículo   78º:   Condiciones   particulares:   Atendiendo   las   particulares
-características de cada actividad los empleadores deberán:
-Inc.   a)   - Instalar   en   los   establecimientos   interruptores   generales   de
-electricidad   para   prevenir   accidentes   motivados   por   cortocircuitos,
-humedad, etc.
-Inc.  b)  - Proveer  de  barbijos  adecuados  a  los  trabajadores  que  realicen
-tareas  aplicando  productos  que  tengan  emanaciones  que  resulten  o
-puedan   resultar   nocivas   para   la   salud,   como   por   ejemplo,   aguas
-oxigenadas, decolorantes, tinturas, spray, etc.
-Inc.  c)  Proveer  de  butacas  rodantes  a  los  trabajadores,  que  deberán
-ubicarse en cada puesto de trabajo, a fin de que aquellos puedan efectuar
-sus tareas sobre la cabeza de los clientes, sentados.
-Inc.  d)  Proveer,  a  su  costa,  a  los  trabajadores  de  todos  los  elementos  y
-herramientas de trabajo necesarios para poder llevar adelante sus tareas.
-Inc. e)   -    Instalar   en   los   establecimientos   extractores   o   equipos   de
-ventilación que mantengan niveles de respirabilidad adecuados.
-Inc.  f)  -   Proveer  a  los  trabajadores  que  manipulen  productos  químicos  de
-guantes adecuados para proteger su epidermis.
-Inc. g) -   Mantener  los  niveles  de  sonidos  del  establecimiento  en  los
-mínimos adecuados para preservar la salud auditiva de los trabajadores.
-Inc. h) -  Proveer a los establecimientos de iluminación suficiente.
-Inc. i) -    Cuando   en   el   establecimiento   laboren   más   de   diez   (10)
-trabajadores, deberán existir más de una salida al exterior para facilitar el
-desalojo en caso necesario.
-Inc. j) -  En general adoptar todas las medidas y precauciones necesarias al
-efecto de preservar la salud física y mental de los trabajadores.
-Inc. k)  -   Proveer  al  personal  esterilizadores  de  instrumental,  cuando  se
-dedica  a  pedicuría,  manicuría  y/o  manipule  con  herramientas  que  puedan
-producir lastimaduras.
-Inc. l)  -  Utilizar solamente aquellos productos debidamente autorizados por
-la  A.N.M.A.T.  (Administración  Nacional  de  Medicamentos,  Alimentos  y
-Tecnología Médica)   para   realizar   cualquier   trabajo   y/o   tarea   de   las
-descriptas en este Convenio Colectivo como así también de todas aquellas
-### 35
-que se presten en el seno de dichos establecimientos. Asimismo y en caso
-de  que  los  productos  utilizados  sean  fraccionados  para  su  utilización,  el
-trabajador   deberá   identificar   el   nombre   completo   del   producto,   sus
-componentes  y  la  debida  autorización  emitida  por  la  A.N.M.A.  T.  en  cada
-uno  de  los  envases  provistos  por  el  empleador;  pudiendo  rehusarse  a la
-utilización  de  los  mismos  si  carecieran  de  dichos  requisitos  sin  que  esto
-implique un perjuicio en su contra.
-Inc.m) – En los lugares donde se trabaje con agua y artefactos eléctricos,
-deberá instalar piso de material aislante o no conductivo autorizados por la
-normativa específica.
-Inc.  n)  Instalar  en  cada  establecimiento  un  botiquín  de  primeros  auxilios,
-dotado con los elementos necesarios para efectuar la atención asistencial
-más inmediata y efectiva.
-En  los  establecimientos  donde  laboren  más  de  veinte  (20)  trabajadores
-además de la previsión anterior deberá contratarse un servicio de urgencia
-permanente.
-Inc.o)  Promover  la  capacitación  e  instrucción  de  los  trabajadores  sobre  el
-conocimiento de los primeros auxilios
-Inc.p)   Disponer   de   instalaciones   sanitarias   dignas   que   reúnan   las
-condiciones  normales  en  toda  localización  de  personas,  acordes  con  las
-exigencias de número y sexo de los trabajadores.
-### CAPITULO III
-### DE LA SEGURIDAD EN LAS TAREAS
-Artículo  79°:  Abstención  del  trabajador:  Cuando  el  trabajador  con
-intervención del sindicato, considere que el lugar o las condiciones en las
-que  debe  desempeñar  sus  tareas  implican  un  riesgo  para  su  salud  o
-integridad  física,  y  haya  diferencia  con  la  empresa,  no  estará  obligado  a
-realizarlas hasta que la inspección de la autoridad de aplicación junto con
-el  sindicato  verifique  la  situación  y  autorice  a  efectuar  dichas  tareas  por
-desaparición  o  inexistencia  del  riesgo,  dejándose  aclarado  que  será  a
-cargo del empleador la eliminación de la situación o elementos riesgosos.
-### CAPITULO IV
-### COMISION PARITARIA
-Artículo  80º: Conformación,  procedimientos  y  funciones:  Las  partes
-convienen en conformar una comisión paritaria con integración bipartita de
-los  signatarios  del  presente  convenio  con  igualdad  de  representación  en
-número  de tres  (3)  representantes  de  los  empleadores,  debiendo  las
-### 36
-entidades  signatarias  del  presente  unificar  representación  al  efecto  de  la
-elección  de tres (3) integrantes  para  representar  al  sector  empresario,  de
-tres  (3)  de  los  trabajadores,  y  en  caso  necesario  de  un  (1) representante
-de  la  autoridad  administrativa  de  trabajo.  Dicha  comisión  se  denominará
-Comisión Paritaria de Interpretación y Solución de Conflictos (CoPARSCo)
-y tendrá la siguiente función:
--     Procurar  resolver  los  conflictos  de  interpretación  que,  eventualmente,
-puedan   suscitarse   durante   el   tiempo   de   aplicación   del   presente
-### convenio y las tareas a que se refiere el art. 20 del presente.
-Título IV
-### DE LA REPRESENTACION Y ACTIVIDAD SINDICAL EN LA EMPRESA
-### CAPITULO I
-### DE LA REPRESENTACION
-Artículo  81º:  De  los  delegados:  Se  confiere  el  derecho  a  la  Federación
-Nacional  de  Trabajadores  de  Peluquería,  Estética  y  Afines  y  a  sus
-sindicatos   adheridos,   a   nombrar   delegados   gremiales   en   todos   los
-establecimientos y  empresas  de  la  actividad  en  razón  de  las  siguientes
-proporciones: donde laboren de diez (10) a cincuenta (50) trabajadores, un
-(1)  delegado;  de  cincuenta  y  uno  (51)  a  cien  (100)  trabajadores,  tres  (3)
-delegados; de ciento un (101) trabajadores en adelante  a razón de un (1)
-delegado adicional   por   cada   otros   noventa   (90)   trabajadores.   Los
-delegados  gozarán  de  todas  las  garantías  y  protección  de  la  actividad
-sindical que establece la Ley 23.551 y su Decreto Reglamentario 467/88.
-### CAPITULO II
-### DE LA PROTECCION DE LA ACTIVIDAD SINDICAL
-Artículo  82º:  Garantías:  El  personal  encuadrado  en  este  Convenio  que
-integre  los  Comités  y/o  Comisiones  y/o  Grupos  de  Trabajo  previstos  en
-este   Convenio   Colectivo,   cuando   no   ocupare   cargos   gremiales   se
-beneficiará  con  idénticos  derechos  y  por  ende  con  la  misma  protección  y
-estabilidad que la Legislación y el Convenio proveen para aquellos.
-Artículo  83º:  Cartelera  sindical:  Los  empleadores  habilitarán  dentro  de
-cada establecimiento una pizarra o cartelera en lugar visible para todos los
-trabajadores a fin de que en la misma se puedan adherir y exhibir todas las
-notas,   circulares   y   comunicados   que   emita   la   entidad   sindical   para
-### 37
-conocimiento  de  los  trabajadores,  los  que  periódicamente  podrán  ser
-puestos  en  tal  lugar  por  los  integrantes  de  las  Comisiones  Internas,  o
-Delegados o persona autorizada por el sindicato.
-Título V
-### DEL DIA DEL TRABAJADOR DEL GREMIO
-Artículo  84º: Día  del  trabajador  del  gremio:  Se  establece  como  feriado
-de descanso obligatorio y remunerado el día 25 de Agosto de cada año por
-ser el día del trabajador del gremio, el que será abonado como día feriado
-adicional e independiente a los que estipula el calendario. Se liquidará en
-base  a  la  remuneración  bruta  total  por  todo  concepto  percibida  por  el
-trabajador  por  el  mes  anterior  y  su  pago  se  hará  en  forma  adicional  e
-independiente   de   los   rubros   habituales   y   normales   que   integren la
-remuneración del trabajador.
-Título VI
-### DISPOSICIONES COMUNES
-### CAPITULO I
-### DE LAS RETENCIONES APORTES Y CONTRIBUCIONES
-Artículo 85º: Retención y depósito del primer incremento salarial: Los
-empleadores  procederán  a  retener  a  los  trabajadores  beneficiarios  del
-### Convenio,  sean  afiliados  o  no,  el  pago  del  primer  aumento  de  salarios
-emergente  como  resultado  del  presente  Convenio  por  todo  concepto  y  lo
-depositará  con  destino  a  la  cuenta  sindical  de  la  Federación  Nacional  de
-Trabajadores de Peluquería, Estética y Afines en concepto de aportes para
-la  actividad  relacionada  con  la  elaboración,  negociación  y  celebración  del
-### Convenio Colectivo de Trabajo y demás actividades sindicales en beneficio
-de los trabajadores. El depósito de la suma indicada deberá efectuarse en
-el  mes  conjuntamente  con  los  depósitos  correspondientes  de  pago  del
-primer incremento por cuota sindical  y por rubro independiente.
-Artículo   86º:   Contribución   patronal   permanente:   A   los   fines   de
-promover  la  actividad  sindical  y  social  de  la  Federación  Nacional  de
-Trabajadores de Peluquería, Estética y Afines que permita el cumplimiento
-de su objeto para mejorar las condiciones de trabajo de sus representados,
-promover  actividades  sociales,  culturales,  y  asistenciales,  adquisición  de
-inmuebles  con  idéntico  destino,  para  la  asistencia  y/o  desarrollo  de
-### 38
-representaciones    sindicales    de    primer    grado    adheridas,    para    la
-capacitación   de   los   trabajadores,   promover   viajes   y   participación   en
-concursos   y   eventos   nacionales   e   internacionales   que   faciliten   la
-actualización  de  los  trabajadores,  demás  actividades  que  hacen  a  su
-existencia, se establece  una  contribución  especial  permanente  de  los
-empleadores consistente en el dos por ciento (2%) de la producción bruta
-total  mensual  realizada  por  cada  trabajador,  afiliado  o  no,  monto  de
-contribución que no podrá ser inferior al cinco por ciento (5%)  del salario
-mínimo garantizado para la categoría del trabajador vigente al mes al cual
-corresponda el pago de la contribución.
-Los montos de la presente contribución deberán ser depositados en forma
-mensual a favor de la Federación Nacional de Trabajadores de Peluquería,
-| Estética | y | Afines | en | la | cuenta | sindical | de | la | misma | y | del | 1 | al | 15 | de | cada |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-mes,  al  igual  que  los  depósitos  correspondientes  a  pago  de  cuotas
-sindicales.
-### CAPITULO II
-### DEL ACUERDO PARA COMPARTIR INFORMACION SOBRE LAS
-### CONDICIONES DE LAS EMPRESAS
-Artículo 87º:   Información:   Las   empresas   deberán   informar   a   los
-representantes   de   la   entidad   sindical   signataria   acerca   de   aquellas
-medidas  o  decisiones  que,  por  su  particular  importancia  y  permanencia
-puedan   afectar   sustancialmente   los   intereses   fundamentales   de   los
-trabajadores.  A  dicho  fin  se  mantendrán  reuniones  periódicas  con  los
-representantes  sindicales  en  las  que  se  realizará  un  informe  general  del
-conjunto de las actividades de la Empresa especialmente en relación a los
-temas   indicados   en   el   articulado   de   “Balance   Social”   del   presente
-### Convenio y las perspectivas económicas para los siguientes períodos.
-Artículo  88º:  Balance  Social:  Los  establecimientos  que  superen  una
-planta  de  cuarenta  (40)  trabajadores  deberán  preparar  un  Balance  Social
-que reflejará los siguientes temas:
-a) Remuneraciones:
--  Evolución del salario promedio.
--  Personal distribuido por remuneraciones.
--  Ingreso bruto fijo por nivel.
--  Evolución horas extras vs. evolución salarios totales.
-b) Empleo:
--  Evolución dotación personal dentro convenio.
--  Evolución composición dotación promedio.
-### 39
--  Rotación del Personal.
--  Dotación del personal por edad, sexo y especialidad.
--  Antigüedad del personal.
--  Reclamos judiciales identificados por motivos.
-c) Seguridad e Higiene:
--  Evolución cantidad de accidentes.
--  Días perdidos por accidentes de trabajo.
--  Porcentajes de incapacidades médicas.
--  Elementos de seguridad entregados.
-d) Relaciones entre asociaciones:
--  Detalles acuerdos en CoPARSCo.
-Previo a la redacción definitiva del Balance Social, el texto será puesto en
-conocimiento de la Comisión Directiva de la Asociación Sindical signataria
-del  presente  convenio  para  que  formule  las  sugerencias  que  estime para
-facilitar la comprensión de los trabajadores.
-### CAPITULO III
-### VIGENCIA DE LA LEY 23.947
-Artículo  89º: Ratificación  de  la  Ley  23.947:  Las  partes  firmantes  del
-presente   Convenio   acuerdan   impulsar   y   participar   en   programas   de
-capacitación y actualización del personal.
-Asimismo,  las  partes  ratifican  en  todas  sus  partes  la  vigencia  de  la  ley
-| 23.947 | y | acuerdan | que | sus | normas | integran | el | presente | Convenio |
+curapliendo  las mismas  tareas  en  un mismo  establecimiento,  o en otra
+farmacia.     Todo    personal    que    perciba    los    adicionales    antes
+mencionados  debe  estar  encuadrado  en  las categorias  segun  el articulo
+| 6 | inciso | c) | del | presente | Convenio | Coleetivo | de Trabajo, | calculados | de |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-Colectivo con plena vigencia y operatividad.
-Título VII
-DISPOSICIONES ESPECIALES PARA LA PEQUEÑA EMPRESA
-### CAPITULO UNICO
-Artículo 90º: Definición: Se entiende por pequeña empresa aquella cuyo
-plantel  no  supere  el  número  de  cuarenta  (40)  trabajadores,  y  que  su
-facturación anual sea inferior a un millón de pesos ($ l.000.000.-)
-Artículo 91º:  Disponibilidad  colectiva:  En  el  marco  de  la  disponibilidad
-| colectiva | establecida | en | la | ley | 24.467 | para | las | pequeñas | empresas, | las |
+su sueldo basico mas escalafon  por antigiiedad.
+e)   ADICIONAL  POR  TAREAS  DE  PERFUMERIA:  Todo  personal
+que  desempefie  tareas  especificas  en  la  seccion  de  perfumeria  y  que
+efectue   la  venta  de  articulos  de  cosmetica,  tocador,  accesorios  de
+perfumeria,   percibira  un  adicional  del   10%)  a  los  tres  (3)  anos  de
+antigiiedad  dentro  de  la  misma  empresa,  o  de  cinco  (5)  afios  en  otra
+farmacia,    siempre    que    presente    titulo    de    nivel    terciario    de
+especializacion   en   la  materia   otorgado   por  universidad   publica  o
+privada,  o  establecimiento  tecnico  reconocidos   oficialmente.   Todo
+personal  que  perciba  los  adicionales  antes  mencionados  debe  estary
+| encuadrado | en | las categorias | segun | el | articulo | 6 | inciso b) | del | present |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+### Convenio  Coleetivo  de  Trabajo,  calculado  de  su  sueldo  basico  m^
+### escalafon  por antigiiedad.
+f)  ADICIONAL  POR  IDIOMA:  El  personal  a  quien  se  le  requiere  el
+uso  de  idiomas  extranjeros   para  el  desempeiio  de  sus  funciones  y
+tareas,  percibira  un  adicional  equivalente  al  diez  por  ciento  (10%o) del
+mas   escalafon    por"'
+### CICLOMOTOR   O
+e!  uso  de   bicicleta,
+•.X'
+sueldo   basico   de   la   categoria   Inicial   "A",
+antigiiedad,  por idioma.
+fg)  ADICIONAL   POR   USO  DE   BICICLETA,
+MOTO:   El  personal   a  quien   se   le   requiera
+ciclomotor  o  moto  de  su  propiedad  para  tareas  del  establecimiento,
+tendra  derecho  a  percibir  un  adicional  equivalente  al  diez  por  ciento
+(10  %)) del sueldo basico mas  escalafon  por antigiiedad  en la Categoria
+que corresponda,  encuadrados  en  el Articulo  5° del  presente  Convenio
+Coleetivo  de Trabajo,  ademas  se le reconocera  el gasto de  combustible
+utilizado  en  el cumplimiento  de su tarea especifica  contra  presentacion
+de  factura;  ademas  sera  compensado  en  todos  los  dafios  que  sufra  su
+yehiculo  mientras  realice tareas  dentro  del  horario  de trabajo  como  asi
+tambien  el  recambio  y reparaciones  de  las partes  del  mismo, todo  ello
+debidamente  acreditado.  La  presentacion  y tenencia  durante  el  horario
+de  trabajo  de  bicicleta,  ciclomotor  o  moto  en  condiciones,  como  asi
+tambien    la    licencia    de   conductor,    casco,   y   demas    elementos
+obligatorios,  se  consideraran  requisitos  esenciales  a  cumplir  por  el
+trabajador  para  la  prestacion  del  servicio.  Ante  la  falta  de  alguno  de
+ellos,  el  contrato  de  trabajo   se  suspendera  sin  derecho  a  goce  del
+sueldo, por el tiempo que dure la  indisponibilidad.
+h)  ADICIONAL  POR TITULO: El personal  que posea titulo de auxiliar
+de  farmacia  de  acuerdo  a  lo establecido  en  esta  Convencion  Colectiva
+de   Trabajo   para   ser   considerado   como   tal,   percibira   una   suma
+equivalente   al   veinte   por  ciento  (20  %)  del  sueldo   basico  de  un
+empleado de primera  mas escalafon  por  antigiiedad.
+Los  incisos  a)  y  b)  del  presente  articulo,  no  se  aplicaran  para  calcular  las
+iferencias  porcentuales  del  Articulo  22°,  como  tampoco  se  agregaran  al
+### Escalafon por antigiiedad del Articulo  13° del presente Convenio Coleetivo de
+Trabajo.
+Los    importes    correspondientes    a    comisiones    y/u    otros    adicionales
+remunerativos, no previstos  en la presente Convencion  Colectiva  de  Trabajo,
+integran  la  remuneracion  del  personal  y  no  seran  tenidos  en  cuenta  para
+calcular las diferencias  determinadas  en el Articulo 22°.
+Los sistemas o modalidades  que rijan  actualmente  sobre comisiones  seguiran
+aplicandose de la misma  manera.
+### ARTICULO  19°:  FONDO  COMPENSADOR  POR  FALLA  DE  CAJA:
+El personal  que cumpla tareas  de cajero  percibira  un  adicional  equivalente  al
+diez por ciento  (10%)) de su sueldo basico, que sera destinado a cubri| el total
+de  todos  los  faltantes  que  pudieran  producirse  en  el  desempeiio  de
+Solamente   lo  que  sea  efectivamente   percibido   por   el   trabajadoi
+caracter   salarial   y   a   su   vez,   la   suma   compensada   no   tendra   caracter
+remuneratorio.
+### ARTJCULO  20":  SUELDOS  Y  CONDICIONES  REMUNERATIVAS:
+Los   sueldos   y   las   condiciones   remunerativas   fijadas   por   la   presente
+Convencion  Colectiva  de  Trabajo  no  podran  disminuir  otras  superiores  que
+hayan  sido  acordadas  o  pre  -  existentes  a  la  firma  de  la  misma  en  los
+respectivos contratos  individuales.
+### ARTICULO  21°; NO DISCRIMACION:  No Discriminacion: Los  sueldoSf
+adicionales   y   demas   beneficios   establecidos   en   el   presente   Convenio
+Coleetivo de Trabajo  para cada categoria, no reconocen diferencias  de sexo y
+de ninguna otra  naturaleza.
+### ARTICULO  22°:  DIFERENCIAS  ENTRE  CATEGORJAS:  Cuando  s^^
+dispongan  incrementos  de  sueldos  generales,  por  acuerdos  firmados  por  la-gr
+partes  signatarias  de  esta  Convencion  Colectiva  de  Trabajo,  homologados  o
+no,  o  por  disposiciones  legales,  debera  mantenerse  la  diferencia  porcentual
+existente entre los sueldos basicos de cada categoria, tomando como base a la
+Categoria   Inicial  "A"  conforme   a  Escala  Salarial   Basica  del  presente  y
+respetarse  las  exclusiones  pactadas  en  el  parrafo  final  del  Articulo  18°  del
+presente Convenio Colecfivo  de Trabajo.  En el caso de incrementos de monto
+fijo para todas las categorias, al efecto  del parrafo  anterior,  se agregaran  a los
+importes  las cantidades necesarias  que permitan  mantener dicha  diferencia.
+En el caso que  el trabajador  perciba  un salario basico superior  al  determinado
+para   su   categoria   en   la   Escala   Salarial   Basica   del   presente   Convenio
+Coleetivo  de Trabajo  y se dispusiere  un  incremento  por Decreto y/o  Ley, este
+podra ser compensado hasta  su concurrencia con su salario basico, cuando asi
+lo establezcan  las normas mencionadas.
+En  el  caso  que  el  trabajador  perciba  el  salario  basico  deteraiinado  para  su
+categoria mas un adicional a cuenta de futures  aumentos, este adicional podra
+absorber  el aumento  de  la suma dispuesta  mediante Decreto  y/o Ley  cuando
+asi lo establezcan  las normas mencionadas.
+En ambos casos no se aplicaran  las diferencias  porcentuales establecidas en el
+presente Articulo.
+Las  proporcionalidades   establecidas   en  este  articulo  deberan   mantenerse
+comparando  igualdad  de horas.
+### ARTICULO  23°: HORAS  SUPLEMENTARIAS;  El  Empleador  abonara
+al  trabajador  que  preste  servicios  en  horas  suplementarias  (horas  extras),
+| importe resultante | de la aplicacion | del Articulo | 201 | de | la Ley de Contrato |
+| --- | --- | --- | --- | --- | --- |
+
+Trabajo.
+NdldM.
+ARTJCULO   24°;   LICENCIA   ANUAL   ORDINARIA;   El   Trabajador
+gozara  de  un  periodo  continuado  de  descanso  anual  remunerado,  por  los
+siguientes plazos:
+a)  De diecisiete  (17)  dias  corridos  cuando  la  antigiiedad  en  el  empleo  no
+exceda  dc cinco (5) alios.
+b)  De  veinticuatro  (24)  dias  corridos  cuando  siendo  la antiguedad  mayor
+de cinco (5) ahos no exceda de diez (10)  afios.
+c)  De  treinta  y  un  (31)  dias  corridos  cuando  siendo  la  antigiiedad  mayor
+'•*•      de diez (10) anos, no exceda  de veinte (20) aiios.
+0d)  De treinta y ocho (38) dias corridos  cuando  la antiguedad  sea mayor de
+veinte (20)  afios.
+Esta  licencia  se debera  comunicar  al empleado  con  cuarenta y cinco (45) dias
+^       -<'"N de anticipacion.
+(  '"  ''i''^i^  Comenzaran  siempre en dia lunes o dia subsiguiente  si este fuera  feriado.
+d  XL' //'G-'     El importe correspondiente  al periodo de licencia se abonara por anticipado al
+comienzo  de  la  misma,  integrando  tal  periodo  con  la  totalidad  de  los  dias
+desde  el comienzo hasta  su  finalizacion.
+Los  Trabajadores  y  Empleadores  podran  acordar  los periodos  y  oportunidad
+del   goce   de   la   Licencia   Anual   Ordinaria,   conforme   a   las   necesidades
+,^^i4C»perativas, dentro de los limites establecidos  por  la Legislacion vigente.
+Por  la vigencia  de este  articulo no  se podran  disminuir  cantidades  de dias  de
+licencia  ya  aplicadas  conforme   al  regimen   anterior.  La  nueva  escala  se
+aplicara  en  forma  completa  a  los  que  ingresen  a  partir  de  la  firma  de  este
+### Convenio. Durante  dos  afios  a partir  de  la firma de este Convenio  los dias de
+licencia de incrementaran por el regimen  anterior.
+\ ARTICULO  25°; LICENCIAS  ESPECIALES  PAGAS:  Los  trabajadores
+tendran     derecho     a     licencias     especiales     remuneradas,     segun     las
+especificaciones  de los incisos siguientes:
+a)  Por  matrimonio:  de  quince  (15)  dias  corridos  con  opcion  por  parte  del
+trabajador   a  agregarlas  a  la  licencia  anual   ordinaria  y  obligacion   de
+otorgarlas  de esta manera.
+Para  tener  derecho  a  esta  licencia  el  trabajador  debera  contar  con  una
+antigiiedad  minima  en  el  empleo  de  un  (1)  aiio.  Cuando  la  antigiiedad
+fuere  menor  la licencia  sera de doce (12) dias.
+El  pago  de  esta  licencia  se  efectuara  por  anticipado  y  su  importe  se
+establecera  dividiendo  por  veinticinco  (25)  el  sueldo  que  peijcibe  gli  el
+momento de su otorgamiento;
+b)  Por nacimiento o adopcion  de hijos: de dos (2) dias habiles;
+c)  Por  enfennedad  de  familiares:  se  otorgaran  seis  (6)  dias  habiles  por  afio
+calendario  por  enfermedad  de  hijo,  cuatro  (4)  dias  habiles,  tambien  por
+afio calendario, en caso de enfermedad  de padres y/o conyuges. Cuando se
+acredite  que  la  persona  enferma  se  halla  a  mas  de  quinientos  (500)  Km.
+del  lugar  donde  el  trabajador  presta  servicios  se  le agregaran  dos (2) dias
+mas en ambos casos.
+d)  Por    fallccimiento    dc    Familiares:   De   cuatro   (4)   dias   habiles   por
+fallecimiento   de   hijos,   conyuges,   padres,   hermanos,   abuelo,   padres
+politicos,  e  hijos  polificos.  Cuando  el  familiar   fallecido  resida  a  mas
+quinientos  (500)  Km.  del  lugar  donde  el  trabajador  presta  servicios,  la
+licencia  sera de seis (6) dias habiles.                                                            ?
+e)  Por  estudios:  Para  rendir  examenes  en  curses  de  enseiianza  media  g
+superior  con  planes  de  estudio  oficiales  o  autorizados  por  organismos
+competentes,  se  otorgaran  dos  (2)  dias  corridos  por  cada  examen  y  hasta
+un  total  de  diez  (10)  dias  corridos  por  ano   calendario.  El  beneficiario
+debera  acreditar   al  empleador,  haber  rendido  el  examen,  mediante  la
+presentacion   de  certificacion   expedida  por  la  autoridad  competente  el
+Institute  en que curse  los estudios;
+f)   Por  donacion  de  sangre:  De  un  (1)  dia  por  cada  oportunidad  que  efectue
+donacion.  El donante debera acreditar  el hecho;
+g)  Por  mudanza:  de  un  (1)  dia  habil  por  cada  mudanza.  Se  debera probar  el
+hecho;
+h)  Capacitacion    sindical:   Los   establecimientos   de   farmacia    otorgaran
+veintiun  (21)  dias  corridos  anuales  de  licencia  paga  a  los  delegados  o
+miembros    de   Comision    Directiva   que   fueran    convocades    por   la
+Asociacion  Empleados  de  Farmacia  de  Mendoza  (A.D.E.F.M.)  o  con  el
+aval    de    esta    para    eventos    de    capacitacion       sindical,    debiendo
+cumplimentar  los siguientes  requisitos:
+I)        No podran utilizarla, al mismo tiempo, dos (2) o mas empleados del
+mismo establecimiento;
+II)      No podra fraccionarse  en mas de tres (3) veces en un mismo  afio.
+III)     Se debera comunicar con una antelacion no menor de diez (10) dias
+habiles.
+TV)     La  Asociacion  Empleados  de  Farmacia  de  Mendoza  (A.D.E.F.M.)
+comunicara  a las partes mencionadas  en  el Articulo  1°, fecha,  lugar
+y nomina  de convocades;  la Asociacion  Empleados  de Farmacia  de
+Mendoza (A.D.E.F.M.) certificara  la asistencia a los eventos.          i
+ARTJCULO  26°:  REGIMEN  DE  TRABAJO:  La  mujer  trabajadora  no
+podra  ser discriminada  como tal en ninguno de los beneficios,  ni condiciones^
+de  trabajo   y  remuneracion   establecidas   en  este  Convenio   Coleetivo  d
+Trabajo.  Ademas  gozara  del  regimen  de  trabajo  previsto  en  la  Legislacie
+)  l^OYANC
+aplicable, agregandosele  las siguientes especificaciones  que los Empleadores
+estaran obligados a respetar:
+a)  Para   las  mujeres   se  considerara   horario  nocturno   desde   las
+veintiuna (21) horas hasta  las seis (6) horas del dia siguiente.
+b)  Cuando   la  mujer   trabajadora   cumpla   la  jomada  continua  se
+otorgara  un  descanso  de  treinta  (30)  minutos  en  medio  de  cada
+Jornada.  El  descanso  antedicho  no  producira  disminucion   de  la
+retribucion  habitual  correspondiente.
+ARTJCULO  27°; PROTECCION  DE  LA MATERNIDAD:  Ademas  de  la
+| proteccion | establecida | en | los | Articulos | 177 y | 179 de | la | Ley | 20.744 | (to. Ley |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-partes   acuerdan:   Sueldo   Anual   Complementario:   El   Sueldo Anual
-### 40
-Complementario  podrá  ser  abonado  hasta  un  máximo  de  tres  (3) veces,
-solo  en  los  supuestos  en  que  las  empresas  inicien  un  procedimiento
-preventivo de crisis, o se encuentren en una grave situación financiera que
-les  impida  cumplimentar  el  pago  en  dos  (2)  veces.  En  los  supuestos  de
-pretender optar por el pago en tres (3) veces, deberán previamente otorgar
-a la Federación signataria del convenio la información prevista en el art. 97
-segundo párrafo de la ley 24.467. En caso de acuerdo entre las partes, se
-labrará el acta respectiva.
-Para  los  supuestos  de  extinción  del  contrato  de  trabajo,  la  indemnización
-| por | antigüedad | será | la | acordada | en | los | arts. | 72 | a 75 del | presente |
+21,297)  la mujer  trabajadora  tendra derecho  a:
+a)  Ampliacion   de   la  licencia   de  maternidad   prevista   en   el  regimen   de
+asigjiaciones  familiares,  en  la  cantidad  de  dias  que  pudiera  necesitarse
+para  completar  los  cuarenta  y  cinco  (45)  dias  posteriores  a  la  fecha  del
+parte,  con  derecho  a percepcion  de  sus  haberes  por  el  lapse  ampliade. A
+tal efecto  el periodo total del Articulo  177 sera de cien (100) dias corridos.
+| b) | Acumular | el | tiempo | por | lactancia | previsto | en | el | Articulo | 179 | de | la | Ley |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+20.744 (to. Ley 21.297)  con opcion de tomarlo al comienzo o finalizacion
+de  la prestacion del servicio de cada dia.
+| c) | Cumplidos | los | recaudos | del | Articulo | 185 | de | la | Ley | de | Contrato | de |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+Trabajo,    podra   optar   libremente    al   termino   del   periodo   legal   y
+cenvencienal   de   licencia   post-parto,   por   alguna   de   las   siguientes
+situaciones:
+1)  Continuar  su  trabajo  en  la  empresa  en  las  mismas  condiciones  en  que  lo
+venia haciendo;
+2)  Rescindir  su contrato de trabajo  con derecho  a percibir  una  compensacion
+por  tiempo  de servicios, equivalente  al veinticinco per  ciento  (25%)) de la
+remuneracion  de  la trabajadora,  vigente  a  la epeca  de rescision  calculada
+| segun | lo | que | dispone | el | Articulo | 245 | de | la | ley | 20.744 | (to. | Ley | 21.297) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+para  cada  aiie  de  servicios.  La  compensacion  a  percibir  en  ningun  caso
+sera inferior  a un (1) mes de sueldo
+3)  Quedar en situacion de excedencia por un periodo no inferior  a tres meses
+ni superior a seis meses.
+REGIMEN DE TI^ABAJO Y PROTECCION AL MENOR
+### ARTICULO 28°: REGIMEN DE TRABAJO Y PROTECCION AL
+### MENOR:
+No  podra  ecuparse  a mayores  de  catorce  (14)  anos  y  menores  de|dieciocho
+en  ningun  tipo  de  tareas  durante  mas  de  seis  (6)  hordk  dwias  o
+"j''i'etf>~...
+treinta  y  tres  (33)  semanales.  Cuando  el  servicio   se  preste  en  heraries
+discontinues  la  distribucion  del  horario  podra  ser  desigual,  pero  une  de  los
+lapses no sera menor de dos (2) horas, pudiendo y a requerimiento del menor,
+ser inferior  por razones de estudio.
+### ARTICULO   29":  La  Jornada   de   los  mayores  dc  dieciseis  (16)  anos  y^
+menores  de  dieciocho  (18)  anos  dc  edad  podra  extendcrse  hasta  ocho  (8)
+horas  diarias  y  cuarenta  y  cinco  (45)  horas  semanales  previa  autorizacion
+expresa  de  la  Autoridad  Administrativa  Laboral,  debiendose  netificar  tal
+situacion    a    la   organizacion    sindical.    En   estes    casos    correspendeMt
+incrementar  la  retribucion  del  trabajador   de  acuerdo  a  la  extension  de-4g?
+jomada, tareas o categorias  en que preste servicios.
+### ARTICULO  30";  No  podra  ecuparse  a  menores  de  une  u  otro  sexo  en
+trabajos  nocturnes,  entendiendese  come  tales  los  comprendidos  entre  las   -^/
+veintiuna  (21) horas y  las seis (6) heras  del  dia siguiente,  ni tampoco  en  dias  J^dd
+sabados  despues  de  las  trece  (13)  horas,  demingos  o  feriados,  salvo   Ca  ^'--'^"^  j
+situacion  del articulo siguiente.
+### ARTICULO  31°: Los trabajadores  mayores de dieciseis (16) afios y menores
+de  dieciocho  (18)  aiios  de  edad  encuadrados  en  el  Articulo  5°  del  presente
+### Convenio   Coleetivo   de   Trabajo,   podran   prestar   servicios   cuando   el
+establecimiento   cumpla   servicio   de  Turno   Obligatorio   los  dias   sabados
+despues  de  las  trece  heras  (13.00  heras),  demingos  y  feriados,  rigiendo  en
+estes  casos  todas  las  demas  normas  que  regulan  el  trabajo  de  mayores  en
+cuanto   a   retribucion   y   francos   cempensatories.   Ademas   se   mantiene
+inalterable  la  prohibicion  de  prestar  servicios  en  heraries  nocturnes  prevista
+en  el Articulo 30 del presente convenio.
+### ARTICULO  32°: Los menores  de dieciocho  (18)  afios  que cumplan Jornada
+de horario corrido, tendran derecho a un descanso remunerado  de treinta (30)
+minutos. Cuando  el servicio  se cumpla en jomada  discontinua  debera  mediar
+entre  el  periodo  matutino  y  el  vespertine  un  intervale  no  menor  de  dos  (2)
+horas.
+### ARTICULO  33°:  Esta  prehibido  encargar  a  menores  de  une  y  otro  sexo
+trabajos  en  domicilio  particular  u  ocupades  en  tareas  penosas,  peligrosas  e
+insalubres.
+### ARTICULO  34°;  Los  menores  de  uno  u  olro  sexo  gozaran  de  una  licej^cia
+anual  ordinaria de diecisiete (17)  diafe corrraos de duracion.^
+flOYAMO'
+ARTJCULO  35°:  El empleador  debe  observar  y hacer  observar  las  pautas y
+limitaciones  a  la  duracion   y  modalidad   del  trabajo   establecida   por  esta
+Convencion  Colectiva  de  Trabajo,  la  legislacion  y  reglamentaciones  legales
+pertinentes y adoptar  las medidas  que  segun  el fipo de trabajo,  la  experiencia
+y   la   tecnica   que   sean   necesarias   para   tutelar,   preservar   la   integridad
+psicefisica  y  la dignidad  de  los trabajadores,  debiendo  cumplir  estrictamente
+todas  las  disposiciones  legales  y  reglamentarias  pertinentes  sobre  higiene y
+seguridad.
+### ARTICULO  36°:  El  empleador  estara  obligado  a  la  conservacion  en  buen
+estado  de  uso  y  habitabilidad  de  las  maquinas,  muebles  y  edificios  con  las
+cuales  y  donde  prestan  servicios  los  trabajadores.  Ademas  debera  proveer  a
+su  personal  de  servicios  sanitarios  y  vestuarios  de  acuerdo  a  le  establecido
+por  la legislacion  sobre higiene y seguridad.
+### ARTICULO  37":  El empleador  estara  obligado a proveer a su personal  de la
+indumentaria  y elementos  de  seguridad  y confort  que  el  tipo  de  trabajo  haga
+necesario y convcniente.
+a)  Para   el   personal   que   se  desempeiie   en   la  atencion   al   publico  y  en
+administracion  le  proveera  anualmente  y  a  entregarse  de  una  sola  vez  al
+comienzo  de  cada  aiie,  un  equipo  de  trabajo   consistente   en  dos  (2)
+guardapolves e chaquetillas  a los trabajadores  de uno u otro sexo.
+b)  Para  el  personal   que  se  desempeiie  en  el  laboratorio  o  deposito  de
+mercaderia,   le  proveera  anualmente  y  a  entregar  de  una  sola  vez  al
+comienzo  de  cada  afio,  un  equipe  de  trabajo   consistente  en  des  (2)
+guardapolves  o  chaquetillas,  un  delantal  especial  segun  tarea,  guantes  de
+gema    e    plasticos    aislante,    en    cantidad     suficiente,     mascarillas
+antipulverulentas  y  anteojos  especiales  cuando  ia  tarea  lo  requiera  para
+preservar  la integridad fisica del  trabajador.
+)  Al  personal  de  la Categoria  Inicial  se  le proveera  anualmente y a entregar
+de  una   sola  vez   al  comienzo   de  cada  ano,  des  (2)  guardapolvos   e
+chaquetillas.  Cuando  el  trabajo  se  cumpla  fuera  del  establecimiento  se
+proveera  zapatos  de goma para  lluvia y capa  impermeable  con capucha,  a
+los efectos  de ser usades durante  la prestacion  de las tareas;
+d)  A   los   cheferes,   repartidores   y  personal   de   Servicio,  se   le   proveera
+anualmente  y a entregar  de una sola vez un  equipo consistente  en dos (2)
+pantalones;  dos  (2) camisas;  dos  (2)  chaquetas  e  camperas;  dos  (2)  pares
+de zapatos adecuados  al tipo de trabajo  que cumpla cada uno  de ellos;
+'uando el empleador  exija  un tipo o modelo especial  de indumentaria  debera
+roveerlo a su personal  en  las mismas condiciones  establecidas  en  los puntos
+mencionados,  cuidando  que  la  misma  preserve  la  dignidacfy  dej^ro  de  los
+trabajadores.
+di
+ARTJCULO   38":  ASIGNACIONES   FAMILIARES:   Los   empleadores
+abonaran  a  su  personal   las  Asignaciones  Familiares  establecidas  por  las
+Leyes y Disposiciones vigentes en  la materia.
+### ARTICULO  39":  VENTA  DE  MERCADERIAS:  Les  empleadores  estan
+obligados  a vender a  su  personal  los articulos  y medicamentos  para  su  use, y
+el  que  sus  familiares  a  cargo  necesitaran,  debiendo  cobrarselos  al  precio  de
+lista  de  laboratorio  en  la  celumna  "PRECIO  A  FARMACIA".   De  igual
+manera todos  los trabajadores  de  farmacia,  previa presentacion  de  credencial
+de  la  Asociacion  Empleados  de  Farmacia  o  ultimo  recibo  de  sueldo  que
+ncredite  tal  condicion,  tendran  derecho  a  gozar  de  igual  descuento  en  el
+precio  de  les  medicamentos  en  cualquier  otra  farmacia  que  se  encuentre  de
+turno.  Este  beneficio  sera  aplicable  como  derecho  del  trabajador  en  toda  la
+jurisdiccion  establecida  en  el  art.  3°  del  presente  Convenio  Coleetivo
+Trabajo,  en  modo  especial  en  los casos  en que  se hallase  por cualquier  cans
+en otras  localidades  fuera  de su  lugar de  residencia.
+### ARTICULO   40";  CERTIFICADOS   DE  TRABAJO:   Los   empleadores
+otorgaran  a  sus  empleados,  toda  vez  que  estos  lo  requieran,  certificados  de
+trabajo,  en les que figurara el destine del mismo. Asimismo, en cumplimiento
+de  la  legislacion  pertinente,  cuando  el  trabajador  dejare  de  prestar  servicios
+por cualquier motive, los empleadores  estaran obligados a hacer entrega a los
+trabajadores  de los respectivos certificados  de trabajo  y aportes previsienales.
+4RTiCULO  41°: FERIADOS NACIONALES:  Seran les siguientes:
+a)  Se  consideraran  Feriados  Nacionales  los  que  dispongan  anualmente  las
+Autoridades  Nacionales conforme  al calendario oficial.  Asimismo gozaran
+de  la  misma  categoria  del  Feriado  Nacional  los  feriados  o  asuetes  que
+dispongan  las  respectivas  Autoridades  competentes  de  las jurisdicciones
+que  se  especifica  en  el  Articulo  3°  del  presente  Convenio  Coleetivo  de
+Trabajo.
+| b) | Dia | del | Empleado | de | Farmacia: | En | el | afio | 2.005 | el | dia | veintidos | (22) | de |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+diciembre  y  a  partir  del  aiie  2.006,  el  dia  seis   (6)  de  setiembre  de  cada
+ano  sera  considerado  Feriado  Nacional,  siendo  de  aplicacion  la  Ley  de
+Contrato  de  Trabajo  a  todos  sus  efectos.  Todo  este  sin  perjuicio  de  las
+disposiciones  mas favorables  a les trabajadores  que fijen Leyes e Decretos
+Nacionales   o   Provinciales.   Les   recargos   por   feriados   nacionales   se
+pagaran  en  aquellos  cases  en  que  la  Fa
+Obligatorio.
+acia  se  encuentre  de  Tu
+### ENERM
+^.--S!SS^,.
+f'-i/
+tY^^m...
+### ARTICULO  42°; REPRESENTACION  GREMIAL:  el numero minimo de
+los trabajadores  que representen  la asociacion profesional  respectiva en cada
+establecimiento  sera:
+a)  De Cinco (5) a cincuenta  (50) trabajadores,  un (1) representante;
+b) De cincuenta y une (51) a cien (100) trabajadores,  dos (2) representantes.
+Si alguno de el les pasara a formar  parte de  la Comision  Directiva,  se
+nombrara otro  en  su reemplazo;
+c)^pe  ciento  uno (101)  en adelante, un (I)  representante  mas cada cien (100)
+*^^  trabajadores,  que excedan  de cien (100) a les que deberan  adicienarse  los
+establecidos  en el inciso  anterior.
+### ARTICULO  43°: PERMISOS  GREMIALES:  Los  empleadores  abonaran
+hasta  un  maximo  de  cuarenta  (40)  horas  mensuales  a  los  miembros  de  su
+personal  que, siendo  dirigentes  de  la Entidad  Gremial  o Representantes  de  la
+misma,   sean   requeridos   para   atender   impestergables   tareas   y   asuntos
+gremiales.   Estas   cuarenta   (40)   horas   deberan   ser   utilizadas   por   mes
+calendario  y  en  no  mas  de  ocho  (8)  oportunidades.  Para  su  utilizacion  el
+;,empleador  debera  ser  preavisado,  salvo  casos  de  urgencia,  con  cuarenta  y
+echo   (48)   heras   de   anticipacion.   El   trabajador    debera   presentar   al
+incorperarse  a sus tareas  el correspondiente  comprobante  escrite per parte de
+la Organizacion  Gremial, la que se obliga a otergarlo.
+### ARTICULO  44°: CARTELERA  SINDICAL:  Los  empleadores  instalaran
+en  un  lugar  visible  al  personal,  un  tablero  e  pizarron  donde  se colocaran  las
+circulares,   partes   o   avisos   del   Sindicato   y/o   comisiones   intemas   de
+Representantes  Gremiales  del personal.
+### ARTICULO       45";      APORTE       DESTINADO       TURISMO,
+RECREACION   Y  CAPACITACION:   Les  empleadores,  per  unica  vez
+efectuaran  un aporte en caracter de contribucion, per cada trabajador  afiliade
+y no  afiliado,  de una  suma  equivalente  al tres  con  cincuenta  por ciento (3,50
+%)) de  las remuneraciones  de  les  meses  de julie  de 2005, octubre  de  2.005 y
+abril  de  2006,  que  perciba   cada  trabajador  en  concepto  de  Salario  Basico,
+mas  la  incidencia  del  mismo  sobre  el  escalafon  por  antigiiedad,  la  que  sera
+destinada  a  Turismo,  Recreacion  y  Capacitacion  per  parte  de  la  Asociacion
+Empleados  de  Farmacia  de Mendoza  (A.D.E.F.M.). Estas  sumas  deberan  ser
+depositadas a la orden  de la Asociacion  Empleados de Farmacia de Mendoza
+(A.D.E.F.1^5#^  forma  conjunta  con los aportes sindicales  cJiTespgfodientes  a
+diches   meses,   determinades   por   la   presente   Convencion   Colectiva   de
+Trabajo.
+### ARTJCULO   46°;   RETENCION   DE   APORTES   POR   CONVENIO
+COLECTIVO     DE    TRABAJO     Y    ASISTENCIA     SOCIAL:     Les
+empleadores  deberan  retener  del  total  de  las  remuneraciones  que  devenguen
+la  totalidad  de  los  trabajadores  afiliades  y  no  afiliados  comprendidos  en  la
+presente  Convencion  Colectiva  de  Trabajo,  todos  los  meses  incluidos  los
+aguinaldos,  una  suma  equivalente  al  dos  por  ciento  (2  %)), en  concepto  de
+aporte  ordinario  de  caracter  selidario  exclusive  entre  les  Trabajadores  y  la
+Asociacion   Empleados  de  Farmacia  de  Mendoza  (A.D.E.F.M.), a los*
+efectos  que esta pueda cumplimentar  con sus objetives y fines.
+Las  sumas  que  se  retengan,  deberan  ser  depositadas  en  la  misma  fecha  que
+los   aportes   sindicales   a   la  erden   de   la  Asociacion      Empleados   de
+Farmacia  de  Mendoza  (A.D.E.F.M.), mediante boleta de deposito
+'''uando  se trate  de  Afiliados  a  la Asociacion  Empleados  de  Farmacia  de
+Mendoza  (A.D.E.F.M.),  este  aporte  sera  absorbide  hasta  su  concurrencia,
+per  las cetizaciones  ordinarias que establezca  la Asociacion  Empleados  de
+Farmacia   de   Mendoza   (A.D.E.F.M.)   para  sus  afiliados.   La  retencion
+mencionada  en este parrafo  se hara  efectiva  a partir  del mes de julie  de 2005
+inclusive.
+Tambien,  los  empleadores,  se  comprometen  en  caracter  unico  de  agente  de
+retencion,  a  retener  del  total  de  las  remuneraciones  que  per  todo  concepto
+devenguen  los  trabajadores  afiliados  o  no  afiliades  en  les  meses  de Junio y
+Diciembre  de  cada  afio,  incluidos  les  aguinaldos,  una  suma  equivalente  al
+uno  per  ciento  (1  %)), en  concepto  de  aporte  ordinario  de  caracter  selidario
+exclusive  entre  les Trabajadores  y la Asociacion  Empleados  de  Farmacia
+de  Mendoza  (A.D.E.F.M.),  que  sera  destinado  a  Asistencia  Social  y  para
+que  la Asociacion   Empleados  de  Farmacia  de  Mendoza  (A.D.E.F.M.)
+pueda  cumplimentar  con  sus  objetivos  y  fines.  Las  sumas  que  se  retengan,
+deberan   ser  depositadas   a   la  orden   de   la  Asociacion   Empleados   de
+Farmacia   de   Mendoza   (A.D.E.F.M.)   mediante  boleta  de  deposito.  La
+retencion  mencionada  en  este  parrafo  se  hard  ^fectiva^  partir  del  mes
+Junio de 2005 inclusive^  .-,
+### //
+### HOYANO
+O   r.EHJSW
+fgSafiSWU®   GEIiESA!.
+### ARTICULO  47°:  RETENCION  CUOTA  SINDICAL:  Los  empleadores
+alcanzados  en  la  presente  Convencidn  Colectiva  de  Trabajo,  actuaran  como
+agentes  de retencion  de la  cuota  sindical,  establecida  oportunamente   por  la
+Asociaci6n Empleados de Farmacia de Mendoza (A.D.E.F.M.), la que resulta
+del  dos  per  ciento  (2%>), segun  resolucion  de  la  D.N.A.S.  Nro.  37/81  del
+.T.E.Y  S.S. La Asociacidn  Sindical notificard  la forma y sistema de pago a
+entidad por parte del empleador de las sumas recaudadas por este concepto.
+### ARTICULO  48**: COMISION  PARITARIA  DE  INTERPRETACION:
+Dentro  de  los  cinco  dias  de  suscripta  la  presente  Convencion  Colectiva  de
+Trabajo,  se  constituira  una  Comisidn  Paritaria  de  Interpretacidn  que  estara
+integrada por un  (1) Representante  Titular  y  un  (1)  Suplente  por  el  Colegio
+Farmaceutico de Mendoza y (1) Representante  Titular, y un (1) Suplente por
+la  Camara  de  Farmacias  de Mendoza,  por  la parte  signataria  Empresaria  de
+### acuerdo  al Articulo  1°  de  la  presente  Convencion  Colectiva  de  Trabajo.  La
+epresentacion    por    los    Trabajadores    estara    integrada   por    dos   (2)
+Representantes   Titulares   e   igual   numero   de   Suplentes.   Esta   Comision
+Paritaria   de Interpretacion,  sera  el unico  cuerpo  colegiado  de  interpretacion
+de  esta  Convenci6n  Colectiva  de  Trabajo  en  el ^bito   de  aplicacidn  del
+### Articulo   3°  del  presente   Convenio   Coleetivo   de  Trabajo,   ajustando   su
+| flmcionamiento | a | lo | establecido | por | la | Ley | 14.250 | y | demas | disposiciones |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-### Convenio Colectivo de Trabajo.
-Artículo  92º:  Movilidad  Interna: Los empleadores podrán acordar con la
-Federación  la  redefinición  de  los  puestos  de  trabajo,  correspondientes  a
-las categorías determinadas en el presente convenio. En este supuesto se
-labrará  el  acta  respectiva  entre  el  representante  de  la  empresa  y  la
-Federación.
-| Artículo | 93º: | Preaviso: | Para | las | empresas | definidas | en | el | art. | 90 | del |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+concurrentes.
+### ,.//
+cniE*.
+### ARTICULO  49";  AUTORIDAD  DE  APLICACION:  El  Ministerio  de
+Fartn/Bic^oo^^iJ^J^L? Trabajo  y  sus  delegaciones  regionales  y  la  Subsecretaria  de  Trabajo  y
+Ff^(«uiicooEW6Nooz^ggyj.j^^^  Social  de  la  Provincia  de  Mendoza,  seran  los  organismos  de
+aplicacion  de  la  presente  Convencion  Colectiva  de  Trabajo  y  vigilaran  su
+cumplimiento,  quedando  las  partes  obligadas  a  su  estricta  observancia;  su
+violacion sera penalizada  de conformidad  con las Leyes y Reglamentaciones
+### vigentes.
+COLEGIff
+### ARTICULO  50°:  Las partes se comprometen a reunirse en forma trimestral a
+^fM)jmmi:  nSjAKUBsoiefectos de evaluar la politica salarial  del sector. Este compromiso  comenzara
+TrniSraoe  MENoaAimplementaTse a partir del mes  de Septiembre de 2005, y asi sucesivamente.
+En  prueba  de  ello,  previa  lectura  y  ratificacidn,   se  firma  la  presente
+Convencion Colectiva de Trabajo,  quedando archivada para constancia en su
+expediente de origen,
+### ARTICULO  51°: - Se establece que todos los Trabajadores  que al momento
+°J^'  de  la firma del  presente  Convenio  Coleetivo  de  Trabajo  que  revistieran  las
+B£ ssseasiguientes  categorias  del  Convenio  Coleetivo  de  Trabajo  26/88:  Cadetes,
+### 19
+SCAFJ   f
+CCHiO
+Aprendiz     Ayudante,     Serenes,     Porteros     y     Ascensoristas     pasaran
+automaticamente   a  revestir   la  Categoria   Inicial  "A"  encuadrados   en  el
+### Articulo    5°   del   presente   Convenio   Coleetivo   de   Trabajo;   todos   los
+Trabajadores  que al momento de la firma del presente Convenio Coleetivo de
+Trabajo  que  revistieran  las  siguientes  categorias  del  Convenio  Coleetivo  de
+Trabajo  26/88:  Empaque,  Repartidores,  Cheferes  y  Maestranza  y  Limpieza,
+pasaran  automaticamente  a  revestir  la  Categoria  Inicial  "B" encuadrados  en
+el  Articulo   5°  del  presente  Convenio  Coleetivo   de  Trabajo;     todos   los
+Trabajadores  que al momento de  la firma del presente Convenio Coleetivo de
+Trabajo  que  revistieran  las  siguientes  categorias  del  Convenio  Coleetivo  de
+Trabajo  26/88:  Cajero,  Personal  de  Perfumeria  y  Personal  Administrative
+pasaran   automaticamente   a   revestir   la   Categoria   de   Empleado   Cajero;
+Perfumeria  y  Administrative,  encuadrados  en  el  Articulo  6°  del  presente
+### Convenio Coleetivo  de Trabajo;  todos  los Trabajadores  que al memento de la
+firma   del   presente   Convenio   Coleetivo   de   Trabajo   que   revistieran   las
+siguiente  categoria  del  Convenio  Coleetivo  de  Trabajo  26/88: Empleado  d^^'
+2",   pasaran   automaticamente   a   revestir   la   Categoria   de   Empleado
+Farmacia,  encuadrado  en  cl  Articulo  T  del  presente  Convenio  Coleetivo  de
+irabajo;  todos  les  Trabajadores  que  al  momento  de  la  firma  del  presente
+### Convenio  Coleetivo  de  Trabajo  que  revistieran  las  siguiente  categoria  del
+Convenio    Coleetivo    de    Trabajo    26/88:    Empleado    de     1°,    pasaran
+automaticamente   a  revestir   la  Categoria  de  Empleado   Especializado   de
+Farmacia,  encuadrado  en  el  Articulo  8° del  presente  Convenio  Colecfivo  de
+Trabajo;  todos  los  Trabajadores  que  al  memento  de  la  firma  del  presente
+### Convenio Colecfivo  de Trabajo  que revistieran  la  Categoria de Farmaceutico
+del Convenio Coleetivo de Trabajo  26/88, pasaran automaticamente a revestir
+la  Categoria  de  Farmaceutico,  encuadrados  en  el  Articulo  9°  del  presente
+### Convenio Coleetivo  de  Trabajo.
+Se establece que para el ano 2005 el dia del Empleado de Farmacia sera el dia
+| 22 | de diciembre, y que | a partir | del | afio | 2006 | inclusive | y en | lo sucesivo, | sera |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-presente Convenio   Colectivo   de   Trabajo,   el   preaviso   comenzará   a
-computarse  a  partir  del  día  siguiente  al  de  su  comunicación  por  escrito,  y
-tendrá  la  duración  de  un (1)  mes  cualquiera  sea  la  antigüedad  del
-trabajador.
-Artículo 94º: Vigencia del Convenio: Se deja expresa constancia que las
-partes acuerdan que este capítulo del Convenio Colectivo de Trabajo, así
-como el propio Convenio y la totalidad de sus cláusulas tendrá la vigencia
-establecida para el mismo, en el artículo 5°. Asimismo, se ratifica, en forma
-expresa,  la  ultractividad  del  presente  Capítulo,  del  Convenio  y  de  la
-totalidad  de  sus  cláusulas,  tanto  las  obligacionales  como  las  normativas,
-las  que  quedarán automáticamente  prorrogadas,  para  el  supuesto  que  no
-se  renovara  el  convenio  en  su  totalidad,  al  momento  de  su  vencimiento
-hasta que un nuevo Convenio Colectivo reemplace al presente.
-Artículo  95º:  Aplicación  de  las  demás  cláusulas  convencionales:  Las
-partes  acuerdan  que,  con  excepción  de  los  institutos  que  han  tenido
-tratamiento  diferenciado  en  el  presente  capítulo,  tienen  plena  aplicación
-para  las  pequeñas  empresas  de  la  actividad,  las  demás  cláusulas  del
-presente Convenio Colectivo de Trabajo.
-### 41
-Título VIII
-### DISPOSICIONES FINALES
-### CAPITULO UNICO
-Artículo  96º:  Homologación:  Las  partes  acuerdan  que  presentarán  al
-Ministerio de Trabajo, Empleo y Seguridad Social de la Nación, el presente
-### Convenio   Colectivo   para   su   homologación,   de   conformidad   con   lo
-establecido en la legislación vigente.
-Artículo  97º:  Ejemplares:  El  sector  empleador  asume  el  compromiso  de
-imprimir   los   ejemplares   del   texto   ordenado   del   presente   Convenio
-Colectivo  de  Trabajo,  una  vez  que  se  encuentre  registrado,  y  entregar  un
-ejemplar a cada trabajador.
-En prueba de conformidad se firman cinco (5) ejemplares del mismo tenor
-y a un solo efecto, a los nueve días del mes de Noviembre del año dos mil
-quince.
+el dia 6 de setiembre de cada ario.-
+La  presente  Convencion  Colectiva  de  Trabajo  como  asi  tambien  las  Escalas
+Salariales  acordadas  entran  en  vigencia  a  partir  del   1°  de  Julio  de  2005,
+independientemente    de    su    homologacion.    Asimismo    se    encuentran
+incorperados  a  la presente  Escala  Salarial  acordada,   les Decretos  1347/03 y
+### 2005/04.
+Todas    las    partes    signatarias    del    Gonvenio    Coleetivo    de    Trabajo,
+representadas  segun  el  Articulo  1° del  present^solicitan  su  homologacion
+como asi tambien,  las escalas salariales ^cov^mas.
+En  prueba  de  confonnidad,  se  suscriben  seis  (6)  ejemplares  de  un  mismo
+tener y a un  solo  efecto  en  la Previpcia  dp Mendoza,  a  los once  dias  del  mes
+de Julio del ^o  dos mil cinco.-
+Raul
+Secre
+### A
+Jevilla
+;retatri'6^Gremial
+Ai.E.F.M.
+Eduardo  Jayier,GodQy„
+"-Sic;  Rel/'LiBoiriles"^
+Ar^.E.F.M.
+Jorge|iai4jii^son
+Presidente
+### CO.FA.M.
+C|sc^FT. Corradhni
+^   Presidente
+### CA.FAR.MEN.
+Ricardo  Ajfecorbe
+Secretario
+### CO.FA.M.
+Garlbs A.  IS^sacchio
+Secretario
+### CA.FAR.MEN.
+dela
