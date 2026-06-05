@@ -3633,11 +3633,7 @@
           </span>
           <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
         </button>
-<<<<<<< HEAD
-        <button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(conv.shortName || conv.name || draft.name)}">
-=======
-        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(convName)}">
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2
+        <button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(convName)}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M8 6V4h8v2"></path>

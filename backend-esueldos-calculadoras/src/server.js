@@ -9,18 +9,12 @@ const { ObjectId } = require("mongodb");
 const { getDb, closeDb } = require("./db");
 const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
-<<<<<<< HEAD
 const { extractScalesFromPdf, ScaleAIError } = require("./services/scale-ai");
-const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./services/convention-ai");
+const { extractConventionFromPdfs, normalizeConvention, normalizeRuleEngineEnvelope, sanitizeGenericConventionCategories, GeminiConventionError } = require("./services/convention-ai");
 const tokenMetrics = require("./services/token-metrics");
 const { createAiRouter } = require("./routes/ai.routes");
 const { geminiPrimaryModel, geminiScaleModel, geminiConventionModel } = require("./gemini-config");
-=======
-const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
-const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
-const { geminiPrimaryModel, geminiConventionModel } = require("./gemini-config");
 const { EXCEL_SCHEMA_VERSION, toRuntimeConvention, normalizeAndValidateCCTJson } = require("./models/convenio.model");
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2
 const {
   isSupportedConventionDocument,
   analyzeConventionDocuments,
@@ -118,14 +112,6 @@ function geminiFallbackModels() {
     .filter(Boolean);
 }
 
-<<<<<<< HEAD
-function geminiConventionApiKey() {
-  return process.env.GEMINI_CONVENTION_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-}
-
-function geminiScaleApiKey() {
-  return process.env.GEMINI_SCALE_API_KEY;
-=======
 function geminiBaseApiKey() {
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
 }
@@ -136,7 +122,6 @@ function geminiConventionApiKey() {
 
 function geminiScaleApiKey() {
   return process.env.GEMINI_SCALE_API_KEY || geminiBaseApiKey();
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2
 }
 
 function toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs) {
@@ -760,30 +745,24 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       return;
     }
 
-    const internalConvention = parsedConvention.categories
-      ? sanitizeGenericConventionCategories(applyConventionArchitecture(parsedConvention, processingPipeline))
-      : parsedConvention;
-    parsedConvention = normalizeConvention(internalConvention, {
-      fallbackName: draftName,
-      useFallbackDefaults: false
-    });
-    const validation = normalizeAndValidateCCTJson(parsedConvention);
-    if (!validation.ok) {
-      res.status(422).json(validation);
-      return;
-    }
-    parsedConvention = validation.data;
-    console.log(`[CCT final] categorias=${parsedConvention.categorias.length} conceptos=${parsedConvention.conceptos.length} escalas=${parsedConvention.escalas.length} adicionales=${parsedConvention.adicionales.length} ambitos=${parsedConvention.ambitos.length}`);
-    const hasExtractedStructure = parsedConvention.categorias.length
-      || parsedConvention.escalas.some((scale) => (scale.valores || []).length)
-      || parsedConvention.conceptos.length
-      || parsedConvention.adicionales.length
-      || parsedConvention.ambitos.length;
+    parsedConvention = normalizeRuleEngineEnvelope(parsedConvention, { fallbackName: draftName });
+    const convenioColectivo = parsedConvention.convenioColectivo;
+    console.log(`[CCT final] convenioColectivo categorias=${convenioColectivo.categorias.length} conceptos=${convenioColectivo.conceptos.length}`);
+    const hasExtractedStructure = convenioColectivo.categorias.length || convenioColectivo.conceptos.length;
+    const hasSalaryValues = convenioColectivo.categorias.some((category) => category.sueldo_basico !== null && category.sueldo_basico !== undefined);
     if (!hasExtractedStructure) {
       res.status(422).json({
         ok: false,
-        errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo." }],
+        errores: [{ path: "convenioColectivo", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo." }],
         data: null
+      });
+      return;
+    }
+    if (scalePdf && !hasSalaryValues) {
+      res.status(422).json({
+        ok: false,
+        errores: [{ path: "convenioColectivo.categorias", message: "Se detectaron categorias, pero no sueldos basicos desde la escala salarial. Revisar lectura Markdown/modelo." }],
+        data: parsedConvention
       });
       return;
     }
@@ -985,287 +964,6 @@ app.delete("/api/convention-drafts/:id", async (req, res, next) => {
   }
 });
 
-<<<<<<< HEAD
-=======
-app.get("/api/scales", async (req, res, next) => {
-  try {
-    const filter = {};
-    if (req.query.conventionId) filter.conventionId = String(req.query.conventionId);
-    if (req.query.status) filter.status = String(req.query.status);
-    if (req.query.period) {
-      const period = normalizePeriod(req.query.period);
-      if (!period) {
-        res.status(400).json({ error: "Periodo invalido. Usa formato YYYY-MM." });
-        return;
-      }
-      filter.period = period;
-    }
-
-    const limit = Math.min(Number(req.query.limit || 80), 200);
-    const docs = await db.collection("salaryScales").find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
-    res.json(docs.map(serializeScale));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales/months", async (req, res, next) => {
-  try {
-    const conventionId = String(req.query.conventionId || "");
-    if (!conventionId) {
-      res.status(400).json({ error: "Falta conventionId" });
-      return;
-    }
-    res.json(await monthTimeline(conventionId));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales/active", async (req, res, next) => {
-  try {
-    const conventionId = String(req.query.conventionId || "");
-    const period = normalizePeriod(req.query.period) || currentPeriod();
-    if (!conventionId) {
-      res.status(400).json({ error: "Falta conventionId" });
-      return;
-    }
-
-    const activeScale = await findActiveScale(conventionId, period);
-    if (!activeScale) {
-      res.status(404).json({ error: "No hay escala aprobada vigente para ese mes." });
-      return;
-    }
-    res.json(serializeScale(activeScale));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/scales/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const doc = await db.collection("salaryScales").findOne({ _id: new ObjectId(req.params.id) });
-    if (!doc) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(doc));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      res.status(400).json({ error: "Selecciona un PDF de escala salarial." });
-      return;
-    }
-
-    const conventionId = String(req.body.conventionId || "");
-    const convention = await getConventionOr404(conventionId);
-    const period = normalizePeriod(req.body.period) || currentPeriod();
-    const periodLabel = req.body.periodLabel || monthLabel(period);
-    const now = new Date();
-    const apiKey = geminiScaleApiKey();
-    let aiStatus = "SIN_API_KEY";
-    let aiError = null;
-    let aiModel = null;
-    let aiModelsTried = [];
-    let parsedScales = [{
-      period,
-      periodLabel,
-      conventionId: convention.id,
-      conventionName: convention.name,
-      cct: convention.source || "",
-      sourceFileName: req.file.originalname,
-      sourceSummary: "",
-      confidence: 0,
-      categories: [],
-      additionals: [],
-      zones: [],
-      nonRemunerative: [],
-      notes: [],
-      warnings: ["Carga pendiente de lectura por IA."]
-    }];
-
-    if (apiKey) {
-      try {
-        const pdfBuffer = await fs.promises.readFile(req.file.path);
-        const result = await extractScalesFromPdf({
-          apiKey,
-          model: process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
-          fallbackModels: geminiFallbackModels(),
-          convention,
-          period,
-          periodLabel,
-          pdfBuffer,
-          mimeType: req.file.mimetype,
-          sourceFileName: req.file.originalname
-        });
-        parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
-        aiStatus = "DETECTADA_POR_IA";
-        aiModel = result.model;
-        aiModelsTried = result.modelsTried;
-      } catch (error) {
-        aiStatus = "ERROR_IA";
-        aiError = error.message || "No se pudo leer el PDF con leIA.";
-        aiModel = error.model || null;
-        aiModelsTried = error.modelsTried || [];
-        parsedScales[0].warnings = [aiError];
-      }
-    }
-
-    const docs = parsedScales.map((parsedScale) => ({
-      conventionId: convention.id,
-      conventionName: convention.name,
-      shortName: convention.shortName || convention.name,
-      cct: convention.source || "",
-      period: normalizePeriod(parsedScale.period) || period,
-      periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
-      status: "PENDIENTE_REVISION",
-      aiStatus,
-      aiError,
-      aiModel,
-      aiModelsTried,
-      sourceFileName: req.file.originalname,
-      storedFileName: req.file.filename,
-      filePath: req.file.path,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype,
-      parsedScale: {
-        ...parsedScale,
-        period: normalizePeriod(parsedScale.period) || period,
-        periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
-      },
-      auditNote: req.body.auditNote || "",
-      uploadedBatchId: `${now.getTime()}-${safeFileName(req.file.originalname)}`,
-      createdAt: now,
-      updatedAt: now
-    }));
-
-    const insertResult = await db.collection("salaryScales").insertMany(docs);
-    const created = docs.map((doc, index) => serializeScale({ _id: insertResult.insertedIds[index], ...doc }));
-    res.status(201).json({
-      ...created[0],
-      created,
-      count: created.length,
-      detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel }))
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.patch("/api/scales/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-
-    const update = { updatedAt: new Date() };
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedScale")) {
-      update.parsedScale = req.body.parsedScale;
-      update.humanEdited = true;
-      update.humanEditedAt = new Date();
-    }
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "auditNote")) {
-      update.auditNote = String(req.body.auditNote || "");
-    }
-
-    const result = await db.collection("salaryScales").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: update },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(result));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/scales/:id/approve", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-
-    const now = new Date();
-    const update = {
-      status: "APROBADA",
-      approvedAt: now,
-      reviewedAt: now,
-      reviewedBy: req.body?.reviewedBy || "Auditoria humana",
-      reviewNote: req.body?.note || "",
-      updatedAt: now
-    };
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedScale")) {
-      update.parsedScale = req.body.parsedScale;
-      update.humanEdited = true;
-      update.humanEditedAt = now;
-    }
-
-    const result = await db.collection("salaryScales").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: update },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(result));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/scales/:id/reject", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-
-    const now = new Date();
-    const result = await db.collection("salaryScales").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      {
-        $set: {
-          status: "RECHAZADA",
-          rejectedAt: now,
-          reviewedAt: now,
-          reviewedBy: req.body?.reviewedBy || "Auditoria humana",
-          reviewNote: req.body?.note || "",
-          updatedAt: now
-        }
-      },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Escala no encontrada" });
-      return;
-    }
-    res.json(serializeScale(result));
-  } catch (error) {
-    next(error);
-  }
-});
-
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2
 app.post("/api/leia/chat", async (req, res, next) => {
   try {
     const apiKey = geminiConventionApiKey();

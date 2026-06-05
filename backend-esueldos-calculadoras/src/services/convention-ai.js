@@ -1,11 +1,7 @@
-<<<<<<< HEAD:backend-esueldos-calculadoras/src/services/convention-ai.js
 const { geminiModelList } = require("../gemini-config");
-=======
-const { geminiModelList } = require("./gemini-config");
-const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("./models/convenio.model");
+const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
-const useConventionMarkdown = String(process.env.CONVENTION_USE_MARKDOWN || "true").toLowerCase() !== "false";
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2:backend-esueldos-calculadoras/src/convention-ai.js
+const useConventionMarkdown = String(process.env.MARKDOWN ?? process.env.CONVENTION_USE_MARKDOWN ?? "true").toLowerCase() !== "false";
 
 class GeminiConventionError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
@@ -428,6 +424,66 @@ function ruleEngineToLegacyConvention(model = {}, fallbackName = "Convenio gener
   };
 }
 
+function excelConventionToRuleEngine(convention = {}, fallbackName = "Convenio generado por leIA") {
+  const convenio = convention.convenio || {};
+  const categorias = asArray(convention.categorias).map((category, index) => ({
+    id: normalizeText(category.categoria_id || category.categoria_nombre || `categoria-${index + 1}`),
+    agrupamiento: String(category.grupo_nombre || ""),
+    rama: String(convenio.rama || ""),
+    clase_letra: "",
+    descripcion: String(category.categoria_nombre || category.descripcion || category.categoria_id || `Categoria ${index + 1}`),
+    sueldo_basico: null
+  }));
+  const byId = new Map(categorias.map((category) => [normalizeText(category.id), category]));
+  asArray(convention.escalas).forEach((scale) => {
+    asArray(scale.valores).forEach((value) => {
+      const category = byId.get(normalizeText(value.categoria_id));
+      const amount = normalizeCurrencyAmount(value.valor);
+      if (category && amount !== null && category.sueldo_basico === null) category.sueldo_basico = amount;
+    });
+  });
+  const conceptos = [...asArray(convention.conceptos), ...asArray(convention.adicionales)].map((concept, index) => ({
+    codigo_interno: normalizeText(concept.concepto_id || concept.adicional_id || concept.codigo || concept.nombre || `concepto-${index + 1}`),
+    nombre: String(concept.nombre || concept.concepto_id || concept.adicional_id || `Concepto ${index + 1}`),
+    tipo: /retencion|descuento/i.test(`${concept.tipo_concepto || concept.tipo} ${concept.naturaleza}`) ? "RETENCION" : /no.?rem/i.test(`${concept.tipo_concepto || concept.tipo} ${concept.naturaleza}`) ? "NO_REMUNERATIVO" : "REMUNERATIVO",
+    metodo_calculo: concept.porcentaje ? "PORCENTAJE_SOBRE_BASES" : concept.importe || concept.importe_fijo ? "SUMA_FIJA_CATEGORIA" : "FORMULA_CUSTOM",
+    parametros: {
+      porcentaje_fijo: normalizeMoney(concept.porcentaje),
+      porcentaje_por_anio: null,
+      divisor: null,
+      multiplicador: null,
+      acumulativo: false,
+      bases_calculo: concept.base_calculo ? [String(concept.base_calculo)] : [],
+      valores_por_categoria: {}
+    },
+    condicion_aplicacion: String(concept.condicion || ""),
+    aporta_a: [],
+    impacta_en: [],
+    Contexto: String(concept.formula_base || concept.fuente_documento || "")
+  }));
+  return normalizeRuleEngineTemplate({
+    cct_id: convenio.convenio_id || convenio.numero || "",
+    nombre_convenio: convenio.denominacion || fallbackName,
+    version_acuerdo: convenio.fuente_documento || convenio.tipo_norma || "",
+    vigencia: { desde: convenio.vigencia_desde || convenio.fecha_homologacion || "", hasta: convenio.vigencia_hasta || "" },
+    organizaciones: { sindical: convenio.partes_sindicales || "", patronal: convenio.partes_empleadoras ? [convenio.partes_empleadoras] : [] },
+    categorias,
+    conceptos,
+    regimen_licencias: {},
+    Contexto: [convenio.actividad, convenio.ambito_territorial, convenio.personal_comprendido].filter(Boolean).join(" | ")
+  });
+}
+
+function normalizeRuleEngineEnvelope(payload = {}, { fallbackName = "Convenio generado por leIA" } = {}) {
+  const source = payload?.parsedConvention || payload?.structuredConvention || payload?.resultado || payload?.result || payload?.data || payload;
+  const ruleEngineSource = pickRuleEngineConvention(source);
+  if (ruleEngineSource) return { convenioColectivo: normalizeRuleEngineTemplate(ruleEngineSource) };
+  if (source?.schemaVersion === EXCEL_SCHEMA_VERSION || source?.convenio || source?.categorias || source?.escalas) {
+    return { convenioColectivo: excelConventionToRuleEngine(source, fallbackName) };
+  }
+  return { convenioColectivo: normalizeRuleEngineTemplate(source || {}) };
+}
+
 function dropNullishKeys(object, keys) {
   keys.forEach((key) => {
     if (object[key] === null || object[key] === undefined) delete object[key];
@@ -623,12 +679,6 @@ function polishConventionWarnings(parsed) {
 }
 
 function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA", useFallbackDefaults = true } = {}) {
-<<<<<<< HEAD:backend-esueldos-calculadoras/src/services/convention-ai.js
-  const ruleEngineSource = pickRuleEngineConvention(parsed);
-  const source = ruleEngineSource
-    ? ruleEngineToLegacyConvention(ruleEngineSource, fallbackName)
-    : (parsed.convention || parsed.convenio || parsed);
-=======
   if (parsed?.data && (parsed.ok === true || parsed.data.schemaVersion || parsed.data.convenio)) {
     parsed = parsed.data;
   }
@@ -642,11 +692,14 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
   if (parsed?.schemaVersion === UNIVERSAL_SCHEMA_VERSION || parsed?.convenio) {
     return normalizeUniversalConvenio(parsed);
   }
-  const source = parsed.convention || parsed.convenio || parsed;
-  if (source.schemaVersion || source.categories || source.payrollBases?.scales) {
-    return normalizeUniversalConvenio(source);
+  const legacyCandidate = parsed.convention || parsed.convenio || parsed;
+  if (legacyCandidate.schemaVersion || legacyCandidate.categories || legacyCandidate.payrollBases?.scales) {
+    return normalizeUniversalConvenio(legacyCandidate);
   }
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2:backend-esueldos-calculadoras/src/convention-ai.js
+  const ruleEngineSource = pickRuleEngineConvention(parsed);
+  const source = ruleEngineSource
+    ? ruleEngineToLegacyConvention(ruleEngineSource, fallbackName)
+    : (parsed.convention || parsed.convenio || parsed);
   const name = source.name || source.nombre || fallbackName;
   const id = normalizeText(source.id || source.shortName || name);
   const fallbackYear = String(new Date().getFullYear());
@@ -1051,7 +1104,6 @@ function ruleEngineConventionContractForPrompt() {
 
 function buildConventionPrompt({ draftName, notes }) {
   return [
-<<<<<<< HEAD:backend-esueldos-calculadoras/src/services/convention-ai.js
     "Sos leIA, contadora laboral senior de Argentina e ingeniera de sistemas especialista en liquidacion de sueldos multiconvenio.",
     "Estructura el convenio desde cero. Usa exclusivamente el contenido de los archivos adjuntos como fuente factual. No uses catalogos, convenios precargados, borradores previos, versiones archivadas ni rastros de convenios eliminados.",
     "La plantilla incluida al final es solo un contrato de campos vacios: no contiene valores legales ni contables. No completes campos por analogia con otros convenios. Si un dato no aparece en los adjuntos, dejalo vacio o null y registralo en warnings cuando requiera revision.",
@@ -1072,48 +1124,6 @@ function buildConventionPrompt({ draftName, notes }) {
     JSON.stringify(ruleEngineConventionContractForPrompt(), null, 2),
     "Devolve JSON valido con esta forma exacta y completa:",
     JSON.stringify(universalConventionTemplateForPrompt(), null, 2),
-=======
-    "INSTRUCCION PARA EL AGENTE ESTRUCTURADOR DE CONVENIOS COLECTIVOS",
-    "Actua como el mejor contador laboral de Argentina y como ingeniero en sistemas full stack senior, con criterio experto en Convenios Colectivos de Trabajo y sistemas de liquidacion de haberes.",
-    "Ademas actua como Analista Funcional Senior: pensa en datos computables, relaciones, formulas, validaciones y trazabilidad documental.",
-    "Tu objetivo NO es resumir el convenio. Tu objetivo es EXTRAER y ESTRUCTURAR informacion liquidatoria computable del CCT.",
-    "Debes analizar la totalidad de la documentacion enviada en esta solicitud: texto principal, actas complementarias, acuerdos salariales, escalas salariales, anexos, tablas, imagenes, cuadros, notas al pie, adendas y resoluciones homologatorias.",
-    "AISLAMIENTO ABSOLUTO: cada estructuracion empieza desde cero. Ignora por completo convenios anteriores, ejemplos de otros CCT, catalogos internos, memoria de conversaciones, borradores previos, datos aprobados, nombres de archivos anteriores y cualquier convenio precargado.",
-    "Nunca completes datos usando otro CCT aunque parezca parecido. Si el documento actual no contiene el dato, escribir: Informacion no encontrada en la documentacion analizada.",
-    "Todo dato que afecte el calculo del sueldo debe ser identificado y clasificado. No omitir conceptos. No resumir articulos. No inventar informacion.",
-    "Si una regla no puede determinarse con certeza, escribir: requiere revision manual.",
-    "EXTRAER OBLIGATORIAMENTE informacion general: numero de convenio, anio, denominacion, actividad, rama, jurisdiccion, ambito territorial, ambito personal, partes firmantes, fecha de homologacion, vigencia y organismo homologante.",
-    "EXTRAER OBLIGATORIAMENTE todas las categorias laborales: nombre, codigo si existe, descripcion, tareas, nivel jerarquico, rama y modalidad.",
-    "NO extraigas tablas salariales completas en esta llamada. Las escalas salariales se extraen en una segunda llamada separada. En esta llamada deja escalas: [] salvo que el texto principal contenga una regla salarial sin tabla separada.",
-    "EXTRAER OBLIGATORIAMENTE haberes remunerativos: sueldo basico, antiguedad, presentismo, puntualidad, titulo, funcion, caja, zona, altura, riesgo, horas extras, nocturnidad, feriados, francos trabajados, guardias, disponibilidad, productividad, comisiones y premios.",
-    "Para cada concepto extraer datos compactos: nombre, articulo, formula corta, base de calculo, porcentaje, importe fijo, condicion breve, tope y frecuencia. No copies parrafos completos.",
-    "EXTRAER OBLIGATORIAMENTE haberes no remunerativos: viaticos, asignaciones, bonos, gratificaciones extraordinarias, beneficios en especie y ticket alimentacion. Extraer formula corta, condiciones breves, base, tope y vigencia.",
-    "EXTRAER OBLIGATORIAMENTE descuentos y retenciones legales y convencionales: jubilacion, Ley 19032, obra social, seguro, cuota sindical, fondo solidario, aportes especiales y contribuciones extraordinarias. Extraer base imponible, porcentaje, tope y condiciones.",
-    "EXTRAER OBLIGATORIAMENTE aportes y contribuciones patronales: fondo solidario empleador, contribuciones sindicales, aportes a camaras empresarias, seguros obligatorios y cualquier obligacion patronal creada por el convenio.",
-    "EXTRAER OBLIGATORIAMENTE licencias solo si tienen impacto liquidatorio. Mantenerlas compactas en conceptos o adicionales cuando correspondan; no copiar articulos completos.",
-    "EXTRAER OBLIGATORIAMENTE jornada laboral: horario normal, jornada maxima, jornada reducida, jornada nocturna, jornada insalubre, descansos y francos.",
-    "EXTRAER OBLIGATORIAMENTE horas extras: horas al 50%, horas al 100%, feriados, nocturnas, bases de calculo y formulas.",
-    "EXTRAER OBLIGATORIAMENTE antiguedad completa: escalas, tramos, formula, topes y base de calculo.",
-    "EXTRAER OBLIGATORIAMENTE presentismo y puntualidad: como se calcula, cuando se pierde, cuando se reduce y base utilizada.",
-    "EXTRAER OBLIGATORIAMENTE reglas de liquidacion: divisor mensual, divisor diario, divisor horario, redondeos, minimos garantizados, garantias salariales, compensaciones, absorciones y topes.",
-    "No uses salaryType monthly por defecto. Si el CCT o la escala habla de jornal, dia, changa, valor dia o pago por dia, usa daily y completa day/dayByPeriod. Si habla de hora o valor hora, usa hourly y completa hourly/hourlyByPeriod. Usa monthly solo cuando el basico sea mensual.",
-    "Toda formula encontrada debe quedar estructurada, por ejemplo antiguedad = sueldo basico x porcentaje x anios; hora extra 50 = valor hora x 1.5 x horas; hora extra 100 = valor hora x 2 x horas.",
-    "Antes de finalizar verificar categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, retenciones, aportes patronales, licencias, jornada laboral, horas extras, formulas de calculo y reglas de liquidacion. Si falta alguno, indicar: Informacion no encontrada en la documentacion analizada.",
-    "REGLA CRITICA: devolve un JSON plano con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales. No agregues ningun otro campo raiz.",
-    "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
-    "No crear escalas vacias. Solo crear una escala si hay nombre_escala, periodo_desde, periodo_hasta o al menos un valor salarial dentro de valores.",
-    "No crear categorias sin categoria_nombre si el nombre esta disponible en el texto. Si no se identifica el nombre real, no inventar.",
-    "Estructura el convenio desde cero usando exclusivamente la documentacion enviada en esta solicitud. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
-    "La IA solo estructura datos. No calcules sueldos ni inventes importes, porcentajes, articulos o reglas. Si falta texto usa \"\"; si falta numero usa null; si falta lista usa [].",
-    "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
-    "La respuesta debe ser compacta y completa. Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
-    "Usa schemaVersion esueldos-cct-estructura-excel-v1 y la estructura Excel: convenio, ambitos, categorias, conceptos, escalas con valores y adicionales.",
-    "Diferencia haberes remunerativos, haberes no remunerativos, descuentos, retenciones y aportes patronales en conceptos.tipo_concepto y conceptos.naturaleza.",
-    "Las tablas separadas de adicionales deben ir en adicionales o conceptos, no como categorias.",
-    "La zona General/Base/Sin adicional debe conservarse en zona como General o general cuando aparezca.",
-    "Devolve JSON valido con esta forma exacta: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
-    "Campos internos importantes: categorias[].categoria_id/categoria_nombre; conceptos[].concepto_id/nombre/tipo_concepto/naturaleza/unidad_calculo/formula_base/base_calculo/condicion/es_liquidable; escalas[].valores[].categoria_id/concepto_id/modalidad/unidad_pago/periodicidad/valor/moneda/zona.",
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2:backend-esueldos-calculadoras/src/convention-ai.js
     draftName ? `Etiqueta informativa escrita por el usuario: ${draftName}. No la uses como evidencia legal ni como reemplazo de la identificacion extraida de los adjuntos.` : "Etiqueta informativa escrita por el usuario: sin etiqueta.",
     notes ? `Notas informativas del usuario: ${notes}. No las uses como reemplazo de evidencia documental.` : "Notas informativas del usuario: sin notas."
   ].join("\n");
@@ -1123,15 +1133,14 @@ function buildConventionCorePrompt({ draftName, notes }) {
   return [
     "Actua como contador laboral argentino e ingeniero de sistemas senior.",
     "Extrae SOLO datos nucleares del CCT actual para liquidacion. No uses memoria, catalogos ni otros convenios.",
-    "No extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
-    "Devolve JSON valido y compacto con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
-    "schemaVersion debe ser esueldos-cct-estructura-excel-v1.",
-    "convenio: numero, anio, denominacion, actividad, rama, jurisdiccion, ambito, partes, homologacion, vigencia y fuente.",
-    "categorias: todas las categorias detectadas con categoria_id y categoria_nombre.",
-    "conceptos: solo conceptos liquidables o retenciones/contribuciones detectadas, con campos minimos completos. Condiciones y formulas en frases cortas.",
+    "Devolve JSON valido y compacto con UNA SOLA clave raiz: convenioColectivo.",
+    "Completa cct_id, nombre_convenio, version_acuerdo, vigencia, organizaciones, categorias, conceptos, regimen_licencias y Contexto.",
+    "categorias: id, agrupamiento, rama, clase_letra, descripcion y sueldo_basico cuando aparezca.",
+    "conceptos: codigo_interno, nombre, tipo, metodo_calculo, parametros, condicion_aplicacion, aporta_a, impacta_en y Contexto.",
     "Si falta un dato usar \"Informacion no encontrada en la documentacion analizada\" o null segun corresponda. No inventar.",
     "No agregues markdown ni explicaciones.",
-    "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Contrato:",
+    JSON.stringify(ruleEngineConventionContractForPrompt(), null, 2),
     draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
     notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
   ].join("\n");
@@ -1141,27 +1150,20 @@ function buildScalePrompt({ draftName, notes }) {
   return [
     "Actua como Analista Funcional Senior especializado en escalas salariales de CCT de Argentina.",
     "Lee SOLO la escala salarial adjunta y extrae categorias y valores salariales publicados.",
+    "Devolve JSON valido con UNA SOLA clave raiz: convenioColectivo.",
     "No resumas la escala. No omitas columnas. No inventes valores.",
-    "NO crees conceptos por mes, por categoria ni por columna. Prohibido generar IDs como BASICO_OCT_2025 o NO_REM_OCT_2025.",
-    "Usa pocos conceptos canonicos reutilizables: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO. Solo crea otro concepto si la escala lo nombra claramente.",
-    "Todos los importes deben ir en escalas[].valores[]. No repitas importes dentro de conceptos.",
-    "Extraer TODAS las escalas por vigencia: fecha desde, fecha hasta, categoria, sueldo basico, valor hora, valor dia, valor jornal, valor changa, total remunerativo, total jornada 7 horas, total jornada 8 horas y cualquier otro valor publicado.",
+    "Los sueldos principales van en convenioColectivo.categorias[].sueldo_basico.",
+    "Los adicionales por categoria van en conceptos[].parametros.valores_por_categoria usando id de categoria como clave.",
+    "Extraer TODAS las categorias por vigencia: categoria, agrupamiento, rama, clase/letra, descripcion y sueldo_basico.",
     "No perder informacion por considerarla repetida. Si hay varias ramas, zonas, jornadas o modalidades, conservarlas.",
     "La respuesta debe ser compacta: no copies encabezados largos, notas completas ni parrafos legales. Extrae valores y relaciones.",
-    "Diferenciar conceptos liquidables de referencias/totales. TOTAL_7H, TOTAL_8H, TOTAL_REMUNERATIVO y VALOR_CHANGA deben conservarse como referencia si el documento los publica como total o valor informativo.",
     "Si una regla o columna no puede determinarse con certeza, escribir: requiere revision manual.",
-    "REGLA CRITICA: devolve un JSON plano con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales. No agregues ningun otro campo raiz.",
-    "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
-    "Tu objetivo principal es extraer categorias y escalas salariales. No inventes valores.",
-    "No crear escalas vacias. Solo crear una escala si hay nombre_escala, periodo_desde, periodo_hasta o al menos un valor salarial dentro de valores.",
-    "Cada valor salarial debe ir en escalas[].valores[] con categoria_id, zona, modalidad, unidad_pago, periodicidad, valor y moneda.",
     "IMPORTANTE: en Argentina el punto suele separar miles y la coma decimales. Ejemplo: 860.281 es ochocientos sesenta mil doscientos ochenta y uno, no 860 coma 281.",
-    "Si la escala divide por zona, rama o agrupamiento, conservarlo en zona o grupo_nombre.",
+    "Si una tabla viene partida por lineas, reconstruí visualmente columnas y filas antes de completar el JSON.",
+    "No crees categorias desde fragmentos OCR, montos, celdas sueltas o basura de tabla como '| s |', '$4B', 'S s8'.",
     "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
-    "Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
-    "Devolve JSON valido con esta forma exacta: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
-    "conceptos debe ser corto: maximo 12 conceptos canonicos. escalas[].valores puede tener muchas filas.",
-    "Campos internos importantes: categorias[].categoria_id/categoria_nombre; conceptos[].concepto_id/nombre/tipo_concepto/naturaleza/unidad_calculo/formula_base/base_calculo/condicion/es_liquidable; escalas[].valores[].categoria_id/concepto_id/modalidad/unidad_pago/periodicidad/valor/moneda/zona.",
+    "Contrato:",
+    JSON.stringify(ruleEngineConventionContractForPrompt(), null, 2),
     draftName ? `Etiqueta informativa: ${draftName}.` : "Etiqueta informativa: sin etiqueta.",
     notes ? `Notas informativas: ${notes}.` : "Notas informativas: sin notas."
   ].join("\n");
@@ -1169,15 +1171,15 @@ function buildScalePrompt({ draftName, notes }) {
 
 function buildScaleCompactPrompt({ draftName, notes }) {
   return [
-    "Extrae SOLO la escala salarial en JSON valido.",
+    "Extrae SOLO la escala salarial en JSON valido con UNA SOLA clave raiz: convenioColectivo.",
     "No uses memoria ni otros CCT. Solo el texto de esta escala.",
-    "No crear conceptos por periodo/categoria. conceptos maximo: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO.",
-    "Todos los importes van exclusivamente en escalas[].valores[].",
-    "Cada valor debe ser minimo y compacto: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona solo si cambia o es indispensable.",
-    "Usa categoria_nombre solo en categorias, no lo repitas en cada valor.",
-    "Respuesta raiz exacta: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "Completa categorias[].id, categorias[].descripcion y categorias[].sueldo_basico.",
+    "Adicionales por categoria van como conceptos[].parametros.valores_por_categoria.",
+    "No crees categorias desde fragmentos OCR, montos o celdas sueltas.",
+    "Respuesta raiz exacta: convenioColectivo.",
     "Devuelve solo JSON, compacto, sin explicaciones.",
-    "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Contrato:",
+    JSON.stringify(ruleEngineConventionContractForPrompt(), null, 2),
     draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
     notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
   ].join("\n");
@@ -1396,12 +1398,12 @@ async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctP
     if (cctMarkdown) retryParts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "convenio-core" });
   }
-  return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
+  return { ...result, parsed: normalizeRuleEngineEnvelope(result.parsed, { fallbackName: draftName }) };
 }
 
 async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes }) {
   if (!scaleMarkdown) {
-    return { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
+    return { parsed: normalizeRuleEngineEnvelope({}, { fallbackName: draftName }), tokenUsage: null };
   }
   const parts = [{ text: buildScalePrompt({ draftName, notes }) }];
   if (scalePdf?.sourceFileName) {
@@ -1421,7 +1423,37 @@ async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePd
     retryParts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "escala-core" });
   }
-  return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
+  return { ...result, parsed: normalizeRuleEngineEnvelope(result.parsed, { fallbackName: draftName }) };
+}
+
+function mergeRuleEngineConventionParts(conventionPart = {}, scalePart = {}, { draftName } = {}) {
+  const base = normalizeRuleEngineEnvelope(conventionPart, { fallbackName: draftName }).convenioColectivo;
+  const scale = normalizeRuleEngineEnvelope(scalePart, { fallbackName: draftName }).convenioColectivo;
+  const mergeBy = (left, right, field) => {
+    const map = new Map();
+    [...asArray(left), ...asArray(right)].forEach((item) => {
+      const key = normalizeText(item?.[field]) || JSON.stringify(item);
+      map.set(key, { ...(map.get(key) || {}), ...item });
+    });
+    return [...map.values()];
+  };
+  return {
+    convenioColectivo: normalizeRuleEngineTemplate({
+      ...base,
+      cct_id: base.cct_id || scale.cct_id,
+      nombre_convenio: base.nombre_convenio || scale.nombre_convenio || draftName,
+      version_acuerdo: [base.version_acuerdo, scale.version_acuerdo].filter(Boolean).join(" | "),
+      vigencia: { desde: base.vigencia?.desde || scale.vigencia?.desde || "", hasta: base.vigencia?.hasta || scale.vigencia?.hasta || "" },
+      organizaciones: {
+        sindical: base.organizaciones?.sindical || scale.organizaciones?.sindical || "",
+        patronal: Array.from(new Set([...asArray(base.organizaciones?.patronal), ...asArray(scale.organizaciones?.patronal)]))
+      },
+      categorias: mergeBy(base.categorias, scale.categorias, "id"),
+      conceptos: mergeBy(base.conceptos, scale.conceptos, "codigo_interno"),
+      regimen_licencias: base.regimen_licencias || scale.regimen_licencias || {},
+      Contexto: [base.Contexto, scale.Contexto].filter(Boolean).join(" | ")
+    })
+  };
 }
 
 function mergeExcelConventionParts(conventionPart = {}, scalePart = {}, { draftName } = {}) {
@@ -1459,13 +1491,13 @@ function mergeTokenUsage(...usages) {
 async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
   const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
   const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes });
-  const merged = mergeExcelConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName });
-  console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
-  console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);
-  console.log(`[CCT merge] final: categorias=${merged.categorias?.length || 0} conceptos=${merged.conceptos?.length || 0} escalas=${merged.escalas?.length || 0}`);
-  const parsedConvention = enrichExcelConventionWithLocalScale(merged, { scaleMarkdown, draftName, scalePdf });
-  console.log(`[CCT merge] enriquecido: categorias=${parsedConvention.categorias?.length || 0} conceptos=${parsedConvention.conceptos?.length || 0} escalas=${parsedConvention.escalas?.length || 0}`);
-  if (!hasExtractedConventionStructure(parsedConvention)) {
+  const parsedConvention = enrichRuleEngineWithScaleMarkdown(
+    mergeRuleEngineConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName }),
+    { scaleMarkdown, draftName, scalePdf }
+  );
+  const cc = parsedConvention.convenioColectivo;
+  console.log(`[CCT merge] convenioColectivo categorias=${cc.categorias.length} conceptos=${cc.conceptos.length}`);
+  if (!hasExtractedRuleEngineStructure(parsedConvention)) {
     throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual.", {
       status: 422,
       model,
@@ -1492,6 +1524,118 @@ function hasExtractedConventionStructure(convention = {}) {
     || (convention.ambitos || []).length
     || (convention.escalas || []).some((scale) => (scale.valores || []).length)
   );
+}
+
+function hasExtractedRuleEngineStructure(payload = {}) {
+  const cc = normalizeRuleEngineEnvelope(payload).convenioColectivo;
+  return Boolean(
+    cc.categorias.some((category) => category.descripcion && category.sueldo_basico !== null && category.sueldo_basico !== undefined)
+    || cc.conceptos.length
+    || cc.regimen_licencias?.vacaciones?.escalas?.length
+    || cc.regimen_licencias?.especiales?.length
+  );
+}
+
+const DOMESTIC_SERVICE_SCALE_CATEGORIES = [
+  { id: "supervisor", marker: /SUPERVISOR\/?A/i, label: "Supervisor/a: Coordinacion y control de las tareas efectuadas por dos o mas personas a su cargo." },
+  { id: "tareas-especificas", marker: /PERSONAL PARA TAREAS E[S5]PEC/i, label: "Personal para tareas especificas: Cocineros/as y tareas del hogar que requieran especial idoneidad." },
+  { id: "caseros", marker: /CASEROS/i, label: "Caseros: Personal que presta tareas inherentes al cuidado general y preservacion de una vivienda." },
+  { id: "asistencia-cuidado-personas", marker: /ASISTENCIA Y CUIDADO DE/i, label: "Asistencia y cuidado de personas: asistencia y cuidado no terapeutico de personas." },
+  { id: "tareas-generales", marker: /PERSONAL PARA TAREAS\s*GENERALES/i, splitMarker: /PERSONAL PARA TAREAS$/i, nextMarker: /^GENERALES/i, label: "Personal para tareas generales: limpieza, lavado, planchado, mantenimiento, elaboracion y coccion de comidas y tareas tipicas del hogar." }
+];
+
+function domesticPeriodFromLine(line) {
+  const match = asciiFold(line).replace(/\s+/g, " ").trim().toLowerCase().match(/^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)-(\d{2})$/);
+  if (!match) return "";
+  const months = { ene: "01", feb: "02", mar: "03", abr: "04", may: "05", jun: "06", jul: "07", ago: "08", sep: "09", oct: "10", nov: "11", dic: "12" };
+  return `20${match[2]}-${months[match[1]]}`;
+}
+
+function domesticMoneyValuesFromText(value) {
+  const fixed = asciiFold(value)
+    .replace(/[BO]/g, "8")
+    .replace(/[Il]/g, "1")
+    .replace(/[Ss](?=\s*\d)/g, "$")
+    .replace(/[^\d.,$ -]/g, "");
+  return [...fixed.matchAll(/\d{1,3}(?:\.\d{3})*,\d{2}|\d{1,3},\d{2}/g)]
+    .map((match) => parseArgMoney(match[0]))
+    .filter((amount) => Number.isFinite(amount) && amount > 0);
+}
+
+function parseDomesticServiceScaleCategories(scaleText, fallbackPeriod) {
+  const lines = String(scaleText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const latest = new Map();
+  let current = null;
+  let currentPeriod = fallbackPeriod;
+  let pendingSplit = false;
+  const finish = () => {
+    if (!current) return;
+    const monthly = current.values.filter((amount) => amount >= 100000)[0] || null;
+    if (monthly) {
+      latest.set(current.id, {
+        id: current.id,
+        label: current.label,
+        group: currentPeriod || fallbackPeriod,
+        monthly,
+        monthlyByPeriod: { [currentPeriod || fallbackPeriod]: monthly }
+      });
+    }
+    current = null;
+  };
+  for (const line of lines) {
+    const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+    const period = domesticPeriodFromLine(folded);
+    if (period) currentPeriod = period;
+    if (DOMESTIC_SERVICE_SCALE_CATEGORIES.some((item) => item.splitMarker?.test(folded))) {
+      pendingSplit = true;
+      continue;
+    }
+    if (pendingSplit && /^GENERALES/i.test(folded)) {
+      finish();
+      const category = DOMESTIC_SERVICE_SCALE_CATEGORIES.find((item) => item.id === "tareas-generales");
+      current = { ...category, values: domesticMoneyValuesFromText(line) };
+      pendingSplit = false;
+      continue;
+    }
+    pendingSplit = false;
+    if (/^### ANEXO\b|^### CATEGORIAS\b/i.test(folded)) {
+      finish();
+      continue;
+    }
+    const category = DOMESTIC_SERVICE_SCALE_CATEGORIES.find((item) => item.marker.test(folded));
+    if (category) {
+      finish();
+      current = { ...category, values: domesticMoneyValuesFromText(line) };
+      continue;
+    }
+    if (current) current.values.push(...domesticMoneyValuesFromText(line));
+  }
+  finish();
+  return [...latest.values()];
+}
+
+function enrichRuleEngineWithScaleMarkdown(payload = {}, { scaleMarkdown, draftName, scalePdf } = {}) {
+  const envelope = normalizeRuleEngineEnvelope(payload, { fallbackName: draftName });
+  const rows = parseDomesticServiceScaleCategories(scaleMarkdown, periodFromText(scaleMarkdown) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`);
+  if (!rows.length) return envelope;
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const categories = envelope.convenioColectivo.categorias.map((category) => {
+    const folded = asciiFold(category.descripcion);
+    const row = rows.find((item) => item.marker?.test(folded) || folded.includes(asciiFold(item.id).replace(/-/g, " "))) || byId.get(normalizeText(category.id));
+    return row ? { ...category, id: normalizeText(row.id), descripcion: category.descripcion || row.label, sueldo_basico: category.sueldo_basico ?? row.monthly } : category;
+  });
+  rows.forEach((row) => {
+    if (!categories.some((category) => normalizeText(category.id) === row.id)) {
+      categories.push({ id: row.id, agrupamiento: row.group, rama: "", clase_letra: "", descripcion: row.label, sueldo_basico: row.monthly });
+    }
+  });
+  return {
+    convenioColectivo: normalizeRuleEngineTemplate({
+      ...envelope.convenioColectivo,
+      version_acuerdo: envelope.convenioColectivo.version_acuerdo || scalePdf?.sourceFileName || "",
+      categorias
+    })
+  };
 }
 
 function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, draftName, scalePdf } = {}) {
@@ -1658,7 +1802,6 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   }
 
   const last = errors[errors.length - 1] || {};
-<<<<<<< HEAD:backend-esueldos-calculadoras/src/services/convention-ai.js
   const localConvention = tryLocalFallback(last.message);
   if (localConvention) {
     return {
@@ -1667,23 +1810,6 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       model: localConvention.extraction?.model || "local-pdf-parse",
       modelsTried: errors.map((item) => item.model)
     };
-=======
-  if (last.code === "EMPTY_STRUCTURE") {
-    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo.", {
-      status: 422,
-      model: last.model,
-      code: "EMPTY_STRUCTURE",
-      modelsTried: errors.map((item) => item.model)
-    });
-  }
-  if (last.code === "INVALID_JSON") {
-    throw new GeminiConventionError("Gemini devolvio JSON invalido en todos los modelos probados.", {
-      status: 502,
-      model: last.model,
-      code: "INVALID_JSON",
-      modelsTried: errors.map((item) => item.model)
-    });
->>>>>>> 0fac810c7d642e2bdc9669efc1ab33339ae54ec2:backend-esueldos-calculadoras/src/convention-ai.js
   }
   throw new GeminiConventionError("Gemini esta con alta demanda y no pudo estructurar el convenio en este momento.", {
     status: 503,
@@ -3256,6 +3382,7 @@ module.exports = {
   GeminiConventionError,
   extractConventionFromPdfs,
   normalizeConvention,
+  normalizeRuleEngineEnvelope,
   buildConventionPrompt,
   conventionAttachmentParts,
   looksLikeHairdressers730,
@@ -3265,6 +3392,7 @@ module.exports = {
   parseGenericDocumentRules,
   parseGenericScaleAdditionals,
   parseGenericScaleCategories,
+  parseDomesticServiceScaleCategories,
   parseLooseScaleCategories,
   parseCommerceCategories,
   parseCommerceScaleAdditionals,
