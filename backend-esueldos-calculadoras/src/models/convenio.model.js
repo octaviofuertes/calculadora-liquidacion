@@ -937,7 +937,6 @@ function validateConvenioBusinessRules(convenio) {
       if (!text(concept[field]).trim()) details.push({ path: `conceptos.${concept.concepto_id}.${field}`, message: `${field} vacio` });
     });
     if (reference && concept.es_liquidable !== false) details.push({ path: `conceptos.${concept.concepto_id}.es_liquidable`, message: "Concepto de referencia debe ser no liquidable" });
-    if (!reference && concept.es_liquidable !== true) details.push({ path: `conceptos.${concept.concepto_id}.es_liquidable`, message: "Concepto liquidable debe ser liquidable" });
   });
   convenio.adicionales.forEach((adicional) => {
     if (!text(adicional.concepto_id).trim()) details.push({ path: `adicionales.${adicional.adicional_id}.concepto_id`, message: "concepto_id vacio" });

@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let DATA = window.PAYROLL_DATA;
   let dataOrigin = "local";
   const API_BASE = getApiBase();
@@ -3866,7 +3866,8 @@
       periodicidad: value.periodicidad,
       valor: value.valor,
       moneda: value.moneda || scale.moneda,
-      zona: value.zona || scale.zona
+      zona: value.zona || scale.zona,
+      modalidad: value.modalidad || ""
     })));
   }
 
@@ -3876,12 +3877,18 @@
       .filter(isBasicScaleValue)
       .map((value) => {
         const category = categoryById.get(String(value.categoria_id || "")) || {};
+        let unit = value.unidad_pago || "mensual";
+        if (unit === "daily") unit = "jornal";
+        if (unit === "hourly") unit = "hora";
+        if (unit === "monthly") unit = "mensual";
         return {
           mes: value.mes,
           categoria_id: value.categoria_id || category.categoria_id || "",
           categoria_nombre: category.categoria_nombre || value.categoria_nombre || "",
           sueldo_base: value.valor,
-          unidad_pago: value.unidad_pago || "mensual",
+          unidad_pago: unit,
+          concepto_id: value.concepto_id || "SUELDO_BASICO",
+          modalidad: value.modalidad || "",
           moneda: value.moneda || "ARS",
           zona: value.zona || ""
         };
@@ -3891,8 +3898,17 @@
 
   function isBasicScaleValue(value = {}) {
     const key = summaryKey(`${value.concepto_id || ""} ${value.concepto || ""} ${value.nombre_concepto || ""}`);
-    return (key === "basico" || key.includes("basico") || key.includes("sueldo_basico") || key.includes("salario_basico"))
-      && !/(no_rem|no_remunerativo|total|adicional|presentismo|antiguedad|viatico|deduccion|retencion|cuota|aporte)/.test(key);
+    return (
+      key === "basico" ||
+      key.includes("basico") ||
+      key.includes("sueldo_basico") ||
+      key.includes("salario_basico") ||
+      key.includes("jornal") ||
+      key.includes("hora") ||
+      key.includes("changa") ||
+      key.includes("valor_dia") ||
+      key === "dia"
+    ) && !/(no_rem|no_remunerativo|total|adicional|presentismo|antiguedad|viatico|deduccion|retencion|cuota|aporte)/.test(key);
   }
 
   function categoryBaseSalaryInfo(conv = {}, category = {}) {
@@ -3953,6 +3969,24 @@
       { value: "true", label: "Sí" },
       { value: "false", label: "No" }
     ];
+    const unitChoices = [
+      { value: "mensual", label: "Mensual" },
+      { value: "jornal", label: "Jornal" },
+      { value: "hora", label: "Hora" }
+    ];
+    const basicConceptChoices = [
+      { value: "SUELDO_BASICO", label: "Sueldo Básico" },
+      { value: "VALOR_JORNAL", label: "Valor Jornal" },
+      { value: "VALOR_HORA", label: "Valor Hora" },
+      { value: "VALOR_CHANGA", label: "Valor Changa" },
+      { value: "TOTAL_7H", label: "Total 7 Horas" },
+      { value: "TOTAL_8H", label: "Total 8 Horas" }
+    ];
+    const salaryRowsData = salaryAuditRows(conv);
+    const hasJornal = salaryRowsData.some((row) => row.unidad_pago === "jornal");
+    const hasHourly = salaryRowsData.some((row) => row.unidad_pago === "hora");
+    const salaryLabel = hasJornal ? "Jornal" : (hasHourly ? "Valor hora" : "Sueldo base");
+
     return `
       ${options.includeGeneral === false ? "" : conventionGeneralEditor(conv, locked)}
       ${auditTable("Ámbitos", "ambitos", "Alcance territorial, personal o de actividad detectado.", [
@@ -4011,8 +4045,12 @@
         { field: "mes", label: "Mes" },
         { field: "categoria_id", label: "Categoría" },
         { field: "categoria_nombre", label: "Nombre" },
-        { field: "sueldo_base", label: "Sueldo base" }
-      ], salaryAuditRows(conv), { locked })}
+        { field: "concepto_id", label: "Concepto", type: "select", choices: basicConceptChoices },
+        { field: "unidad_pago", label: "Unidad", type: "select", choices: unitChoices },
+        { field: "modalidad", label: "Jornada / Modalidad" },
+        { field: "zona", label: "Zona" },
+        { field: "sueldo_base", label: salaryLabel }
+      ], salaryRowsData, { locked })}
       ${auditTable("Adicionales y reglas particulares", "adicionales", "Adicionales detectados que pueden alimentar conceptos o controles humanos.", [
         { field: "adicional_id", label: "ID adicional" },
         { field: "concepto_id", label: "Concepto vinculado" },
@@ -4157,12 +4195,14 @@
       if (!String(salary.sueldo_base || "").trim()) return;
       const scale = ensureScale(salary.mes, index);
       scaleById.set(scale.escala_id, scale);
+      const conceptId = salary.concepto_id || "SUELDO_BASICO";
       scale.valores.push({
-        valor_id: `basico-${salary.categoria_id || index + 1}-${salary.mes || index + 1}`,
+        valor_id: `basico-${salary.categoria_id || index + 1}-${salary.mes || index + 1}-${conceptId}`,
         escala_id: scale.escala_id,
         categoria_id: salary.categoria_id,
-        concepto_id: "SUELDO_BASICO",
+        concepto_id: conceptId,
         unidad_pago: salary.unidad_pago || "mensual",
+        modalidad: salary.modalidad || "",
         periodicidad: salary.mes || scale.periodo_desde || "",
         valor: salary.sueldo_base,
         moneda: salary.moneda || scale.moneda || "ARS",

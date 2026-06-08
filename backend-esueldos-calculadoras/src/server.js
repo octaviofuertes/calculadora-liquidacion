@@ -1137,7 +1137,6 @@ app.post("/api/scales/upload", scaleUpload.array("pdf", 20), async (req, res, ne
     const insertResult = await db.collection("salaryScales").insertMany(docs);
     const created = docs.map((doc, index) => serializeScale({ _id: insertResult.insertedIds[index], ...doc }));
     res.status(201).json({
-      ...created[0],
       created,
       count: created.length,
       detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel }))
