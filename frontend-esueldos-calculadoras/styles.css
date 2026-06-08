@@ -2585,6 +2585,51 @@ p {
   gap: 14px;
 }
 
+.scale-compact-view {
+  display: grid;
+  gap: 10px;
+}
+
+.scale-compact-view .tables {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.scale-table-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.scale-table-card h3 {
+  margin: 0 0 10px;
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scale-table-scroll {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.scale-table-scroll table {
+  border: 0;
+  border-radius: 0;
+}
+
+.scale-table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
 table {
   width: 100%;
   border: 1px solid var(--line);
@@ -8943,6 +8988,65 @@ body > * {
   box-shadow: 0 10px 24px rgba(20, 40, 80, 0.06);
 }
 
+.summary-collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
+.summary-collapsible > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 15px;
+  color: #101936;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 900;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary-collapsible > summary::before {
+  content: "+";
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #cfe0f7;
+  border-radius: 7px;
+  color: var(--summary-accent);
+  background: #f8fbff;
+  font-weight: 900;
+}
+
+.summary-collapsible[open] > summary::before {
+  content: "-";
+}
+
+.summary-collapsible > summary span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.summary-collapsible > summary em {
+  flex: 0 0 auto;
+  color: #7380a0;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.summary-collapsible-body {
+  padding: 0 15px 15px;
+}
+
 .summary-section h3 {
   margin: 0 0 11px;
   color: #101936;
@@ -9056,7 +9160,8 @@ body > * {
 }
 
 .summary-table-wrap {
-  overflow-x: auto;
+  max-height: 360px;
+  overflow: auto;
   border: 1px solid #edf2fb;
   border-radius: 12px;
   background: #fff;
@@ -9081,6 +9186,9 @@ body > * {
 }
 
 .summary-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   color: #6a7898;
   background: #f4f8ff;
   font-size: 10px;

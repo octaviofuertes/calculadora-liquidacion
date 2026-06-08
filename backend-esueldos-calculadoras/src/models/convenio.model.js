@@ -93,6 +93,27 @@ function semanticCategoryKey(...values) {
     .join("_");
 }
 
+function scaleValueVariantText(value = {}) {
+  const parts = [value.modalidad, value.alcance]
+    .map(text)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item) => !/^(general|todos|todas|sin especificar|no aplica)$/i.test(item));
+  return parts.join(" - ");
+}
+
+function scaleValueVariantId(value = {}) {
+  const raw = scaleValueVariantText(value);
+  if (!raw) return "";
+  const id = slugId(raw);
+  if (/^(GENERAL|TODOS|TODAS|SIN_ESPECIFICAR|NO_APLICA)$/.test(id)) return "";
+  return id;
+}
+
+function variantCategoryId(baseCategoryId = "", variantId = "") {
+  return [baseCategoryId, variantId].filter(Boolean).join("_");
+}
+
 function mergeCategoryData(existing, incoming, convenioId) {
   const merged = { ...incoming, ...existing };
   Object.entries(incoming || {}).forEach(([key, value]) => {
@@ -109,6 +130,7 @@ function isAdditionalCategoryLabel(category = {}) {
 function canonConceptId(value, name = "") {
   if (!text(value).trim() && !text(name).trim()) return "";
   const raw = slugId(`${value || ""} ${name || ""}`);
+  if (/SUELDO.*ANUAL.*COMPLEMENTARIO|SAC|AGUINALDO/.test(raw)) return "SAC";
   if (/SUELDO|BASICO|BASICA|SALARIO/.test(raw)) return "SUELDO_BASICO";
   if (/ASISTENCIA|PERFECTA/.test(raw)) return "PRESENTISMO_ASISTENCIA";
   if (/PRESENTISMO|PUNTUALIDAD/.test(raw)) return "PRESENTISMO_PUNTUALIDAD";
@@ -144,7 +166,7 @@ function normalizeConceptType(concept = {}, { id, reference } = {}) {
   if (/(DESCUENTO|RETENCION|DEDUCCION|CUOTA|APORTE|OBRA_SOCIAL|JUBILACION|LEY_19032|SINDICAL)/.test(raw)
     && !/(ADICIONAL|HABER|BONO|ASIGNACION|VIATIC|PREMIO|SUELDO|SALARIO)/.test(raw)) return "descuento";
   if (/(HABER|REMUNER|NO_REM|SUELDO|SALARIO|BASICO|ADICIONAL|BONO|ASIGNACION|PREMIO|VIATIC|PRESENTISMO|PUNTUALIDAD|ANTIGUEDAD|HORAS?_EXTRA|FERIADO|COMISION)/.test(raw)) return "haber";
-  if (/^(SUELDO_BASICO|NO_REMUNERATIVO|PRESENTISMO_ASISTENCIA|PRESENTISMO_PUNTUALIDAD|ANTIGUEDAD|PROLONGACION_JORNADA|KILO_PAN|VIATICO|DIA_PANADERO)$/.test(id)) return "haber";
+  if (/^(SUELDO_BASICO|SAC|NO_REMUNERATIVO|PRESENTISMO_ASISTENCIA|PRESENTISMO_PUNTUALIDAD|ANTIGUEDAD|PROLONGACION_JORNADA|KILO_PAN|VIATICO|DIA_PANADERO)$/.test(id)) return "haber";
   return text(concept.tipo_concepto || "haber");
 }
 
@@ -156,7 +178,7 @@ function normalizeConceptNature(concept = {}, { id, reference, nonRemunerative }
     && !/(HABER|BONO|ASIGNACION|ADICIONAL|PREMIO|SUELDO|SALARIO)/.test(raw)) return "retencion";
   if (/(APORTE.*PATRONAL|CONTRIBUCION.*PATRONAL|EMPLEADOR|PATRONAL)/.test(raw)) return "contribucion_patronal";
   if (/(REMUNERATIVO|BASICO|BASICA|SUELDO|SALARIO)/.test(raw)) return "remunerativo";
-  if (/^(SUELDO_BASICO|PRESENTISMO_ASISTENCIA|PRESENTISMO_PUNTUALIDAD|ANTIGUEDAD|PROLONGACION_JORNADA|DIA_PANADERO)$/.test(id)) return "remunerativo";
+  if (/^(SUELDO_BASICO|SAC|PRESENTISMO_ASISTENCIA|PRESENTISMO_PUNTUALIDAD|ANTIGUEDAD|PROLONGACION_JORNADA|DIA_PANADERO)$/.test(id)) return "remunerativo";
   return text(concept.naturaleza || "requiere_revision_manual");
 }
 
@@ -195,6 +217,7 @@ function conceptDefaults(concept = {}) {
   const nonRemunerative = isNonRemunerativeConcept({ ...concept, concepto_id: id });
   const names = {
     SUELDO_BASICO: "Sueldo Basico",
+    SAC: "Sueldo Anual Complementario",
     NO_REMUNERATIVO: "Haber no remunerativo",
     PRESENTISMO_ASISTENCIA: "Adicional por Presentismo - Asistencia Perfecta",
     PRESENTISMO_PUNTUALIDAD: "Adicional por Presentismo - Puntualidad",
@@ -218,6 +241,7 @@ function conceptDefaults(concept = {}) {
     formula_base: reference ? "valor_referencia_escala" : (concept.formula_base || ({
       PRESENTISMO_ASISTENCIA: "segun_regla_convenio",
       PRESENTISMO_PUNTUALIDAD: "segun_regla_convenio",
+      SAC: "porcentaje_sobre_base",
       NO_REMUNERATIVO: "valor_escala_categoria",
       ANTIGUEDAD: "porcentaje_sobre_base",
       PROLONGACION_JORNADA: "porcentaje_sobre_valor_hora",
@@ -228,6 +252,7 @@ function conceptDefaults(concept = {}) {
     base_calculo: normalizeBaseCalculo(concept.base_calculo || concept.base, concept, { id, reference, nonRemunerative }) || (reference ? "escala_salarial" : ({
       PRESENTISMO_ASISTENCIA: "sueldo_basico",
       PRESENTISMO_PUNTUALIDAD: "sueldo_basico",
+      SAC: "total_remunerativo",
       NO_REMUNERATIVO: "escala_salarial",
       ANTIGUEDAD: "sueldo_basico",
       PROLONGACION_JORNADA: "valor_hora",
@@ -238,6 +263,7 @@ function conceptDefaults(concept = {}) {
     condicion: reference ? "Valor informativo de escala; no se liquida automaticamente" : (concept.condicion || ({
       PRESENTISMO_ASISTENCIA: "Aplica segun asistencia perfecta",
       PRESENTISMO_PUNTUALIDAD: "Aplica segun puntualidad",
+      SAC: "Aplica segun semestre o regla legal/convencional",
       NO_REMUNERATIVO: "Aplica segun categoria, periodo y vigencia de escala",
       ANTIGUEDAD: "Aplica segun anos de antiguedad",
       PROLONGACION_JORNADA: "Aplica cuando existe prolongacion de jornada",
@@ -503,8 +529,61 @@ function finalizeConvenio(normalized) {
     categoryByName.set(semanticCategoryKey(finalCategory.categoria_nombre), finalCategory.categoria_id);
     categoryByName.set(semanticCategoryKey(finalCategory.categoria_id), finalCategory.categoria_id);
   }
-  const categorias = Array.from(categoryByCanonicalName.values());
-  const categoryIds = new Set(categorias.map((category) => category.categoria_id));
+  let categorias = Array.from(categoryByCanonicalName.values());
+  let categoryIds = new Set(categorias.map((category) => category.categoria_id));
+
+  const resolveCategoryIdForValue = (value = {}, scale = {}) => {
+    const hasValueCategory = text(value.categoria_id).trim() || text(value.categoria_nombre).trim() || text(value.grupo_nombre).trim();
+    const normalizedCategoryId = hasValueCategory ? canonCategoryId(value.categoria_id, value.categoria_nombre, value.grupo_nombre || scale.zona) : "";
+    return categoryIds.has(normalizedCategoryId)
+      ? normalizedCategoryId
+      : (categoryIdMap.get(value.categoria_id)
+        || categoryIdMap.get(normalizedCategoryId)
+        || categoryByName.get(semanticCategoryKey(value.categoria_nombre, value.categoria_id))
+        || categoryByName.get(slugId(value.categoria_id))
+        || normalizedCategoryId);
+  };
+
+  const variantPlans = new Map();
+  normalized.escalas.forEach((scale) => {
+    (scale.valores || []).forEach((value) => {
+      const baseCategoryId = resolveCategoryIdForValue(value, scale);
+      if (!baseCategoryId) return;
+      const conceptId = canonConceptId(value.concepto_id || "SUELDO_BASICO");
+      if (!/^(SUELDO_BASICO|NO_REMUNERATIVO|VALOR_HORA|VALOR_DIA|VALOR_JORNAL)$/.test(conceptId)) return;
+      const plan = variantPlans.get(baseCategoryId) || { total: 0, variantless: 0, variants: new Map() };
+      plan.total += 1;
+      const variantId = scaleValueVariantId(value);
+      if (variantId) plan.variants.set(variantId, scaleValueVariantText(value));
+      else plan.variantless += 1;
+      variantPlans.set(baseCategoryId, plan);
+    });
+  });
+
+  const splitBaseCategoryIds = new Set();
+  const variantCategoryByKey = new Map();
+  variantPlans.forEach((plan, baseCategoryId) => {
+    if (plan.variants.size <= 1 || plan.variantless > 0) return;
+    const baseCategory = categorias.find((category) => category.categoria_id === baseCategoryId);
+    if (!baseCategory) return;
+    splitBaseCategoryIds.add(baseCategoryId);
+    plan.variants.forEach((variantLabel, variantId) => {
+      const finalId = variantCategoryId(baseCategoryId, variantId);
+      variantCategoryByKey.set(`${baseCategoryId}|${variantId}`, finalId);
+      if (!categoryIds.has(finalId)) {
+        categorias.push({
+          ...baseCategory,
+          categoria_id: finalId,
+          categoria_nombre: `${baseCategory.categoria_nombre} - ${variantLabel}`,
+          modalidad_aplicable: variantLabel
+        });
+      }
+    });
+  });
+  if (splitBaseCategoryIds.size) {
+    categorias = categorias.filter((category) => !splitBaseCategoryIds.has(category.categoria_id));
+    categoryIds = new Set(categorias.map((category) => category.categoria_id));
+  }
 
   const conceptosInput = [...normalized.conceptos, ...promotedAdditionalConcepts].map((concept) => {
     const id = canonConceptId(concept.concepto_id, concept.nombre);
@@ -529,20 +608,25 @@ function finalizeConvenio(normalized) {
           || categoryByName.get(semanticCategoryKey(value.categoria_nombre, value.categoria_id))
           || categoryByName.get(slugId(value.categoria_id)));
       const conceptId = promotedAdditional ? canonConceptId(promotedAdditional.concepto_id, promotedAdditional.nombre) : canonConceptId(value.concepto_id || "SUELDO_BASICO");
-      if (!promotedAdditional && !categoryId && normalizedCategoryId) {
-        console.warn(`[CCT normalize] Se creo categoria minima desde escala ${scale.escala_id}: ${normalizedCategoryId}`);
+      const baseCategoryId = categoryId || normalizedCategoryId || value.categoria_id;
+      const variantId = scaleValueVariantId(value);
+      const finalCategoryId = !promotedAdditional && splitBaseCategoryIds.has(baseCategoryId) && variantId
+        ? (variantCategoryByKey.get(`${baseCategoryId}|${variantId}`) || baseCategoryId)
+        : baseCategoryId;
+      if (!promotedAdditional && finalCategoryId && !categoryIds.has(finalCategoryId)) {
+        console.warn(`[CCT normalize] Se creo categoria minima desde escala ${scale.escala_id}: ${finalCategoryId}`);
         categorias.push({
-          categoria_id: normalizedCategoryId,
+          categoria_id: finalCategoryId,
           convenio_id: convenioId,
           grupo_nombre: text(value.grupo_nombre || scale.zona),
-          categoria_nombre: normalizedCategoryId.replace(/_/g, " "),
+          categoria_nombre: finalCategoryId.replace(/_/g, " "),
           descripcion: "",
           tareas_incluidas: "",
           modalidad_aplicable: "",
           nivel_jerarquico: "",
           fuente_documento: text(value.fuente_documento || scale.fuente_documento)
         });
-        categoryIds.add(normalizedCategoryId);
+        categoryIds.add(finalCategoryId);
       }
       if (!conceptIds.has(conceptId)) {
         console.warn(`[CCT normalize] Escala ${scale.escala_id} apunta a concepto inexistente: ${conceptId}. Se creo concepto minimo.`);
@@ -552,7 +636,7 @@ function finalizeConvenio(normalized) {
       return {
         ...value,
         convenio_id: convenioId,
-        categoria_id: promotedAdditional ? "" : (categoryId || normalizedCategoryId || value.categoria_id),
+        categoria_id: promotedAdditional ? "" : finalCategoryId,
         categoria_nombre: promotedAdditional ? "" : value.categoria_nombre,
         grupo_nombre: promotedAdditional ? "" : value.grupo_nombre,
         concepto_id: conceptId
