@@ -1,5 +1,5 @@
-const { geminiModelList } = require("./gemini-config");
-const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("./models/convenio.model");
+const { geminiModelList } = require("../gemini-config");
+const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
 const useConventionMarkdown = String(process.env.CONVENTION_USE_MARKDOWN || "true").toLowerCase() !== "false";
 
@@ -14,7 +14,7 @@ class GeminiConventionError extends Error {
   }
 }
 
-const UNIVERSAL_CONVENTION_TEMPLATE = require("../convenio-universal-template.json");
+const UNIVERSAL_CONVENTION_TEMPLATE = require("../../convenio-universal-template.json");
 
 function isRetryable(error) {
   const message = String(error.message || "").toLowerCase();
@@ -1347,6 +1347,14 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   const models = geminiModelList(model, fallbackModels);
   console.log(`[CCT] CONVENTION_USE_MARKDOWN=${useConventionMarkdown ? "true" : "false"} (${useConventionMarkdown ? "solo Markdown para Gemini" : "sin texto Markdown para Gemini"})`);
   const errors = [];
+  const tryLocalFallback = (aiError) => {
+    const context = { draftName, notes, cctPdf, scalePdf, cctText: cctMarkdown, scaleText: scaleMarkdown, aiError };
+    if (looksLikeHairdressers730(context)) return buildHairdressersConvention(context);
+    if (looksLikeCommerce130(context)) return buildCommerceConvention(context);
+    if (looksLikePharmacyMendoza(context)) return buildPharmacyConvention(context);
+    return buildGenericConventionFromScale(context);
+  };
+
   for (const currentModel of models) {
     try {
       const result = await requestConventionOnce({
@@ -1373,6 +1381,15 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         code: error.code
       });
       if (!isRetryable(error)) {
+        const localConvention = tryLocalFallback(error.message);
+        if (localConvention) {
+          return {
+            parsedConvention: localConvention,
+            tokenUsage: null,
+            model: localConvention.extraction?.model || "local-pdf-parse",
+            modelsTried: errors.map((item) => item.model)
+          };
+        }
         error.modelsTried = errors.map((item) => item.model);
         throw error;
       }

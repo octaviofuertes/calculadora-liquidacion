@@ -1286,6 +1286,66 @@ p {
   width: 100%;
 }
 
+.ai-usage-panel {
+  width: 100%;
+}
+
+.ai-usage-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.ai-usage-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.ai-usage-card span,
+.ai-usage-card small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ai-usage-card strong {
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.ai-usage-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.ai-usage-columns h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.ai-usage-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-usage-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+}
+
 .scale-layout {
   display: grid;
   grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);

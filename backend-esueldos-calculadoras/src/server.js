@@ -9,9 +9,9 @@ const { ObjectId } = require("mongodb");
 const { getDb, closeDb } = require("./db");
 const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
-const { extractScalesFromPdf, GeminiScaleError } = require("./scale-ai");
-const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./convention-ai");
-const { geminiPrimaryModel, geminiConventionModel } = require("./gemini-config");
+const { extractScalesFromPdf, GeminiScaleError } = require("./services/scale-ai");
+const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./services/convention-ai");
+const { geminiPrimaryModel, geminiScaleModel, geminiConventionModel } = require("./gemini-config");
 const { EXCEL_SCHEMA_VERSION, toRuntimeConvention, normalizeAndValidateCCTJson } = require("./models/convenio.model");
 const {
   isSupportedConventionDocument,
@@ -23,16 +23,17 @@ const { configureSecurity } = require("./middleware/security");
 const catalogService = require("./services/catalog-service");
 const convenioService = require("./services/convenio-service");
 const { calculateLiquidation } = require("./services/liquidation-service");
+const tokenMetrics = require("./services/token-metrics");
 const scaleRepository = require("./repositories/scale-repository");
 const { ensureVersionIndexes, saveConventionVersion } = require("./repositories/version-repository");
 const { createAdminRouter } = require("./routes/admin.routes");
+const { createAiRouter } = require("./routes/ai.routes");
 const { createCatalogRouter } = require("./routes/catalog.routes");
-const { createEmployeesRouter } = require("./routes/employees.routes");
 const { createHealthRouter } = require("./routes/health.routes");
 const { createConveniosRouter } = require("./routes/convenios.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
 const { createScalesRouter } = require("./routes/scales.routes");
-const { parseOrThrow, calculationInputSchema, liquidationResultSchema, savedLiquidationSchema } = require("./domain/schemas");
+const { parseOrThrow, calculationInputSchema, employeeWriteSchema, liquidationResultSchema, savedLiquidationSchema } = require("./domain/schemas");
 
 const app = express();
 const port = Number(process.env.PORT || 4100);
@@ -159,9 +160,6 @@ async function ensureScaleIndexes() {
   await db.collection("conventionVersions").createIndex({ conventionId: 1, version: -1 });
   await db.collection("liquidationAudits").createIndex({ createdAt: -1 });
   await db.collection("liquidationAudits").createIndex({ conventionId: 1, period: 1, createdAt: -1 });
-  await db.collection("employees").createIndex({ legajo: 1 }, { unique: true });
-  await db.collection("employees").createIndex({ name: "text" });
-  await db.collection("employees").createIndex({ conventionId: 1, name: 1 });
   await db.collection("liquidations").createIndex({ convention: 1, period: 1, createdAt: -1 });
   await convenioService.ensureConvenioIndexes(db);
   await ensureVersionIndexes(db);
@@ -590,7 +588,9 @@ app.use(createScalesRouter({
   getDb: getDbInstance,
   scaleUpload,
   extractScalesFromPdf,
+  geminiScaleApiKey,
   geminiFallbackModels,
+  geminiScaleModel,
   getConventionOr404,
   monthTimeline,
   findActiveScale,
@@ -600,6 +600,7 @@ app.use(createScalesRouter({
   serializeScale,
   safeFileName
 }));
+app.use(createAiRouter({ getDb: getDbInstance }));
 
 app.get("/api/convention-drafts", async (req, res, next) => {
   try {
@@ -712,6 +713,16 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
         aiStatus = "ESTRUCTURADO_POR_LEIA";
         aiModel = result.model;
         aiModelsTried = result.modelsTried;
+        if (tokenUsage) {
+          await tokenMetrics.logUsage(getDbInstance(), {
+            provider: "gemini",
+            model: aiModel,
+            promptTokens: tokenUsage.promptTokenCount || tokenUsage.promptTokens || 0,
+            completionTokens: tokenUsage.outputTokenCount || tokenUsage.completionTokens || 0,
+            totalTokens: tokenUsage.totalTokenCount || tokenUsage.totalTokens || 0,
+            operation: "convention-extraction"
+          });
+        }
       } catch (error) {
         aiStatus = "ERROR_IA";
         aiError = error.message || "No se pudo estructurar el convenio con leIA.";
@@ -947,10 +958,6 @@ app.delete("/api/convention-drafts/:id", async (req, res, next) => {
     const draft = await db.collection("conventionDrafts").findOne({ _id: id });
     if (!draft) {
       res.status(404).json({ error: "Borrador no encontrado" });
-      return;
-    }
-    if (!["APROBADO", "RECHAZADO"].includes(draft.status)) {
-      res.status(409).json({ error: "Solo se pueden eliminar borradores aprobados o rechazados." });
       return;
     }
     await db.collection("conventionDrafts").deleteOne({ _id: id });
@@ -1246,9 +1253,9 @@ app.post("/api/scales/:id/reject", async (req, res, next) => {
 
 app.post("/api/leia/chat", async (req, res, next) => {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = geminiConventionApiKey();
     if (!apiKey) {
-      res.status(503).json({ error: "Falta configurar GEMINI_API_KEY en el backend." });
+      res.status(503).json({ error: "Falta configurar GEMINI_CONVENTION_API_KEY en el backend." });
       return;
     }
 
@@ -1314,7 +1321,7 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
     const activeScale = serializeScale(activeDoc);
     const precheck = deterministicLiquidationAudit({ liquidation, activeScale });
     const catalog = await getCatalogPayload();
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = geminiConventionApiKey();
     let audit = fallbackAuditFromPrecheck(precheck);
     let aiStatus = "SIN_API_KEY";
     let aiError = null;
@@ -1518,131 +1525,6 @@ app.delete("/api/liquidations/:id", async (req, res, next) => {
   }
 });
 
-app.get("/api/employees/next-legajo", async (req, res, next) => {
-  try {
-    const docs = await db.collection("employees").find({}, { projection: { legajo: 1 } }).toArray();
-    const max = docs.reduce((current, emp) => {
-      const num = parseInt(emp.legajo, 10);
-      return !Number.isNaN(num) && num > current ? num : current;
-    }, 0);
-    const nextLegajo = String(max + 1).padStart(3, "0");
-    res.json({ nextLegajo });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/search", async (req, res, next) => {
-  try {
-    const { q, conventionId } = req.query;
-    if (!q) {
-      res.json([]);
-      return;
-    }
-
-    const safeQuery = escapeRegex(String(q).slice(0, 80));
-    const filter = { name: { $regex: safeQuery, $options: "i" } };
-    if (conventionId && conventionId !== "null" && conventionId !== "undefined") {
-      filter.conventionId = conventionId;
-    }
-
-    const docs = await db.collection("employees").find(filter).limit(10).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees", async (req, res, next) => {
-  try {
-    const docs = await db.collection("employees").find({}).sort({ legajo: 1 }).toArray();
-    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/employees/:legajo", async (req, res, next) => {
-  try {
-    const doc = await db.collection("employees").findOne({ legajo: req.params.legajo });
-    if (!doc) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    const { _id, ...payload } = doc;
-    res.json({ id: _id.toString(), ...payload });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/employees", async (req, res, next) => {
-  try {
-    const payload = parseOrThrow(employeeWriteSchema, req.body, "Empleado invalido");
-
-    const existing = await db.collection("employees").findOne({ legajo: payload.legajo });
-    if (existing) {
-      res.status(400).json({ error: "El legajo ya existe" });
-      return;
-    }
-
-    const now = new Date();
-    const doc = {
-      ...payload,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    const result = await db.collection("employees").insertOne(doc);
-    res.status(201).json({ id: result.insertedId.toString(), ...doc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.put("/api/employees/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const payload = parseOrThrow(employeeWriteSchema.partial().passthrough(), req.body, "Empleado invalido");
-    const { id, _id, ...updateData } = payload;
-
-    const result = await db.collection("employees").findOneAndUpdate(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { ...updateData, updatedAt: new Date() } },
-      { returnDocument: "after" }
-    );
-
-    if (!result) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    const { _id: mongoId, ...updatedDoc } = result;
-    res.json({ id: mongoId.toString(), ...updatedDoc });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.delete("/api/employees/:id", async (req, res, next) => {
-  try {
-    if (!ObjectId.isValid(req.params.id)) {
-      res.status(400).json({ error: "ID invalido" });
-      return;
-    }
-    const result = await db.collection("employees").deleteOne({ _id: new ObjectId(req.params.id) });
-    if (result.deletedCount === 0) {
-      res.status(404).json({ error: "Empleado no encontrado" });
-      return;
-    }
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
-});
-
 app.post("/api/admin/seed", async (req, res, next) => {
   try {
     const catalog = await seedCatalog(db);
@@ -1667,7 +1549,7 @@ app.use((error, req, res, next) => {
     res.status(400).json({ error: message });
     return;
   }
-  if (error instanceof GeminiScaleError) {
+  if (error instanceof ScaleAIError) {
     res.status(error.status || 502).json({
       error: error.message,
       code: error.code,

@@ -128,7 +128,7 @@ function canonConceptId(value, name = "") {
 }
 
 function isReferenceConcept(id = "", name = "") {
-  return /^(TOTAL_7H|TOTAL_8H|VALOR_CHANGA|TOTAL_REMUNERATIVO)$/.test(canonConceptId(id, name));
+  return /^(TOTAL_7H|TOTAL_8H|VALOR_CHANGA|TOTAL_REMUNERATIVO|TOTAL_HABERES|TOTAL_A_ABONAR)$/.test(canonConceptId(id, name));
 }
 
 function isNonRemunerativeConcept(concept = {}) {

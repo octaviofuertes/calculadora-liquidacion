@@ -1,12 +1,14 @@
 const express = require("express");
 const fs = require("fs");
 const { ObjectId } = require("mongodb");
+const tokenMetrics = require("../services/token-metrics");
 const { saveScaleVersion } = require("../repositories/version-repository");
 
 function createScalesRouter({
   getDb,
   scaleUpload,
   extractScalesFromPdf,
+  geminiScaleApiKey,
   geminiFallbackModels,
   geminiScaleModel,
   getConventionOr404,
@@ -105,11 +107,12 @@ function createScalesRouter({
       const period = normalizePeriod(req.body.period) || currentPeriod();
       const periodLabel = req.body.periodLabel || monthLabel(period);
       const now = new Date();
-      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const apiKey = geminiScaleApiKey();
       let aiStatus = "SIN_API_KEY";
       let aiError = null;
       let aiModel = null;
       let aiModelsTried = [];
+      let tokenUsage = null;
       let parsedScales = [{
         period,
         periodLabel,
@@ -145,6 +148,17 @@ function createScalesRouter({
           aiStatus = "DETECTADA_POR_IA";
           aiModel = result.model;
           aiModelsTried = result.modelsTried;
+          tokenUsage = result.tokenUsage || null;
+          if (tokenUsage) {
+            await tokenMetrics.logUsage(getDb(), {
+              provider: "gemini",
+              model: aiModel,
+              promptTokens: tokenUsage.promptTokenCount || tokenUsage.promptTokens || 0,
+              completionTokens: tokenUsage.outputTokenCount || tokenUsage.completionTokens || 0,
+              totalTokens: tokenUsage.totalTokenCount || tokenUsage.totalTokens || 0,
+              operation: "scale-extraction"
+            });
+          }
         } catch (error) {
           aiStatus = "ERROR_IA";
           aiError = error.message || "No se pudo leer el PDF con leIA.";
@@ -166,6 +180,7 @@ function createScalesRouter({
         aiError,
         aiModel,
         aiModelsTried,
+        tokenUsage,
         sourceFileName: req.file.originalname,
         storedFileName: req.file.filename,
         filePath: req.file.path,
@@ -188,7 +203,8 @@ function createScalesRouter({
         ...created[0],
         created,
         count: created.length,
-        detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel }))
+        detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel })),
+        tokenUsage: tokenUsage || null
       });
     } catch (error) {
       next(error);

@@ -1,9 +1,14 @@
-const { geminiModelList } = require("./gemini-config");
+function modelList(primaryModel, fallbackModels = []) {
+  return [primaryModel, ...fallbackModels]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .filter((item, index, list) => list.indexOf(item) === index);
+}
 
-class GeminiScaleError extends Error {
+class ScaleAIError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
     super(message);
-    this.name = "GeminiScaleError";
+    this.name = "ScaleAIError";
     this.status = status;
     this.model = model;
     this.code = code;
@@ -14,13 +19,10 @@ class GeminiScaleError extends Error {
 function isRetryable(error) {
   const message = String(error.message || "").toLowerCase();
   return error.status === 429
-    || error.status === 404
     || error.status === 503
+    || error.status >= 500
     || message.includes("high demand")
     || message.includes("overloaded")
-    || message.includes("not found")
-    || message.includes("not supported")
-    || message.includes("generatecontent")
     || message.includes("unavailable")
     || message.includes("try again later");
 }
@@ -40,7 +42,7 @@ function parseGeminiJson(text) {
   try {
     return JSON.parse(jsonText);
   } catch (error) {
-    throw new GeminiScaleError("Gemini no devolvio un JSON valido para la escala.", {
+    throw new ScaleAIError("Gemini no devolvio un JSON valido para la escala.", {
       status: 502,
       code: "INVALID_JSON"
     });
@@ -98,8 +100,11 @@ function fallbackYearFromPeriod(period) {
 }
 
 function extractGeminiText(payload) {
-  const parts = payload?.candidates?.[0]?.content?.parts || [];
-  return parts.map((part) => part.text || "").join("").trim();
+  return (payload?.candidates || [])
+    .flatMap((candidate) => candidate?.content?.parts || [])
+    .map((part) => part.text || "")
+    .join("")
+    .trim();
 }
 
 function normalizeMoney(value) {
@@ -321,9 +326,28 @@ function scoreScaleConfidence({ parsedConfidence, categories, additionals, nonRe
   score += warnings.length ? -Math.min(12, warnings.length * 3) : 5;
   if (severeWarning) score -= 28;
 
-  const geminiConfidence = Math.max(0, Math.min(100, Number(parsedConfidence) || 0));
-  const calibrated = Math.max(geminiConfidence, score);
+  const aiConfidence = Math.max(0, Math.min(100, Number(parsedConfidence) || 0));
+  const calibrated = Math.max(aiConfidence, score);
   return Math.max(0, Math.min(severeWarning ? 65 : 96, Math.round(calibrated)));
+}
+
+function validateScaleOutput(scales, model) {
+  const invalid = !Array.isArray(scales)
+    || !scales.length
+    || scales.some((scale) => {
+      const categories = Array.isArray(scale.categories) ? scale.categories : [];
+      const additionals = Array.isArray(scale.additionals) ? scale.additionals : [];
+      const nonRemunerative = Array.isArray(scale.nonRemunerative) ? scale.nonRemunerative : [];
+      return !categories.length && !additionals.length && !nonRemunerative.length;
+    });
+
+  if (invalid) {
+    throw new ScaleAIError("Gemini devolvio una escala sin categorias, adicionales ni no remunerativos.", {
+      status: 502,
+      model,
+      code: "EMPTY_SCALE"
+    });
+  }
 }
 
 function normalizeScale(parsed, { convention, period, sourceFileName }) {
@@ -575,7 +599,21 @@ function convertRawTextToMarkdown(text) {
   return result.join("\n");
 }
 
-async function requestScaleExtractionOnce({ apiKey, model, convention, period, periodLabel, markdownText, sourceFileName }) {
+async function requestScaleExtractionOnce({ apiKey, model, convention, period, periodLabel, markdownText, pdfBuffer, mimeType, sourceFileName }) {
+  const base64File = Buffer.from(pdfBuffer).toString("base64");
+  const parts = [
+    { text: buildScalePrompt({ convention, period, periodLabel }) },
+    {
+      inlineData: {
+        mimeType: mimeType || "application/pdf",
+        data: base64File
+      }
+    }
+  ];
+  if (markdownText) {
+    parts.push({ text: `Texto extraido localmente para referencia:\n\n${markdownText}` });
+  }
+
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: {
@@ -583,18 +621,9 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
       "x-goog-api-key": apiKey
     },
     body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: buildScalePrompt({ convention, period, periodLabel }) },
-            { text: `Escala salarial en formato Markdown:\n\n${markdownText}` }
-          ]
-        }
-      ],
+      contents: [{ role: "user", parts }],
       generationConfig: {
         temperature: 0.1,
-        topP: 0.75,
         maxOutputTokens: 24000,
         responseMimeType: "application/json"
       }
@@ -603,10 +632,10 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new GeminiScaleError(payload?.error?.message || `Gemini respondio HTTP ${response.status}`, {
+    throw new ScaleAIError(payload?.error?.message || `Gemini respondio HTTP ${response.status}`, {
       status: response.status,
       model,
-      code: payload?.error?.status
+      code: payload?.error?.status || payload?.error?.code
     });
   }
 
@@ -628,10 +657,21 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
 
   const text = extractGeminiText(payload);
   if (!text) {
-    throw new GeminiScaleError("Gemini no devolvio texto para la escala.", { status: 502, model });
+    throw new ScaleAIError("Gemini no devolvio texto para la escala.", { status: 502, model });
   }
 
-  return normalizeScaleBundle(parseGeminiJson(text), { convention, period, sourceFileName });
+  const parsedScales = normalizeScaleBundle(parseGeminiJson(text), { convention, period, sourceFileName });
+  validateScaleOutput(parsedScales, model);
+
+  return {
+    parsedScales,
+    tokenUsage: usage ? {
+      model,
+      promptTokenCount: usage.promptTokenCount || 0,
+      outputTokenCount: usage.candidatesTokenCount || usage.outputTokenCount || 0,
+      totalTokenCount: usage.totalTokenCount || 0
+    } : null
+  };
 }
 
 async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention, period, periodLabel, pdfBuffer, mimeType, sourceFileName }) {
@@ -648,7 +688,6 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
   }
 
   const markdownText = convertRawTextToMarkdown(rawText);
-  const attachPdf = !hasUsefulPdfText(rawText);
 
   // Debug output requested by user
   console.log("\n==================================================");
@@ -668,12 +707,12 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
     console.error("Error al guardar archivo debug de escala:", err.message);
   }
 
-  const models = geminiModelList(model, fallbackModels);
+  const models = modelList(model, fallbackModels);
   const errors = [];
 
   for (const currentModel of models) {
     try {
-      const parsedScales = await requestScaleExtractionOnce({
+      const result = await requestScaleExtractionOnce({
         apiKey,
         model: currentModel,
         convention,
@@ -682,13 +721,13 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
         markdownText,
         pdfBuffer,
         mimeType,
-        attachPdf,
         sourceFileName
       });
       return {
-        parsedScales,
+        parsedScales: result.parsedScales,
         model: currentModel,
-        modelsTried: [...errors.map((item) => item.model), currentModel]
+        modelsTried: [...errors.map((item) => item.model), currentModel],
+        tokenUsage: result.tokenUsage || null
       };
     } catch (error) {
       errors.push({
@@ -705,7 +744,7 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
   }
 
   const last = errors[errors.length - 1] || {};
-  throw new GeminiScaleError("Gemini esta con alta demanda y no pudo leer el PDF de escala en este momento.", {
+  throw new ScaleAIError("Gemini esta con alta demanda y no pudo leer el archivo de escala en este momento.", {
     status: 503,
     model: last.model,
     code: "MODEL_OVERLOADED",
@@ -722,7 +761,7 @@ async function extractScaleFromPdf(input) {
 }
 
 module.exports = {
-  GeminiScaleError,
+  ScaleAIError,
   extractScaleFromPdf,
   extractScalesFromPdf,
   normalizeScale,
