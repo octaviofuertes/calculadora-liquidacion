@@ -83,7 +83,7 @@ const conventionUpload = multer({
       cb(null, `${Date.now()}-${safeFileName(file.originalname)}`);
     }
   }),
-  limits: { fileSize: conventionUploadMaxBytes, files: 21 },
+  limits: { fileSize: conventionUploadMaxBytes, files: 6 },
   fileFilter: (req, file, cb) => {
     if (isSupportedConventionDocument(file)) {
       cb(null, true);
@@ -630,7 +630,7 @@ app.get("/api/convention-drafts/:id", async (req, res, next) => {
 
 app.post("/api/convention-drafts/upload", conventionUpload.fields([
   { name: "cctPdf", maxCount: 1 },
-  { name: "scalePdf", maxCount: 20 }
+  { name: "scalePdf", maxCount: 5 }
 ]), async (req, res, next) => {
   try {
     const cctFile = req.files?.cctPdf?.[0] || null;
@@ -1661,7 +1661,10 @@ app.get("*", (req, res) => {
 app.use((error, req, res, next) => {
   console.error(error);
   if (error instanceof multer.MulterError) {
-    res.status(400).json({ error: error.message || "No se pudo subir el archivo." });
+    const message = error.code === "LIMIT_FILE_COUNT"
+      ? "Podés subir 1 archivo CCT y hasta 5 archivos de escala salarial."
+      : error.message || "No se pudo subir el archivo.";
+    res.status(400).json({ error: message });
     return;
   }
   if (error instanceof GeminiScaleError) {
