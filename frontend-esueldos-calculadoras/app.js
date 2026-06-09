@@ -756,7 +756,7 @@
           <tbody>
             ${rows.map((row) => `<tr>
               <td>${escapeHtml(row.label)}</td>
-              <td>${escapeHtml(calculationExplanation(row))}</td>
+              <td>${escapeHtml(calculationExplanation(row, result))}</td>
               <td class="num">${fmt(row.amount)}</td>
             </tr>`).join("")}
           </tbody>
@@ -765,11 +765,11 @@
     </div>`;
   }
 
-  function calculationExplanation(row = {}) {
+  function calculationExplanation(row = {}, result = {}) {
     const formula = String(row.formula || "").trim();
     const detail = String(row.detail || "").trim();
     if (isMathExpression(formula)) return formula;
-    return mathExpressionFromText(formula || detail) || `Importe directo: ${calcNum(row.amount)}`;
+    return mathExpressionFromText(formula || detail) || inferInternalFormula(row, result) || `${calcNum(row.amount)} x 1`;
   }
 
   function isMathExpression(value = "") {
@@ -781,6 +781,11 @@
     return String(value).replace(/\$/g, "").replace(/\./g, "").trim();
   }
 
+  function parseCalcNumber(value = "") {
+    const number = Number(String(value).replace(/\$/g, "").replace(/\./g, "").replace(",", ".").trim());
+    return Number.isFinite(number) ? number : null;
+  }
+
   function mathExpressionFromText(value = "") {
     const text = String(value || "");
     let match = text.match(/([\d.,]+)\s*%\s*de\s*\$?\s*([\d.,]+)/i);
@@ -789,6 +794,42 @@
     if (match) return `${normalizeCalcToken(match[1])} x ${normalizeCalcToken(match[2])}`;
     match = text.match(/([\d.,]+)\s*(?:dias|d[ií]as|jornales|horas|hs|km)\s*x\s*\$?\s*([\d.,]+)(?:\s*x\s*([\d.,]+))?/i);
     if (match) return [match[2], match[1], match[3]].filter(Boolean).map(normalizeCalcToken).join(" x ");
+    return "";
+  }
+
+  function inferInternalFormula(row = {}, result = {}) {
+    const label = summaryKey(row.label || "");
+    const text = `${row.label || ""} ${row.detail || ""}`;
+    const amount = Math.abs(Number(row.amount || 0));
+    const pctMatch = text.match(/([\d.,]+)\s*%/);
+    const pct = pctMatch ? parseCalcNumber(pctMatch[1]) : null;
+    if (pct && pct > 0) return `${calcNum(amount * 100 / pct)} x ${calcNum(pct)} / 100`;
+
+    const hour50 = firstFinite(num("genExtra50", 0), num("farmExtra50", 0), num("camExtra50", 0), num("uocraExtra50", 0)) || 0;
+    const hour100 = firstFinite(num("genExtra100", 0), num("farmExtra100", 0), num("camExtra100", 0), num("uocraExtra100", 0)) || 0;
+    if (label.includes("horas_extra_50") && hour50 > 0) return `${calcNum(amount / hour50 / 1.5)} x ${calcNum(hour50)} x 1,5`;
+    if (label.includes("horas_extra_100") && hour100 > 0) return `${calcNum(amount / hour100 / 2)} x ${calcNum(hour100)} x 2`;
+
+    const unitMatch = text.match(/([\d.,]+)\s*(?:jornales|dias|d[ií]as|horas|hs|km)\b/i);
+    const units = unitMatch ? parseCalcNumber(unitMatch[1]) : null;
+    if (units && units > 0) return `${calcNum(amount / units)} x ${calcNum(units)}`;
+
+    if (label.includes("basico")) {
+      const workingDays = firstFinite(num("camWorkingDays", 0), num("genWorkUnits", 0), num("farmWorkingDays", 0)) || 1;
+      return `${calcNum(amount / workingDays)} x ${calcNum(workingDays)}`;
+    }
+    if (label.includes("comida") || label.includes("viatico")) {
+      const days = firstFinite(num("camNoRemDays", 0), num("camWorkingDays", 0), num("farmNoRemDays", 0)) || 1;
+      return `${calcNum(amount / days)} x ${calcNum(days)}`;
+    }
+    if (label.includes("antiguedad")) {
+      const years = Math.max(1, yearsFromEntry());
+      return `${calcNum(amount * 100 / years)} x ${calcNum(years)} / 100`;
+    }
+    if (label.includes("jubilacion") || label.includes("pami") || label.includes("obra_social")) {
+      const percent = label.includes("jubilacion") ? 11 : 3;
+      return `${calcNum(amount * 100 / percent)} x ${percent} / 100`;
+    }
     return "";
   }
 
