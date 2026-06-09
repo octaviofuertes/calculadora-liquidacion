@@ -26,6 +26,16 @@ function amount(value) {
   return value;
 }
 
+function traceFields(item = {}) {
+  return {
+    documento_tipo: text(item.documento_tipo || item.tipo_documento || item.documentType),
+    documento_rol: text(item.documento_rol || item.rol_documental || item.documentRole),
+    evidencia: text(item.evidencia || item.evidence || item.sourceText || item.detalle_fuente),
+    pagina: text(item.pagina || item.page || item.pageNumber),
+    confianza: amount(item.confianza ?? item.confidence)
+  };
+}
+
 function numericAmount(value) {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -114,6 +124,27 @@ function variantCategoryId(baseCategoryId = "", variantId = "") {
   return [baseCategoryId, variantId].filter(Boolean).join("_");
 }
 
+function categoryVariantLabelFromId(categoryId = "") {
+  const id = slugId(categoryId);
+  if (/_SIN_RETIRO$/.test(id)) return "Sin retiro";
+  if (/_CON_RETIRO$/.test(id)) return "Con retiro";
+  return "";
+}
+
+function categoryRuntimeLabel(category = {}) {
+  const base = text(category.categoria_nombre || category.categoria_id);
+  const variant = text(category.modalidad_aplicable) || categoryVariantLabelFromId(category.categoria_id);
+  if (!variant || new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(base)) return base;
+  return `${base} - ${variant}`;
+}
+
+function categoryIdentityKey(category = {}) {
+  return semanticCategoryKey(
+    category.categoria_nombre || category.categoria_id,
+    category.modalidad_aplicable || categoryVariantLabelFromId(category.categoria_id)
+  );
+}
+
 function mergeCategoryData(existing, incoming, convenioId) {
   const merged = { ...incoming, ...existing };
   Object.entries(incoming || {}).forEach(([key, value]) => {
@@ -125,6 +156,64 @@ function mergeCategoryData(existing, incoming, convenioId) {
 function isAdditionalCategoryLabel(category = {}) {
   const raw = slugId(`${category.categoria_id || ""} ${category.categoria_nombre || ""} ${category.grupo_nombre || ""}`);
   return /(ADIC|ADICIONAL|PLUS|PREMIO|BONO|VIATIC|ASIGNACION|GRATIFIC|PRESENTISMO|PUNTUALIDAD|ANTIGUEDAD|TITULO|QUEBRANTO|FALLA.*CAJA|MOVILIDAD|REFRIGERIO|COMIDA|PERNOCT|NO.*REM|APORTE|CUOTA|FONDO|CONTRIBUCION|HORAS?_EXTRA)/.test(raw);
+}
+
+function isModalityOnlyCategoryLabel(category = {}) {
+  const pattern = /^(PERSONAL_)?(SIN_RETIRO|CON_RETIRO|CON_RETIRO_MISMO_EMPLEADOR|CON_RETIRO_DISTINTOS_EMPLEADORES|JORNADA_COMPLETA|JORNADA_PARCIAL|MEDIA_JORNADA|TIEMPO_COMPLETO|TIEMPO_PARCIAL|MENSUALIZADO|JORNALIZADO)$/;
+  const label = slugId(category.categoria_nombre || "");
+  const id = slugId(category.categoria_id || "");
+  return pattern.test(label) || (!label && pattern.test(id));
+}
+
+function isGeneralGroupingCategory(category = {}) {
+  const id = slugId(category.categoria_id || "");
+  const label = slugId(category.categoria_nombre || "");
+  const modality = text(category.modalidad_aplicable);
+  return /^(CATEGORIA_GENERAL|GENERAL|PERSONAL_GENERAL|TODAS_LAS_CATEGORIAS)$/.test(id)
+    || (/PERSONAL/.test(label) && /SIN_RETIRO|CON_RETIRO|JORNADA|MODALIDAD/.test(slugId(modality)));
+}
+
+function isNonLiquidableLicenseConcept(concept = {}) {
+  const raw = slugId(`${concept.concepto_id || ""} ${concept.nombre || ""} ${concept.condicion || ""} ${concept.formula_base || ""}`);
+  if (/(ADICIONAL|PLUS|BONIFICACION|BONO|PREMIO).*(VACACION|VACACIONAL|LICENCIA)/.test(raw)) return false;
+  return /(LICENCIA|VACACION|VACACIONAL|MATERNIDAD|NACIMIENTO|MATRIMONIO|FALLECIMIENTO|EXAMEN|ENFERMEDAD|ACCIDENTE|DONACION|MUDANZA|EMBARAZO|PRENATAL|PROTECCION_SOCIAL)/.test(raw);
+}
+
+function normalizeRetiroDuplicateValues(normalized = {}) {
+  const nameById = new Map(array(normalized.categorias).map((category) => [category.categoria_id, category.categoria_nombre]));
+  array(normalized.escalas).forEach((scale) => {
+    const groups = new Map();
+    array(scale.valores).forEach((value, index) => {
+      const categoryId = slugId(value.categoria_id || "");
+      const conceptId = canonConceptId(value.concepto_id || "");
+      if (!/_CON_RETIRO$/.test(categoryId) || text(value.modalidad).trim()) return;
+      if (!/^(SUELDO_BASICO|VALOR_HORA|VALOR_DIA|VALOR_JORNAL)$/.test(conceptId)) return;
+      const numericValue = numericAmount(value.valor);
+      if (numericValue === null) return;
+      const key = [
+        scale.escala_id,
+        categoryId.replace(/_CON_RETIRO$/, ""),
+        conceptId,
+        text(value.periodicidad || scale.periodo_desde || scale.nombre_escala),
+        text(value.unidad_pago),
+        text(value.zona || scale.zona)
+      ].join("|");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ value, index, amount: numericValue, categoryId });
+    });
+    groups.forEach((items) => {
+      const distinct = new Set(items.map((item) => item.amount));
+      if (items.length < 2 || distinct.size < 2) return;
+      const sorted = [...items].sort((a, b) => a.amount - b.amount || a.index - b.index);
+      sorted.forEach((item, position) => {
+        const isSinRetiro = position === sorted.length - 1;
+        const nextId = isSinRetiro ? item.categoryId.replace(/_CON_RETIRO$/, "_SIN_RETIRO") : item.categoryId;
+        item.value.categoria_id = nextId;
+        item.value.categoria_nombre = text(item.value.categoria_nombre || nameById.get(item.categoryId));
+        item.value.modalidad = isSinRetiro ? "Sin retiro" : "Con retiro";
+      });
+    });
+  });
 }
 
 function canonConceptId(value, name = "") {
@@ -303,7 +392,8 @@ function normalizeConvenioRoot(source = {}) {
     ambito_territorial: text(source.ambito_territorial || source.scope?.territory),
     personal_comprendido: text(source.personal_comprendido || source.scope?.workersIncluded),
     personal_excluido: text(source.personal_excluido || source.scope?.workersExcluded),
-    fuente_documento: text(source.fuente_documento || source.source)
+    fuente_documento: text(source.fuente_documento || source.source),
+    ...traceFields(source)
   };
 }
 
@@ -315,7 +405,8 @@ function normalizeAmbito(item = {}, convenioId = "", index = 0) {
     descripcion: text(item.descripcion || item.nombre || item.description || item),
     incluido: text(item.incluido),
     excluido: text(item.excluido),
-    fuente_documento: text(item.fuente_documento || item.source)
+    fuente_documento: text(item.fuente_documento || item.source),
+    ...traceFields(item)
   };
 }
 
@@ -332,7 +423,8 @@ function normalizeCategoria(item = {}, convenioId = "", index = 0) {
     tareas_incluidas: text(item.tareas_incluidas || item.tareas || item.includedTasks),
     modalidad_aplicable: text(item.modalidad_aplicable || item.modalidad || item.applicableMode),
     nivel_jerarquico: text(item.nivel_jerarquico || item.hierarchyLevel),
-    fuente_documento: text(item.fuente_documento || item.source)
+    fuente_documento: text(item.fuente_documento || item.source),
+    ...traceFields(item)
   };
 }
 
@@ -355,7 +447,8 @@ function normalizeConcepto(item = {}, convenioId = "", index = 0, forcedType = "
     aplica_a: text(item.aplica_a || item.appliesTo),
     condicion: text(item.condicion || item.condition || item.detail || defaults.condicion),
     fuente_documento: text(item.fuente_documento || item.source),
-    es_liquidable: item.es_liquidable === undefined ? defaults.es_liquidable : Boolean(item.es_liquidable)
+    es_liquidable: item.es_liquidable === undefined ? defaults.es_liquidable : Boolean(item.es_liquidable),
+    ...traceFields(item)
   };
 }
 
@@ -384,7 +477,8 @@ function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
     zona: text(item.zona || item.zone),
     vigencia_desde: text(item.vigencia_desde || item.fecha_desde || item.desde || item.validFrom),
     vigencia_hasta: text(item.vigencia_hasta || item.fecha_hasta || item.hasta || item.validTo),
-    fuente_documento: text(item.fuente_documento || item.source)
+    fuente_documento: text(item.fuente_documento || item.source),
+    ...traceFields(item)
   };
 }
 
@@ -432,7 +526,8 @@ function normalizeEscala(item = {}, convenioId = "", index = 0) {
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
     fuente_documento: text(item.fuente_documento || item.source),
-    valores
+    valores,
+    ...traceFields(item)
   };
 }
 
@@ -463,7 +558,8 @@ function normalizeAdicional(item = {}, convenioId = "", index = 0) {
     vigencia_hasta: text(item.vigencia_hasta || item.validTo),
     fuente_documento: text(item.fuente_documento || item.source),
     articulo_anexo: text(item.articulo_anexo),
-    estado_revision: text(item.estado_revision || item.status)
+    estado_revision: text(item.estado_revision || item.status),
+    ...traceFields(item)
   };
 }
 
@@ -485,6 +581,7 @@ function dedupeById(items, idField, label) {
 function finalizeConvenio(normalized) {
   const convenioId = canonConvenioId(normalized.convenio?.convenio_id);
   normalized.convenio = { ...normalized.convenio, convenio_id: convenioId };
+  normalizeRetiroDuplicateValues(normalized);
   const categoryByName = new Map();
   const categoryIdMap = new Map();
   const categoryByCanonicalName = new Map();
@@ -495,6 +592,12 @@ function finalizeConvenio(normalized) {
     const canonicalId = canonCategoryId(category.categoria_id, category.categoria_nombre, category.grupo_nombre);
     if (canonicalId && canonicalId !== category.categoria_id) {
       console.warn(`[CCT normalize] categoria_id normalizado: ${category.categoria_id} -> ${canonicalId}`);
+    }
+    if (isModalityOnlyCategoryLabel(category)) {
+      console.warn(`[CCT normalize] Categoria descartada por ser modalidad pura: ${category.categoria_nombre || category.categoria_id}`);
+      categoryIdMap.set(category.categoria_id, "");
+      categoryIdMap.set(canonicalId, "");
+      continue;
     }
     if (isAdditionalCategoryLabel(category)) {
       const concepto_id = canonConceptId(category.categoria_id, category.categoria_nombre);
@@ -512,7 +615,7 @@ function finalizeConvenio(normalized) {
       promotedAdicionales.push({ adicional_id: concepto_id, concepto_id, nombre: promoted.nombre, fuente_documento: promoted.fuente_documento });
       continue;
     }
-    const nameKey = semanticCategoryKey(category.categoria_nombre || category.categoria_id);
+    const nameKey = categoryIdentityKey(category);
     if (categoryByCanonicalName.has(nameKey)) {
       const existing = categoryByCanonicalName.get(nameKey);
       console.warn(`[CCT normalize] Categoria duplicada por nombre: ${category.categoria_nombre}. ${category.categoria_id} -> ${existing.categoria_id}`);
@@ -585,7 +688,11 @@ function finalizeConvenio(normalized) {
     categoryIds = new Set(categorias.map((category) => category.categoria_id));
   }
 
-  const conceptosInput = [...normalized.conceptos, ...promotedAdditionalConcepts].map((concept) => {
+  const conceptosInput = [...normalized.conceptos, ...promotedAdditionalConcepts].filter((concept) => {
+    if (!isNonLiquidableLicenseConcept(concept)) return true;
+    console.warn(`[CCT normalize] Concepto descartado por ser licencia/regimen no liquidable: ${concept.nombre || concept.concepto_id}`);
+    return false;
+  }).map((concept) => {
     const id = canonConceptId(concept.concepto_id, concept.nombre);
     if (id !== concept.concepto_id) console.warn(`[CCT normalize] concepto_id normalizado: ${concept.concepto_id} -> ${id}`);
     const defaults = conceptDefaults({ ...concept, concepto_id: id });
@@ -598,18 +705,22 @@ function finalizeConvenio(normalized) {
     ...scale,
     convenio_id: convenioId,
     valores: scale.valores.map((value) => {
-      const hasValueCategory = text(value.categoria_id).trim() || text(value.categoria_nombre).trim() || text(value.grupo_nombre).trim();
-      const normalizedCategoryId = hasValueCategory ? canonCategoryId(value.categoria_id, value.categoria_nombre, value.grupo_nombre || scale.zona) : "";
-      const promotedAdditional = additionalCategoryById.get(value.categoria_id) || additionalCategoryById.get(normalizedCategoryId);
+      const valueCategoryIsModality = isModalityOnlyCategoryLabel(value);
+      const normalizedValue = valueCategoryIsModality
+        ? { ...value, modalidad: text(value.modalidad || value.categoria_nombre || value.categoria_id), categoria_id: "", categoria_nombre: "", grupo_nombre: "" }
+        : value;
+      const hasValueCategory = text(normalizedValue.categoria_id).trim() || text(normalizedValue.categoria_nombre).trim() || text(normalizedValue.grupo_nombre).trim();
+      const normalizedCategoryId = hasValueCategory ? canonCategoryId(normalizedValue.categoria_id, normalizedValue.categoria_nombre, normalizedValue.grupo_nombre || scale.zona) : "";
+      const promotedAdditional = additionalCategoryById.get(normalizedValue.categoria_id) || additionalCategoryById.get(normalizedCategoryId);
       const categoryId = promotedAdditional ? "" : categoryIds.has(normalizedCategoryId)
         ? normalizedCategoryId
-        : (categoryIdMap.get(value.categoria_id)
+        : (categoryIdMap.get(normalizedValue.categoria_id)
           || categoryIdMap.get(normalizedCategoryId)
-          || categoryByName.get(semanticCategoryKey(value.categoria_nombre, value.categoria_id))
-          || categoryByName.get(slugId(value.categoria_id)));
-      const conceptId = promotedAdditional ? canonConceptId(promotedAdditional.concepto_id, promotedAdditional.nombre) : canonConceptId(value.concepto_id || "SUELDO_BASICO");
-      const baseCategoryId = categoryId || normalizedCategoryId || value.categoria_id;
-      const variantId = scaleValueVariantId(value);
+          || categoryByName.get(semanticCategoryKey(normalizedValue.categoria_nombre, normalizedValue.categoria_id))
+          || categoryByName.get(slugId(normalizedValue.categoria_id)));
+      const conceptId = promotedAdditional ? canonConceptId(promotedAdditional.concepto_id, promotedAdditional.nombre) : canonConceptId(normalizedValue.concepto_id || "SUELDO_BASICO");
+      const baseCategoryId = categoryId || normalizedCategoryId || normalizedValue.categoria_id;
+      const variantId = scaleValueVariantId(normalizedValue);
       const finalCategoryId = !promotedAdditional && splitBaseCategoryIds.has(baseCategoryId) && variantId
         ? (variantCategoryByKey.get(`${baseCategoryId}|${variantId}`) || baseCategoryId)
         : baseCategoryId;
@@ -618,13 +729,13 @@ function finalizeConvenio(normalized) {
         categorias.push({
           categoria_id: finalCategoryId,
           convenio_id: convenioId,
-          grupo_nombre: text(value.grupo_nombre || scale.zona),
-          categoria_nombre: finalCategoryId.replace(/_/g, " "),
+          grupo_nombre: text(normalizedValue.grupo_nombre || scale.zona),
+          categoria_nombre: text(normalizedValue.categoria_nombre) || finalCategoryId.replace(/_/g, " "),
           descripcion: "",
           tareas_incluidas: "",
-          modalidad_aplicable: "",
+          modalidad_aplicable: text(normalizedValue.modalidad) || categoryVariantLabelFromId(finalCategoryId),
           nivel_jerarquico: "",
-          fuente_documento: text(value.fuente_documento || scale.fuente_documento)
+          fuente_documento: text(normalizedValue.fuente_documento || scale.fuente_documento)
         });
         categoryIds.add(finalCategoryId);
       }
@@ -634,17 +745,21 @@ function finalizeConvenio(normalized) {
         conceptIds.add(conceptId);
       }
       return {
-        ...value,
+        ...normalizedValue,
         convenio_id: convenioId,
         categoria_id: promotedAdditional ? "" : finalCategoryId,
-        categoria_nombre: promotedAdditional ? "" : value.categoria_nombre,
-        grupo_nombre: promotedAdditional ? "" : value.grupo_nombre,
+        categoria_nombre: promotedAdditional ? "" : normalizedValue.categoria_nombre,
+        grupo_nombre: promotedAdditional ? "" : normalizedValue.grupo_nombre,
         concepto_id: conceptId
       };
     })
   }));
 
-  const adicionales = dedupeById([...normalized.adicionales, ...promotedAdicionales].map((item) => {
+  const adicionales = dedupeById([...normalized.adicionales, ...promotedAdicionales].filter((item) => {
+    if (!isNonLiquidableLicenseConcept({ ...item, concepto_id: item.concepto_id || item.adicional_id })) return true;
+    console.warn(`[CCT normalize] Adicional descartado por ser licencia/regimen no liquidable: ${item.nombre || item.adicional_id}`);
+    return false;
+  }).map((item) => {
     if (!text(item.nombre).trim() && !text(item.concepto_id).trim() && /^ADICIONAL_\d+$/.test(text(item.adicional_id))) return null;
     const concepto_id = canonConceptId(item.concepto_id || item.adicional_id, item.nombre);
     if (!concepto_id) return null;
@@ -662,6 +777,11 @@ function finalizeConvenio(normalized) {
   }).filter(Boolean), "adicional_id", "adicionales");
 
   const ambitos = (normalized.ambitos || []).map((item) => ({ ...item, convenio_id: convenioId }));
+  const valuedCategoryIds = new Set(escalas.flatMap((scale) => (scale.valores || [])
+    .filter((value) => numericAmount(value.valor) !== null)
+    .map((value) => value.categoria_id)
+    .filter(Boolean)));
+  categorias = categorias.filter((category) => valuedCategoryIds.has(category.categoria_id) || !isGeneralGroupingCategory(category));
 
   return { ...normalized, ambitos, categorias, conceptos, escalas, adicionales };
 }
@@ -704,10 +824,140 @@ function normalizeConvenio(input = {}) {
   });
 }
 
+const PERIOD_MONTHS = {
+  enero: 1,
+  ene: 1,
+  january: 1,
+  jan: 1,
+  febrero: 2,
+  feb: 2,
+  february: 2,
+  marzo: 3,
+  mar: 3,
+  march: 3,
+  abril: 4,
+  abr: 4,
+  april: 4,
+  apr: 4,
+  mayo: 5,
+  may: 5,
+  junio: 6,
+  jun: 6,
+  june: 6,
+  julio: 7,
+  jul: 7,
+  july: 7,
+  agosto: 8,
+  ago: 8,
+  august: 8,
+  aug: 8,
+  septiembre: 9,
+  setiembre: 9,
+  sep: 9,
+  set: 9,
+  september: 9,
+  octubre: 10,
+  oct: 10,
+  october: 10,
+  noviembre: 11,
+  nov: 11,
+  november: 11,
+  diciembre: 12,
+  dic: 12,
+  december: 12,
+  dec: 12
+};
+
+function formatPeriod(year, month) {
+  const y = Number(year);
+  const m = Number(month);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || y < 2000 || m < 1 || m > 12) return "";
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+
+function normalizedPeriodText(value) {
+  return text(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function periodIds(...values) {
+  const raw = values.map(text).filter(Boolean).join(" ");
+  const normalized = normalizedPeriodText(raw);
+  const periods = [];
+  const add = (year, month) => {
+    const period = formatPeriod(year, month);
+    if (period && !periods.includes(period)) periods.push(period);
+  };
+  const addRange = (year, fromMonth, toMonth) => {
+    const from = Number(fromMonth);
+    const to = Number(toMonth);
+    const y = Number(year);
+    if (!Number.isInteger(y) || !Number.isInteger(from) || !Number.isInteger(to)) return;
+    if (from < 1 || from > 12 || to < 1 || to > 12 || to < from) return;
+    for (let month = from; month <= to; month += 1) add(y, month);
+  };
+
+  raw.replace(/\b(20\d{2})[-/.](0?[1-9]|1[0-2])(?:[-/.]\d{1,2})?\b/g, (_, year, month) => add(year, month));
+  raw.replace(/\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](20\d{2})\b/g, (_, _day, month, year) => add(year, month));
+  raw.replace(/\b(0?[1-9]|1[0-2])[-/.](20\d{2})\b/g, (_, month, year) => add(year, month));
+  const monthPattern = Object.keys(PERIOD_MONTHS).sort((a, b) => b.length - a.length).join("|");
+  const rangePattern = new RegExp(`\\b(${monthPattern})\\b\\s*(?:a|al|hasta|to|through|-|/)\\s*\\b(${monthPattern})\\b\\s*(?:de\\s*)?(20\\d{2})\\b`, "g");
+  normalized.replace(rangePattern, (_, fromMonth, toMonth, year) => addRange(year, PERIOD_MONTHS[fromMonth], PERIOD_MONTHS[toMonth]));
+
+  const tokens = normalized.split(/[^a-z0-9]+/).filter(Boolean);
+  let pendingMonths = [];
+  let currentYear = "";
+  tokens.forEach((token) => {
+    if (PERIOD_MONTHS[token]) {
+      pendingMonths.push(PERIOD_MONTHS[token]);
+      if (currentYear) add(currentYear, PERIOD_MONTHS[token]);
+      return;
+    }
+    if (/^20\d{2}$/.test(token)) {
+      currentYear = token;
+      pendingMonths.forEach((month) => add(token, month));
+      pendingMonths = [];
+      return;
+    }
+    if (!["a", "al", "de", "del", "hasta", "y", "e", "to", "from", "through"].includes(token)) {
+      pendingMonths = [];
+    }
+  });
+
+  return periods;
+}
+
 function periodId(value) {
-  const raw = text(value);
-  const match = raw.match(/\b(20\d{2})[-/](0?[1-9]|1[0-2])\b/);
-  return match ? `${match[1]}-${String(Number(match[2])).padStart(2, "0")}` : "";
+  return periodIds(value)[0] || "";
+}
+
+function periodRangeIds(fromValue, toValue) {
+  const from = periodId(fromValue);
+  const to = periodId(toValue);
+  if (!from || !to) return [];
+  const [fromYear, fromMonth] = from.split("-").map(Number);
+  const [toYear, toMonth] = to.split("-").map(Number);
+  const fromIndex = fromYear * 12 + fromMonth;
+  const toIndex = toYear * 12 + toMonth;
+  if (toIndex < fromIndex || toIndex - fromIndex > 36) return [from];
+  const periods = [];
+  for (let index = fromIndex; index <= toIndex; index += 1) {
+    const year = Math.floor((index - 1) / 12);
+    const month = ((index - 1) % 12) + 1;
+    periods.push(formatPeriod(year, month));
+  }
+  return periods.filter(Boolean);
+}
+
+function scalePeriodIds(scale = {}) {
+  const range = periodRangeIds(scale.periodo_desde, scale.periodo_hasta);
+  return Array.from(new Set([
+    ...range,
+    ...periodIds(scale.periodo_desde, scale.periodo_hasta, scale.nombre_escala, scale.escala_id),
+    ...array(scale.valores).flatMap((value) => periodIds(value.periodicidad, value.periodo, value.mes, value.fecha, value.vigencia_desde, value.vigencia_hasta))
+  ].filter(Boolean)));
 }
 
 function runtimeSalaryField(value = {}) {
@@ -740,10 +990,9 @@ function runtimeConceptCalculation(concept = {}) {
 function toRuntimeConvention(input = {}) {
   const excel = normalizeConvenio(input);
   const id = excel.convenio.convenio_id || text(input.id);
-  const periods = Array.from(new Set(excel.escalas.flatMap((scale) => [
-    periodId(scale.periodo_desde),
-    periodId(scale.periodo_hasta)
-  ]).filter(Boolean))).map((period) => ({ id: period, label: period }));
+  const periods = Array.from(new Set(excel.escalas.flatMap(scalePeriodIds).filter(Boolean)))
+    .sort()
+    .map((period) => ({ id: period, label: period }));
   const zones = Array.from(new Set(excel.escalas.flatMap((scale) => [
     scale.zona,
     ...(scale.valores || []).map((value) => value.zona)
@@ -752,7 +1001,7 @@ function toRuntimeConvention(input = {}) {
   const categories = excel.categorias.map((category) => {
     const row = {
       id: category.categoria_id,
-      label: category.categoria_nombre,
+      label: categoryRuntimeLabel(category),
       group: category.grupo_nombre || excel.convenio.rama,
       description: category.descripcion,
       monthlyByPeriod: {},
@@ -761,7 +1010,7 @@ function toRuntimeConvention(input = {}) {
       nonRem: {}
     };
     excel.escalas.forEach((scale) => {
-      const scalePeriod = periodId(scale.periodo_desde) || fallbackPeriod;
+      const scalePeriods = scalePeriodIds(scale);
       scale.valores
         .filter((value) => value.categoria_id === category.categoria_id)
         .forEach((value) => {
@@ -769,14 +1018,18 @@ function toRuntimeConvention(input = {}) {
           if (amountValue === null) return;
           if (value.zona && !row.zone) row.zone = text(value.zona);
           const conceptId = canonConceptId(value.concepto_id);
-          if (conceptId === "NO_REMUNERATIVO") {
-            row.nonRem[scalePeriod] = amountValue;
-            return;
-          }
-          const field = runtimeSalaryField(value);
-          if (field === "day") row.dayByPeriod[scalePeriod] = amountValue;
-          else if (field === "hourly") row.hourlyByPeriod[scalePeriod] = amountValue;
-          else if (!conceptId || conceptId === "SUELDO_BASICO") row.monthlyByPeriod[scalePeriod] = amountValue;
+          const targetPeriods = periodIds(value.periodicidad, value.periodo, value.mes, value.fecha);
+          const valuePeriods = targetPeriods.length ? targetPeriods : (scalePeriods.length ? scalePeriods : [fallbackPeriod].filter(Boolean));
+          valuePeriods.forEach((scalePeriod) => {
+            if (conceptId === "NO_REMUNERATIVO") {
+              row.nonRem[scalePeriod] = amountValue;
+              return;
+            }
+            const field = runtimeSalaryField(value);
+            if (field === "day") row.dayByPeriod[scalePeriod] = amountValue;
+            else if (field === "hourly") row.hourlyByPeriod[scalePeriod] = amountValue;
+            else if (!conceptId || conceptId === "SUELDO_BASICO") row.monthlyByPeriod[scalePeriod] = amountValue;
+          });
         });
     });
     const latestMonthly = Object.values(row.monthlyByPeriod).at(-1);
@@ -1004,6 +1257,9 @@ function validateConvenioBusinessRules(convenio) {
   }
   convenio.escalas.forEach((escala) => {
     assertNoDuplicates(escala.valores, "valor_id", `valores de escala ${escala.escala_id}`);
+    if (escala.valores.length && !scalePeriodIds(escala).length) {
+      details.push({ path: `escalas.${escala.escala_id}`, message: "Escala con importes pero sin periodo detectable" });
+    }
     escala.valores.forEach((value) => {
       if (value.categoria_id && !categoryIds.has(value.categoria_id)) {
         console.warn(`[CCT normalize] Escala ${escala.escala_id} apunta a categoria inexistente: ${value.categoria_id}`);
@@ -1015,6 +1271,11 @@ function validateConvenioBusinessRules(convenio) {
       }
     });
   });
+  const salaryConceptIds = new Set(["SUELDO_BASICO", "VALOR_HORA", "VALOR_DIA", "VALOR_JORNAL"]);
+  const hasSalaryValue = convenio.escalas.some((escala) => escala.valores.some((value) => salaryConceptIds.has(value.concepto_id)));
+  if (convenio.escalas.some((escala) => escala.valores.length) && convenio.categorias.length && !hasSalaryValue) {
+    details.push({ path: "escalas.valores", message: "No se detectaron valores salariales base (SUELDO_BASICO, VALOR_HORA, VALOR_DIA o VALOR_JORNAL)" });
+  }
   convenio.conceptos.forEach((concept) => {
     const reference = isReferenceConcept(concept.concepto_id, concept.nombre);
     ["nombre", "tipo_concepto", "naturaleza"].forEach((field) => {

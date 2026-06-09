@@ -3339,7 +3339,12 @@
     const headers = new Headers(options.headers || {});
     const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    if (!response.ok) {
+      const details = Array.isArray(payload.errores) && payload.errores.length
+        ? payload.errores.slice(0, 3).map((item) => `${item.path ? `${item.path}: ` : ""}${item.message || item}`).join(" | ")
+        : "";
+      throw new Error(payload.error || details || `HTTP ${response.status}`);
+    }
     return payload;
   }
 
@@ -3921,7 +3926,7 @@
   function flatScaleValues(conv = {}) {
     return (conv.escalas || []).flatMap((scale) => (scale.valores || []).map((value) => ({
       escala_id: value.escala_id || scale.escala_id,
-      mes: value.periodicidad || scale.periodo_desde || scale.nombre_escala || "",
+      mes: isPeriodLikeValue(value.periodicidad) ? value.periodicidad : (scale.periodo_desde || scale.nombre_escala || value.periodicidad || ""),
       categoria_id: value.categoria_id,
       concepto_id: value.concepto_id,
       unidad_pago: value.unidad_pago,
@@ -3931,6 +3936,12 @@
       zona: value.zona || scale.zona,
       modalidad: value.modalidad || ""
     })));
+  }
+
+  function isPeriodLikeValue(value) {
+    const raw = String(value || "").trim();
+    return /\b20\d{2}[-/](0?[1-9]|1[0-2])(?:[-/]\d{1,2})?\b/.test(raw)
+      || /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)\b/i.test(raw);
   }
 
   function salaryAuditRows(conv = {}) {
@@ -3993,7 +4004,22 @@
   }
 
   function categoryAuditRows(conv = {}) {
-    return conv.categorias || [];
+    return (conv.categorias || []).map((category) => {
+      const variant = category.modalidad_aplicable || categoryVariantFromId(category.categoria_id);
+      const name = String(category.categoria_nombre || category.nombre || "");
+      return {
+        ...category,
+        categoria_nombre: variant && !name.toLowerCase().includes(variant.toLowerCase()) ? `${name} - ${variant}` : name,
+        modalidad_aplicable: category.modalidad_aplicable || variant
+      };
+    });
+  }
+
+  function categoryVariantFromId(id) {
+    const key = summaryKey(id || "");
+    if (key.endsWith("sin_retiro")) return "Sin retiro";
+    if (key.endsWith("con_retiro")) return "Con retiro";
+    return "";
   }
 
   function conceptAuditGroup(concept = {}) {
@@ -4259,7 +4285,7 @@
       scaleById.set(scale.escala_id, scale);
       const conceptId = salary.concepto_id || "SUELDO_BASICO";
       scale.valores.push({
-        valor_id: `basico-${salary.categoria_id || index + 1}-${salary.mes || index + 1}-${conceptId}`,
+        valor_id: `basico-${index + 1}-${salary.categoria_id || "sin-categoria"}-${salary.mes || "sin-mes"}-${conceptId}`,
         escala_id: scale.escala_id,
         categoria_id: salary.categoria_id,
         concepto_id: conceptId,
