@@ -339,11 +339,14 @@ function calcGeneric(ctx) {
     const enabled = concept.inputType === "number" ? inputValue(ctx.inputs, key, 0) : (inputBool(ctx.inputs, key, !!concept.defaultValue) ? 1 : 0);
     if (!enabled) return;
     const base = concept.base === "remunerative" ? sumRows(rows.remRows) : concept.base === "nonRemunerativeScale" ? noRemScaleBase : concept.base === "seniorityBase" ? basic + seniority : basic;
-    const value = concept.calculation === "fixed"
+    let value = concept.calculation === "fixed"
       ? (periodAmountValue(concept, period, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(concept.amount)) * enabled
       : concept.calculation === "amountPerUnit"
         ? (periodAmountValue(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"]) ?? amount(concept.unitAmount || concept.amount)) * enabled
         : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
+    if (!value && activeCatRow?.conceptValues?.[concept.id]) {
+      value = activeCatRow.conceptValues[concept.id] * monthPct * enabled;
+    }
     addRow(concept.rowType === "nonRemunerative" ? rows.noRemRows : concept.rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, concept.detail || concept.group || "Concepto del convenio");
   });
   if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {

@@ -223,6 +223,38 @@ function conceptToEngine(concept, rowType = conceptKind(concept)) {
   };
 }
 
+function extractRules(conceptos = []) {
+  const rules = {};
+  const ruleConceptIds = new Set();
+  for (const concept of conceptos) {
+    const id = concept.concepto_id;
+    const pct = numberValue(concept.porcentaje);
+    if (id === "ANTIGUEDAD" && pct) {
+      rules.seniority = { enabled: true, percentPerYear: pct };
+      ruleConceptIds.add(id);
+    }
+    if (/^PRESENTISMO/.test(id) && pct) {
+      rules.presentism = { enabled: true, percent: pct };
+      ruleConceptIds.add(id);
+    }
+  }
+  return { rules, ruleConceptIds };
+}
+
+function extractZones(escalas = []) {
+  const zoneMap = new Map();
+  for (const esc of escalas) {
+    for (const value of esc.valores || []) {
+      const zone = normalizeZone(value.zona || esc.zona);
+      if (zone && !zoneMap.has(zone)) {
+        zoneMap.set(zone, { id: zone, label: value.zona || esc.zona || "General", coef: 1 });
+      }
+    }
+  }
+  if (!zoneMap.size) zoneMap.set("general", { id: "general", label: "General", coef: 1 });
+  return Array.from(zoneMap.values());
+}
+
 function buildActiveScale(convenio, scale) {
   if (!scale) return null;
   const concepts = conceptMap(convenio);
@@ -249,6 +281,9 @@ function buildActiveScale(convenio, scale) {
       else row.monthly = valueAmount;
     } else if (conceptKind(concept) === "nonRemunerative") {
       row.nonRemunerative = numberValue(row.nonRemunerative) + valueAmount;
+    } else if (value.concepto_id && valueAmount) {
+      if (!row.conceptValues) row.conceptValues = {};
+      row.conceptValues[value.concepto_id] = (row.conceptValues[value.concepto_id] || 0) + valueAmount;
     }
   });
   return {
@@ -262,19 +297,24 @@ function buildActiveScale(convenio, scale) {
 }
 
 function buildPayrollConvention(convenio, period) {
+  const { rules, ruleConceptIds } = extractRules(convenio.conceptos);
   const concepts = [];
   const deductions = [];
   const retentions = [];
   const employerContributions = [];
   (convenio.conceptos || []).forEach((concept) => {
     if (isBasicConcept(concept)) return;
+    if (ruleConceptIds.has(concept.concepto_id)) return;
+    if (concept.es_liquidable === false) return;
     const kind = conceptKind(concept);
-    if (kind === "employer") employerContributions.push(conceptToEngine(concept, "employer"));
-    else if (kind === "deduction" && /retencion/.test(matchText(concept.tipo_concepto))) retentions.push(conceptToEngine(concept, "deduction"));
-    else if (kind === "deduction") deductions.push(conceptToEngine(concept, "deduction"));
-    else concepts.push(conceptToEngine(concept, kind));
+    const engineConcept = conceptToEngine(concept, kind);
+    if (kind === "employer") employerContributions.push(engineConcept);
+    else if (kind === "deduction" && /retencion/.test(matchText(concept.tipo_concepto))) retentions.push(engineConcept);
+    else if (kind === "deduction") deductions.push(engineConcept);
+    else concepts.push(engineConcept);
   });
   (convenio.adicionales || []).forEach((additional) => {
+    if (ruleConceptIds.has(additional.concepto_id || additional.adicional_id)) return;
     concepts.push(conceptToEngine({
       concepto_id: additional.concepto_id || additional.adicional_id,
       nombre: additional.nombre,
@@ -285,11 +325,12 @@ function buildPayrollConvention(convenio, period) {
       condicion: additional.condicion
     }, "remunerative"));
   });
-  const periods = (convenio.escalas || []).map((scale) => ({
-    id: periodOf(scale) || period,
-    label: scale.nombre_escala || periodOf(scale) || period,
-    validFrom: periodOf(scale) || period
+  const periods = (convenio.escalas || []).map((esc) => ({
+    id: periodOf(esc) || period,
+    label: esc.nombre_escala || periodOf(esc) || period,
+    validFrom: periodOf(esc) || period
   }));
+  const zones = extractZones(convenio.escalas);
   return {
     id: convenio.convenio.convenio_id,
     name: convenio.convenio.denominacion,
@@ -298,14 +339,14 @@ function buildPayrollConvention(convenio, period) {
     type: "monthly",
     calculationMode: "generic-v1",
     periods: periods.length ? periods : [{ id: period, label: period, validFrom: period }],
-    zones: [{ id: "general", label: "General", coef: 1 }],
+    zones,
     categories: (convenio.categorias || []).map((category) => ({
       id: category.categoria_id,
       label: category.categoria_nombre || category.grupo_nombre || category.categoria_id,
       group: category.grupo_nombre || "",
       monthly: 0
     })),
-    rules: {},
+    rules,
     liquidationModel: { concepts, deductions, retentions, employerContributions }
   };
 }
