@@ -654,7 +654,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       convention: {
         name: "",
         shortName: "",
-        source: cctFile?.originalname || scaleFile?.originalname || "",
+        source: cctFile?.originalname || scaleFiles.map((file) => file.originalname).filter(Boolean).join(" + ") || "",
         periods: [],
         zones: [],
         categories: [],
@@ -771,7 +771,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       return;
     }
 
-    const files = [cctFile, scaleFile].filter(Boolean).map((file) => ({
+    const files = [cctFile, ...scaleFiles].filter(Boolean).map((file) => ({
       field: file.fieldname,
       originalName: file.originalname,
       storedFileName: file.filename,
