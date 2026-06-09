@@ -1063,7 +1063,27 @@
 
   function scaleCategoryRow(conv, category, zone) {
     const scale = activeScaleFor(conv);
-    return scale ? findScaleRow(scale.parsedScale?.categories, category, zone) : null;
+    if (!scale) return null;
+    const parsed = scale.parsedScale || {};
+    const categoryRow = findScaleRow(parsed.categories, category, zone);
+    const nonRemRow = findScaleRow(parsed.nonRemunerative, category, zone);
+    if (!nonRemRow) return categoryRow;
+    return {
+      ...(categoryRow || {}),
+      nonRemRow,
+      nonRemunerative: firstFinite(
+        categoryRow?.nonRemunerative,
+        periodNonRemValue(nonRemRow, getPeriod(conv)),
+        nonRemRow.nonRemunerative,
+        nonRemRow.noRemunerativo,
+        nonRemRow.amount,
+        nonRemRow.value,
+        nonRemRow.valor,
+        nonRemRow.importe,
+        nonRemRow.monto,
+        nonRemRow.monthly
+      ) || 0
+    };
   }
 
   function scaleAdditionalRow(conv, key, additional) {
@@ -1083,9 +1103,30 @@
 
   function periodNonRemValue(source, period) {
     if (!source) return 0;
-    if (source.nonRem && typeof source.nonRem === "object") return Number(source.nonRem[period] || 0) || 0;
-    if (source.nonRemunerativeByPeriod && typeof source.nonRemunerativeByPeriod === "object") return Number(source.nonRemunerativeByPeriod[period] || 0) || 0;
-    return Number(source.nonRemunerative || 0) || 0;
+    const nested = source.nonRemRow ? periodNonRemValue(source.nonRemRow, period) : 0;
+    if (nested) return nested;
+    const periodKeys = [
+      "nonRem",
+      "nonRemunerativeByPeriod",
+      "noRemunerativoPorPeriodo",
+      "no_remunerativo_por_periodo",
+      "sumaNoRemunerativaPorPeriodo"
+    ];
+    for (const key of periodKeys) {
+      if (source[key] && typeof source[key] === "object") {
+        const value = firstFinite(source[key][period], source[key][String(period || "").toUpperCase()], source[key][String(period || "").toLowerCase()]);
+        if (value) return value;
+      }
+    }
+    return firstFinite(
+      source.nonRemunerative,
+      source.noRemunerativo,
+      source.no_remunerativo,
+      source.sumaNoRemunerativa,
+      source.suma_no_remunerativa,
+      source.nonRemunerativeAmount,
+      source.noRemAmount
+    ) || 0;
   }
 
   function periodAmountValue(source, period, names) {
@@ -1102,8 +1143,10 @@
 
   function genericBaseAmount({ concept, basic, remTotal, categoryMonthly, categoryDay, categoryHourly, seniorityBase, noRemScale }) {
     const base = String(concept.base || "basic");
+    if (concept.rowType === "nonRemunerative" && concept.calculation === "scaleValue") return noRemScale;
     if (base === "remunerative") return remTotal;
     if (base === "nonRemunerativeScale" || base === "noRemScale") return noRemScale;
+    if (base === "escala_salarial" && concept.rowType === "nonRemunerative") return noRemScale;
     if (base === "categoryMonthly") return categoryMonthly;
     if (base === "categoryDay") return categoryDay;
     if (base === "categoryHourly") return categoryHourly;
@@ -1131,6 +1174,9 @@
   }
 
   function calcGenericConceptAmount(concept, inputValue, baseValue, period) {
+    if (concept.calculation === "scaleValue") {
+      return baseValue * inputValue;
+    }
     if (concept.calculation === "fixed") {
       return conceptPeriodAmount(concept, period, ["amountByPeriod", "amountPorPeriodo"], concept.amount) * inputValue;
     }
@@ -1249,7 +1295,7 @@
     addRow(remRows, "Horas extra 50%", hourValue * num("genExtra50", 0) * 1.5, `Base habitual / ${hourDivisor} x 1,5`, `${calcNum(hourValue)} x ${calcNum(num("genExtra50", 0))} x 1,5`);
     addRow(remRows, "Horas extra 100%", hourValue * num("genExtra100", 0) * 2, `Base habitual / ${hourDivisor} x 2`, `${calcNum(hourValue)} x ${calcNum(num("genExtra100", 0))} x 2`);
 
-    const noRemScaleRaw = firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(cat, period)) || 0;
+    const noRemScaleRaw = firstFinite(periodNonRemValue(activeCatRow, period), activeCatRow?.nonRemunerative, periodNonRemValue(cat, period)) || 0;
     const noRemScaleBase = noRemScaleRaw * monthPct * scaleCoef;
 
     const conceptRows = Array.isArray(model.concepts) ? userFacingConcepts(model.concepts) : [];
@@ -1271,6 +1317,8 @@
       const target = concept.rowType === "nonRemunerative" ? noRemRows : concept.rowType === "deduction" ? deductionRows : remRows;
       const formula = concept.calculation === "fixed"
         ? `${calcNum(conceptPeriodAmount(concept, period, ["amountByPeriod", "amountPorPeriodo"], concept.amount))} x ${inputValue}`
+        : concept.calculation === "scaleValue"
+          ? `${calcNum(baseValue)} x ${inputValue}`
         : concept.calculation === "amountPerUnit"
           ? `${calcNum(conceptPeriodAmount(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"], concept.unitAmount || concept.amount))} x ${inputValue}`
           : `${calcNum(baseValue)} x ${Number(concept.percent || 0) || 0} / 100${inputValue !== 1 ? ` x ${inputValue}` : ""}`;
