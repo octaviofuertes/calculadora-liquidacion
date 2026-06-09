@@ -1887,36 +1887,30 @@
   }
 
   function renderDetails(result) {
+    const remRows = result.remRows || [];
+    const noRemRows = result.noRemRows || [];
+    const deductionRows = result.deductionRows || [];
+    const calcRows = [...remRows, ...noRemRows, ...deductionRows];
+    const employerRows = [
+      { label: "Bruto trabajador", amount: result.totals.gross, detail: "" },
+      ...(result.employerRows || []),
+      { label: "Costo total estimado", amount: result.totals.employerCost, detail: "Bruto + contribuciones" }
+    ];
     return `<div class="detail-grid">
-      <div class="detail-card">
-        <h3>Conceptos remunerativos</h3>
-        ${tableRows(result.remRows)}
-      </div>
-      <div class="detail-card">
-        <h3>Conceptos no remunerativos</h3>
-        ${tableRows(result.noRemRows)}
-      </div>
-      <div class="detail-card">
-        <h3>Deducciones trabajador</h3>
-        ${tableRows(result.deductionRows)}
-      </div>
-      <div class="detail-card">
-        <h3>Como se liquido cada concepto</h3>
-        ${calculationRows([...result.remRows, ...result.noRemRows, ...result.deductionRows])}
-      </div>
-      <div class="detail-card">
-        <h3>Costo empleador</h3>
-        ${tableRows([
-          { label: "Bruto trabajador", amount: result.totals.gross, detail: "" },
-          ...result.employerRows,
-          { label: "Costo total estimado", amount: result.totals.employerCost, detail: "Bruto + contribuciones" }
-        ])}
-      </div>
-      <div class="detail-card">
-        <h3>Bases y calculos</h3>
-        ${tableRows(result.details)}
-      </div>
+      ${renderDetailCard("Conceptos remunerativos", remRows.length, tableRows(remRows))}
+      ${renderDetailCard("Conceptos no remunerativos", noRemRows.length, tableRows(noRemRows))}
+      ${renderDetailCard("Deducciones trabajador", deductionRows.length, tableRows(deductionRows))}
+      ${renderDetailCard("Como se liquido cada concepto", calcRows.length, calculationRows(calcRows))}
+      ${renderDetailCard("Costo empleador", employerRows.length, tableRows(employerRows))}
+      ${renderDetailCard("Bases y calculos", (result.details || []).length, tableRows(result.details || []))}
     </div>`;
+  }
+
+  function renderDetailCard(title, count, body) {
+    return `<details class="summary-section summary-collapsible detail-card">
+      <summary><span>${escapeHtml(title)}</span><em>${count} ${count === 1 ? "fila" : "filas"}</em></summary>
+      <div class="summary-collapsible-body detail-card-body">${body}</div>
+    </details>`;
   }
 
   function renderScales(result) {
