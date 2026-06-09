@@ -1038,11 +1038,30 @@ function toRuntimeConvention(input = {}) {
     if (latestMonthly !== undefined) row.monthly = latestMonthly;
     if (latestDay !== undefined) row.day = latestDay;
     if (latestHourly !== undefined) row.hourly = latestHourly;
+    row.salaryType = row.monthly || Object.keys(row.monthlyByPeriod).length
+      ? "monthly"
+      : row.day || Object.keys(row.dayByPeriod).length
+        ? "daily"
+        : row.hourly || Object.keys(row.hourlyByPeriod).length
+          ? "hourly"
+          : "";
     return row;
   });
-  const salaryType = categories.some((category) => category.day || Object.keys(category.dayByPeriod).length)
-    ? "daily"
-    : categories.some((category) => category.hourly || Object.keys(category.hourlyByPeriod).length)
+  const payableCategories = categories.filter((category) => (
+    category.monthly || category.day || category.hourly
+    || Object.keys(category.monthlyByPeriod).length
+    || Object.keys(category.dayByPeriod).length
+    || Object.keys(category.hourlyByPeriod).length
+  ));
+  const runtimeCategories = payableCategories.length ? payableCategories : categories;
+  const hasMonthlySalary = runtimeCategories.some((category) => category.monthly || Object.keys(category.monthlyByPeriod).length);
+  const hasDailySalary = runtimeCategories.some((category) => category.day || Object.keys(category.dayByPeriod).length);
+  const hasHourlySalary = runtimeCategories.some((category) => category.hourly || Object.keys(category.hourlyByPeriod).length);
+  const salaryType = hasMonthlySalary
+    ? "monthly"
+    : hasDailySalary
+      ? "daily"
+      : hasHourlySalary
       ? "hourly"
       : "monthly";
   const rules = { salaryType, monthDivisor: 30, hourDivisor: 200, weeklyHours: 48 };
@@ -1055,7 +1074,7 @@ function toRuntimeConvention(input = {}) {
     calculationMode: "generic-v1",
     periods,
     zones: zones.length ? zones.map((zone) => ({ id: zone, label: zone, coef: 1 })) : [{ id: "general", label: "General", coef: 1 }],
-    categories,
+    categories: runtimeCategories,
     rules,
     liquidationModel: {
       version: "generic-v1",

@@ -1012,6 +1012,14 @@
     return basic;
   }
 
+  function genericSalaryTypeForCategory(conv, category) {
+    if (category?.salaryType) return category.salaryType;
+    if (category?.monthly || Object.keys(category?.monthlyByPeriod || {}).length) return "monthly";
+    if (category?.day || Object.keys(category?.dayByPeriod || {}).length) return "daily";
+    if (category?.hourly || Object.keys(category?.hourlyByPeriod || {}).length) return "hourly";
+    return conv?.rules?.salaryType || conv?.type || "monthly";
+  }
+
   function conceptPeriodAmount(concept, period, keys, fallback) {
     for (const key of keys) {
       const map = concept[key];
@@ -1070,13 +1078,13 @@
       || activeScaleFor(conv)?.parsedScale?.reglasNoRemunerativas
       || {};
     rules.nonRemunerativeScale = { ...(rules.nonRemunerativeScale || {}), ...activeScaleRules };
-    const salaryType = rules.salaryType || conv.type || "monthly";
+    const salaryType = genericSalaryTypeForCategory(conv, cat);
     const zoneCoef = Number(zone?.coef || 1) || 1;
     const scaleCoef = scaleRowMatchesZone(activeCatRow, zone) ? 1 : zoneCoef;
     const monthPct = Math.max(0, Math.min(100, num("genMonthPct", 100))) / 100;
     const monthDivisor = Number(rules.monthDivisor || 30) || 30;
     const hourDivisor = Number(rules.overtime?.divisor || rules.hourDivisor || 200) || 200;
-    const workUnits = Math.max(0, num("genWorkUnits", salaryType === "hourly" ? 0 : monthDivisor));
+    const workUnits = Math.max(0, num("genWorkUnits", salaryType === "hourly" ? hourDivisor : monthDivisor));
     const absentDays = Math.max(0, num("genAbsentDays", 0));
     const years = yearsFromEntry();
     const remRows = [];
@@ -5227,6 +5235,13 @@
       const visibleConcepts = userFacingConcepts(model.concepts || []);
       const visibleDeductions = userFacingConcepts(model.deductions || []);
       const visibleRetentions = userFacingConcepts(model.retentions || []);
+      const category = getCategory(conv);
+      const salaryType = genericSalaryTypeForCategory(conv, category);
+      const defaultWorkUnits = salaryType === "hourly"
+        ? (rules.hourDivisor || rules.overtime?.divisor || 200)
+        : (rules.monthDivisor || rules.dayDivisor || 30);
+      const workUnitsField = salaryType === "monthly" ? "" : `
+          <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
       const grouped = visibleConcepts.reduce((acc, concept) => {
         const key = concept.group || "Adicionales";
         if (!acc[key]) acc[key] = [];
@@ -5260,6 +5275,7 @@
         <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
         <div class="generic-section-title">Base del convenio IA</div>
         <div class="grid three">
+          ${workUnitsField}
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Hs extra 50%</span><input id="genExtra50" type="number" min="0" step="0.01" value="0"></label>
           <label class="field"><span>Hs extra 100%</span><input id="genExtra100" type="number" min="0" step="0.01" value="0"></label>
@@ -5531,6 +5547,9 @@
     $("payrollForm").addEventListener("change", (event) => {
       if (event.target.id === "convention") updateConvention();
       else {
+        if (event.target.id === "category") {
+          renderDynamicFields(getConvention());
+        }
         if (event.target.id === "period") {
           const period = $("scalePeriod");
           if (period) period.value = selectedPeriodMonth();
