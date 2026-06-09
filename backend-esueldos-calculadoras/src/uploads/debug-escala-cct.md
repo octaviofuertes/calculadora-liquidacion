@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 ### Escala Salarial CCT 40/89 - Vigencia Mayo 2026
 La presente documentación detalla la escala salarial vigente para el  Sindicato de Choferes
 de Camiones, Obreros y Empleados del Transporte de Cargas por Automotor, Servicios,
@@ -78,3 +79,79 @@ trabajo indispensables para el proceso de liquidación.
 calculados estrictamente sobre las bases establecidas en la Planilla N° 242.
 ● Integridad de Datos:  Este documento ha sido confeccionado siguiendo
 exclusivamente la información oficial proporcionada para la vigencia de mayo de 2026.
+=======
+### ESCALA SALARIAL
+### JORNADA COMPLETA
+### ABRIL   2026
+### OBESERVACIONES Y NOVEDADES
+* AL CONCEPTO NO REMUNERATIVO “ASIG. EXT. NO REM” SE LE REALIZARAN DESCUENTOS DE SOMRA Y OBRAS SOCIAL
+* SE ABONARA EL ADIC. DEL 20% MAS SOBRE LOS SUELDOS DENOMINADOS ZONA FRIA
+* SE INCORPORA A PARTIR DE ACUERDO MAYO 2025 ADICIONAL METROBUS Y ASIG. INTEGRACION  SOCIAL (AIS)
+### MAZA 2282-CABA - 013220-0430   -WWW.SOM.ORG.AR
+### ( HASTA 21 DIAS)
+### VALOR POR DIA
+### 462.137,00
+### 462.356,00
+### 464.064,00
+### 467.039,00
+### 470.461,00
+### 94.244,00
+### 94.244,00
+### 94.244,00
+### 94.244,00
+### 94.244,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 110.039,00
+### 110.109,00
+### 110.651,00
+### 111.593,00
+### 112.680,00
+### 990.934,00
+### 991.223,00
+### 993.473,00
+### 997.390,00
+### 1.001.899,00
+### 18.659,00
+### 31.160.,00
+### 43.682,00
+### 32.761,00
+### 7.805,00
+### 35.257,00
+### 8.380,00
+### 27.657,00
+### 10.593,00
+### 10.593,00
+### 50.957,00
+### 36.203,00
+### 36.203,00
+### 21.811,00
+### 31.813,00
+### 71.715,00
+### 95.711,00
+### 75.367,00
+### 96.848,00
+### 129.071,00
+### 104.298,00
+### 77.243,00101.367,00
+### 485.045.00
+### 39.492,0078.884,00
+### 46.658,00
+### 22.533,00
+### 5.430,00
+### 82.190,00
+### 110.849,00
+### 36.203,00
+### 28.965,00
+### 47.297,00
+### 73.247,00
+### 47.297,00
+>>>>>>> Stashed changes

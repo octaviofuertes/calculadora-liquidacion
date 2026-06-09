@@ -189,9 +189,9 @@
     return ui.round2 ? ui.round2(value) : Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
-  function addRow(list, label, amount, detail = "") {
+  function addRow(list, label, amount, detail = "", formula = detail) {
     if (!Number.isFinite(amount) || Math.abs(amount) < 0.005) return;
-    list.push({ label, amount: round2(amount), detail });
+    list.push({ label, amount: round2(amount), detail, formula });
   }
 
   function sumRows(rows) {
@@ -724,6 +724,13 @@
     if (!rows.length) return `<div class="empty">Sin conceptos para mostrar.</div>`;
     return `<table><colgroup><col style="width:38%"><col style="width:37%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Detalle</th><th class="num">Monto</th></tr></thead><tbody>
       ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.detail || "")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  function calculationRows(rows) {
+    if (!rows.length) return `<div class="empty">Sin calculos para mostrar.</div>`;
+    return `<table><colgroup><col style="width:34%"><col style="width:41%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Cuenta</th><th class="num">Resultado</th></tr></thead><tbody>
+      ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.formula || row.detail || "Importe informado")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
     </tbody></table>`;
   }
 
@@ -1838,6 +1845,10 @@
       <div class="detail-card">
         <h3>Deducciones trabajador</h3>
         ${tableRows(result.deductionRows)}
+      </div>
+      <div class="detail-card">
+        <h3>Como se liquido cada concepto</h3>
+        ${calculationRows([...result.remRows, ...result.noRemRows, ...result.deductionRows])}
       </div>
       <div class="detail-card">
         <h3>Costo empleador</h3>

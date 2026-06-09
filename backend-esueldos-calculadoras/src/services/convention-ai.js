@@ -1286,12 +1286,13 @@ function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, d
   });
 }
 
-async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, draftName, notes }) {
+async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes }) {
   const fs = require("fs");
   const path = require("path");
 
   let cctRaw = "";
-  let scaleRaw = "";
+  const scaleRawParts = [];
+  const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
 
   if (cctPdf) {
     try {
@@ -1300,19 +1301,20 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       console.error("Error al extraer texto local del CCT:", err.message);
     }
   }
-  if (scalePdf) {
+  for (const file of allScalePdfs) {
     try {
-      scaleRaw = await extractPdfTextLocal(scalePdf);
+      const raw = await extractPdfTextLocal(file);
+      if (raw) scaleRawParts.push(`## Archivo escala: ${file.sourceFileName || "sin nombre"}\n\n${raw}`);
     } catch (err) {
-      console.error("Error al extraer texto local de la escala de CCT:", err.message);
+      console.error(`Error al extraer texto local de la escala de CCT (${file.sourceFileName || "sin nombre"}):`, err.message);
     }
   }
 
   const cctMarkdown = convertRawTextToMarkdown(cctRaw);
-  const scaleMarkdown = convertRawTextToMarkdown(scaleRaw);
+  const scaleMarkdown = scaleRawParts.map((raw) => convertRawTextToMarkdown(raw)).filter(Boolean).join("\n\n---\n\n");
   const cctMarkdownForGemini = useConventionMarkdown ? cctMarkdown : "";
   const scaleMarkdownForGemini = useConventionMarkdown ? scaleMarkdown : "";
-  console.log(`[CCT] PDFs recibidos para convertir a Markdown: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escala=${scalePdf?.buffer?.length || 0} bytes (${scalePdf?.mimeType || "sin escala"})`);
+  console.log(`[CCT] PDFs recibidos para convertir a Markdown: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
 
   // Debug logging requested by user
   console.log("\n==================================================");
@@ -1320,7 +1322,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   console.log("==================================================");
   console.log(cctMarkdown.slice(0, 1500) + (cctMarkdown.length > 1500 ? "\n... [TRUNCADO PARA CONSOLA]" : ""));
   console.log("==================================================");
-  console.log(`[DEBUG] Escala CCT PDF convertida a Markdown (${scalePdf?.sourceFileName || "sin escala"}):`);
+  console.log(`[DEBUG] Escalas CCT PDF convertidas a Markdown (${allScalePdfs.map((file) => file.sourceFileName).filter(Boolean).join(", ") || "sin escala"}):`);
   console.log("==================================================");
   console.log(scaleMarkdown);
   console.log("==================================================\n");

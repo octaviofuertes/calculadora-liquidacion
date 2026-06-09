@@ -94,11 +94,12 @@ function createScalesRouter({
     }
   });
 
-  router.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next) => {
+  router.post("/api/scales/upload", scaleUpload.array("pdf", 20), async (req, res, next) => {
     try {
       const db = getDb();
-      if (!req.file) {
-        res.status(400).json({ error: "Selecciona un PDF de escala salarial." });
+      const files = req.files || [];
+      if (!files.length) {
+        res.status(400).json({ error: "Selecciona al menos un PDF de escala salarial." });
         return;
       }
 
@@ -108,94 +109,99 @@ function createScalesRouter({
       const periodLabel = req.body.periodLabel || monthLabel(period);
       const now = new Date();
       const apiKey = geminiScaleApiKey();
-      let aiStatus = "SIN_API_KEY";
-      let aiError = null;
-      let aiModel = null;
-      let aiModelsTried = [];
-      let tokenUsage = null;
-      let parsedScales = [{
-        period,
-        periodLabel,
-        conventionId: convention.id,
-        conventionName: convention.name,
-        cct: convention.source || "",
-        sourceFileName: req.file.originalname,
-        sourceSummary: "",
-        confidence: 0,
-        categories: [],
-        additionals: [],
-        zones: [],
-        nonRemunerative: [],
-        notes: [],
-        warnings: ["Carga pendiente de lectura por IA."]
-      }];
+      const batchId = `${now.getTime()}-${safeFileName(files[0].originalname)}`;
+      const docs = [];
 
-      if (apiKey) {
-        try {
-          const pdfBuffer = await fs.promises.readFile(req.file.path);
-          const result = await extractScalesFromPdf({
-            apiKey,
-            model: geminiScaleModel(),
-            fallbackModels: geminiFallbackModels(),
-            convention,
-            period,
-            periodLabel,
-            pdfBuffer,
-            mimeType: req.file.mimetype,
-            sourceFileName: req.file.originalname
-          });
-          parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
-          aiStatus = "DETECTADA_POR_IA";
-          aiModel = result.model;
-          aiModelsTried = result.modelsTried;
-          tokenUsage = result.tokenUsage || null;
-          if (tokenUsage) {
-            await tokenMetrics.logUsage(getDb(), {
-              provider: "gemini",
-              model: aiModel,
-              promptTokens: tokenUsage.promptTokenCount || tokenUsage.promptTokens || 0,
-              completionTokens: tokenUsage.outputTokenCount || tokenUsage.completionTokens || 0,
-              totalTokens: tokenUsage.totalTokenCount || tokenUsage.totalTokens || 0,
-              operation: "scale-extraction"
+      for (const file of files) {
+        let aiStatus = "SIN_API_KEY";
+        let aiError = null;
+        let aiModel = null;
+        let aiModelsTried = [];
+        let tokenUsage = null;
+        let parsedScales = [{
+          period,
+          periodLabel,
+          conventionId: convention.id,
+          conventionName: convention.name,
+          cct: convention.source || "",
+          sourceFileName: file.originalname,
+          sourceSummary: "",
+          confidence: 0,
+          categories: [],
+          additionals: [],
+          zones: [],
+          nonRemunerative: [],
+          notes: [],
+          warnings: ["Carga pendiente de lectura por IA."]
+        }];
+
+        if (apiKey) {
+          try {
+            const pdfBuffer = await fs.promises.readFile(file.path);
+            const result = await extractScalesFromPdf({
+              apiKey,
+              model: geminiScaleModel(),
+              fallbackModels: geminiFallbackModels(),
+              convention,
+              period,
+              periodLabel,
+              pdfBuffer,
+              mimeType: file.mimetype,
+              sourceFileName: file.originalname
             });
+            parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
+            aiStatus = "DETECTADA_POR_IA";
+            aiModel = result.model;
+            aiModelsTried = result.modelsTried;
+            tokenUsage = result.tokenUsage || null;
+            if (tokenUsage) {
+              await tokenMetrics.logUsage(getDb(), {
+                provider: "gemini",
+                model: aiModel,
+                promptTokens: tokenUsage.promptTokenCount || tokenUsage.promptTokens || 0,
+                completionTokens: tokenUsage.outputTokenCount || tokenUsage.completionTokens || 0,
+                totalTokens: tokenUsage.totalTokenCount || tokenUsage.totalTokens || 0,
+                operation: "scale-extraction"
+              });
+            }
+          } catch (error) {
+            aiStatus = "ERROR_IA";
+            aiError = error.message || "No se pudo leer el PDF con leIA.";
+            aiModel = error.model || null;
+            aiModelsTried = error.modelsTried || [];
+            parsedScales[0].warnings = [aiError];
           }
-        } catch (error) {
-          aiStatus = "ERROR_IA";
-          aiError = error.message || "No se pudo leer el PDF con leIA.";
-          aiModel = error.model || null;
-          aiModelsTried = error.modelsTried || [];
-          parsedScales[0].warnings = [aiError];
         }
-      }
 
-      const docs = parsedScales.map((parsedScale) => ({
-        conventionId: convention.id,
-        conventionName: convention.name,
-        shortName: convention.shortName || convention.name,
-        cct: convention.source || "",
-        period: normalizePeriod(parsedScale.period) || period,
-        periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
-        status: "PENDIENTE_REVISION",
-        aiStatus,
-        aiError,
-        aiModel,
-        aiModelsTried,
-        tokenUsage,
-        sourceFileName: req.file.originalname,
-        storedFileName: req.file.filename,
-        filePath: req.file.path,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        parsedScale: {
-          ...parsedScale,
+        docs.push(...parsedScales.map((parsedScale) => ({
+          conventionId: convention.id,
+          conventionName: convention.name,
+          shortName: convention.shortName || convention.name,
+          cct: convention.source || "",
           period: normalizePeriod(parsedScale.period) || period,
-          periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
-        },
-        auditNote: req.body.auditNote || "",
-        uploadedBatchId: `${now.getTime()}-${safeFileName(req.file.originalname)}`,
-        createdAt: now,
-        updatedAt: now
-      }));
+          periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
+          status: "PENDIENTE_REVISION",
+          aiStatus,
+          aiError,
+          aiModel,
+          aiModelsTried,
+          tokenUsage,
+          sourceFileName: file.originalname,
+          storedFileName: file.filename,
+          filePath: file.path,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          parsedScale: {
+            ...parsedScale,
+            period: normalizePeriod(parsedScale.period) || period,
+            periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
+          },
+          auditNote: req.body.auditNote || "",
+          uploadedBatchId: batchId,
+          createdAt: now,
+          updatedAt: now
+        })));
+      }
 
       const insertResult = await db.collection("salaryScales").insertMany(docs);
       const created = docs.map((doc, index) => serializeScale({ _id: insertResult.insertedIds[index], ...doc }));
@@ -204,7 +210,7 @@ function createScalesRouter({
         created,
         count: created.length,
         detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel })),
-        tokenUsage: tokenUsage || null
+        tokenUsage: null
       });
     } catch (error) {
       next(error);

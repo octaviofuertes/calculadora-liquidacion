@@ -636,7 +636,6 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
   try {
     const cctFile = req.files?.cctPdf?.[0] || null;
     const scaleFiles = req.files?.scalePdf || [];
-    const scaleFile = scaleFiles[0] || null;
     if (!cctFile && !scaleFiles.length) {
       res.status(400).json({ error: "Subi al menos el documento o imagen del CCT o una escala salarial." });
       return;
@@ -673,19 +672,20 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       useFallbackDefaults: false
     });
 
+    const scalePdfs = await Promise.all(scaleFiles.map(async (file) => ({
+      buffer: await fs.promises.readFile(file.path),
+      mimeType: file.mimetype,
+      sourceFileName: file.originalname
+    })));
+    const scalePdf = scalePdfs[0] || null;
     const cctPdf = cctFile ? {
       buffer: await fs.promises.readFile(cctFile.path),
       mimeType: cctFile.mimetype,
       sourceFileName: cctFile.originalname
     } : null;
-    const scalePdf = scaleFile ? {
-      buffer: await fs.promises.readFile(scaleFile.path),
-      mimeType: scaleFile.mimetype,
-      sourceFileName: scaleFile.originalname
-    } : null;
     const processingPipeline = analyzeConventionDocuments([
       cctPdf && { ...cctPdf, field: "cctPdf" },
-      scalePdf && { ...scalePdf, field: "scalePdf" }
+      ...scalePdfs.map((file) => ({ ...file, field: "scalePdf" }))
     ]);
 
     if (!apiKey) {
@@ -705,6 +705,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
           fallbackModels: geminiFallbackModels(),
           cctPdf,
           scalePdf,
+          scalePdfs,
           draftName,
           notes
         });
