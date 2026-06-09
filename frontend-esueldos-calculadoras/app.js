@@ -152,6 +152,12 @@
     return ui.fmt ? ui.fmt(value) : `$ ${Number(value || 0).toFixed(2)}`;
   }
 
+  function calcNum(value) {
+    const number = Number(value || 0);
+    if (!Number.isFinite(number)) return "0";
+    return String(round2(number)).replace(".", ",");
+  }
+
   function num(id, fallback = 0) {
     const el = $(id);
     if (!el) return fallback;
@@ -189,7 +195,7 @@
     return ui.round2 ? ui.round2(value) : Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
-  function addRow(list, label, amount, detail = "", formula = detail) {
+  function addRow(list, label, amount, detail = "", formula = "") {
     if (!Number.isFinite(amount) || Math.abs(amount) < 0.005) return;
     list.push({ label, amount: round2(amount), detail, formula });
   }
@@ -677,10 +683,12 @@
     resetMetrics();
     setActionButtonsEnabled(false);
     $("receipt").className = "empty-state";
+    $("calculation").className = "empty-state";
     $("details").className = "empty-state";
     $("scales").className = "empty-state";
     $("auditResult").className = "";
     $("receipt").innerHTML = "Completa los pasos y presiona Liquidar para generar el recibo.";
+    $("calculation").innerHTML = "El calculo aparecera despues de liquidar.";
     $("details").innerHTML = "El detalle aparecera despues de liquidar.";
     $("scales").innerHTML = "Las escalas se muestran con la liquidacion emitida.";
     renderConventionSummaryPane();
@@ -734,6 +742,56 @@
     </tbody></table>`;
   }
 
+  function renderCalculation(result) {
+    const rows = [
+      ...(result.remRows || []),
+      ...(result.noRemRows || []),
+      ...(result.deductionRows || [])
+    ];
+    if (!rows.length) return `<div class="empty-state">Sin calculos para mostrar.</div>`;
+    return `<div class="calculation-view">
+      <div class="summary-table-wrap">
+        <table class="summary-table calculation-table">
+          <thead><tr><th>Haber</th><th>Calculo interno</th><th class="num">Resultado</th></tr></thead>
+          <tbody>
+            ${rows.map((row) => `<tr>
+              <td>${escapeHtml(row.label)}</td>
+              <td>${escapeHtml(calculationExplanation(row))}</td>
+              <td class="num">${fmt(row.amount)}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function calculationExplanation(row = {}) {
+    const formula = String(row.formula || "").trim();
+    const detail = String(row.detail || "").trim();
+    if (isMathExpression(formula)) return formula;
+    return mathExpressionFromText(formula || detail) || `Importe directo: ${calcNum(row.amount)}`;
+  }
+
+  function isMathExpression(value = "") {
+    const text = String(value).trim();
+    return /\d/.test(text) && /^[\d\s.,()+\-*/xX]+$/.test(text);
+  }
+
+  function normalizeCalcToken(value = "") {
+    return String(value).replace(/\$/g, "").replace(/\./g, "").trim();
+  }
+
+  function mathExpressionFromText(value = "") {
+    const text = String(value || "");
+    let match = text.match(/([\d.,]+)\s*%\s*de\s*\$?\s*([\d.,]+)/i);
+    if (match) return `${normalizeCalcToken(match[2])} x ${normalizeCalcToken(match[1])} / 100`;
+    match = text.match(/\$?\s*([\d.,]+)\s*\/\s*(?:dia|d[ií]a|hora|hs|jornal|km)\s*x\s*([\d.,]+)/i);
+    if (match) return `${normalizeCalcToken(match[1])} x ${normalizeCalcToken(match[2])}`;
+    match = text.match(/([\d.,]+)\s*(?:dias|d[ií]as|jornales|horas|hs|km)\s*x\s*\$?\s*([\d.,]+)(?:\s*x\s*([\d.,]+))?/i);
+    if (match) return [match[2], match[1], match[3]].filter(Boolean).map(normalizeCalcToken).join(" x ");
+    return "";
+  }
+
   function calculateGanancias(remunerative) {
     if (!on("estimateGanancias")) return 0;
     const c = DATA.constants;
@@ -751,9 +809,9 @@
   }
 
   function addCommonManualRows(remRows, noRemRows, deductionRows) {
-    addRow(remRows, "Otros remunerativos", num("otherRem", 0), "Carga manual");
-    addRow(noRemRows, "Otros no remunerativos", num("otherNoRem", 0), "Carga manual");
-    addRow(deductionRows, "Descuentos varios", num("otherDeductions", 0), "Carga manual");
+    addRow(remRows, "Otros remunerativos", num("otherRem", 0), "Carga manual", calcNum(num("otherRem", 0)));
+    addRow(noRemRows, "Otros no remunerativos", num("otherNoRem", 0), "Carga manual", calcNum(num("otherNoRem", 0)));
+    addRow(deductionRows, "Descuentos varios", num("otherDeductions", 0), "Carga manual", calcNum(num("otherDeductions", 0)));
   }
 
   function isExtraHoursConcept(concept = {}) {
@@ -806,9 +864,9 @@
     const c = DATA.constants;
     // Aportes del trabajador se calculan sobre el total remunerativo bruto (sin detracción)
     const baseSS = remTotal;
-    addRow(deductionRows, "Jubilacion SIPA 11%", baseSS * c.worker.jubilacion, `11% de ${fmt(baseSS)} (Base SS)`);
-    addRow(deductionRows, "Ley 19.032 (PAMI) 3%", baseSS * c.worker.pami, `3% de ${fmt(baseSS)} (Base SS)`);
-    addRow(deductionRows, "Obra social 3%", osBase * c.worker.obraSocial, `3% de ${fmt(osBase)} (Base OS)`);
+    addRow(deductionRows, "Jubilacion SIPA 11%", baseSS * c.worker.jubilacion, `11% de ${fmt(baseSS)} (Base SS)`, `${calcNum(baseSS)} x 11 / 100`);
+    addRow(deductionRows, "Ley 19.032 (PAMI) 3%", baseSS * c.worker.pami, `3% de ${fmt(baseSS)} (Base SS)`, `${calcNum(baseSS)} x 3 / 100`);
+    addRow(deductionRows, "Obra social 3%", osBase * c.worker.obraSocial, `3% de ${fmt(osBase)} (Base OS)`, `${calcNum(osBase)} x 3 / 100`);
 
     if (conv.id === "uocra") {
       const afiliado = on("uocraAfiliado");
@@ -852,13 +910,13 @@
 
     if (conv.id === "camioneros") {
       if (checked("camUnionFee", true)) {
-        addRow(deductionRows, "Cuota sindical Camioneros 2%", remTotal * 0.02, `2% de ${fmt(remTotal)} (Afiliado)`);
+        addRow(deductionRows, "Cuota sindical Camioneros 2%", remTotal * 0.02, `2% de ${fmt(remTotal)} (Afiliado)`, `${calcNum(remTotal)} x 2 / 100`);
       }
       if (checked("camSolidarityContribution", true)) {
-        addRow(deductionRows, "Contribucion solidaria Camioneros 3%", remTotal * 0.03, `3% de ${fmt(remTotal)} (Item 8.1.1)`);
+        addRow(deductionRows, "Contribucion solidaria Camioneros 3%", remTotal * 0.03, `3% de ${fmt(remTotal)} (Item 8.1.1)`, `${calcNum(remTotal)} x 3 / 100`);
       }
       if (checked("camFuneralInsurance", true)) {
-        addRow(deductionRows, "Seguro de Sepelio 1,5%", remTotal * 0.015, `1,5% de ${fmt(remTotal)} (Item 8.1.6)`);
+        addRow(deductionRows, "Seguro de Sepelio 1,5%", remTotal * 0.015, `1,5% de ${fmt(remTotal)} (Item 8.1.6)`, `${calcNum(remTotal)} x 1,5 / 100`);
       }
     }
 
@@ -1050,8 +1108,12 @@
             ? noRemTotal
             : ["basic", "basico"].includes(baseName) ? basic : remTotal;
         const fixedAmount = conceptPeriodAmount(item, period, ["amountByPeriod", "amountPorPeriodo"], item.amount);
-        const amountValue = fixedAmount || base * ((Number(item.percent || 0) || 0) / 100);
-        addRow(targetRows, item.label, amountValue, item.detail || fallbackDetail);
+        const percent = Number(item.percent || 0) || 0;
+        const amountValue = fixedAmount || base * (percent / 100);
+        const formula = fixedAmount
+          ? `${calcNum(fixedAmount)}`
+          : `${calcNum(base)} x ${percent} / 100`;
+        addRow(targetRows, item.label, amountValue, item.detail || fallbackDetail, formula);
       });
     };
     applyItems(userFacingConcepts(model.deductions), deductionRows, "Aporte propio del convenio", true);
@@ -1111,29 +1173,32 @@
     else if (salaryType === "hourly") basic = categoryHourly * workUnits;
     else basic = categoryMonthly * monthPct;
 
-    addRow(remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} ${salaryType === "hourly" ? "horas" : "jornales"}`);
+    const basicFormula = salaryType === "monthly"
+      ? `${calcNum(categoryMonthly)} x ${calcNum(monthPct * 100)} / 100`
+      : `${calcNum(salaryType === "hourly" ? categoryHourly : categoryDay)} x ${workUnits}`;
+    addRow(remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} ${salaryType === "hourly" ? "horas" : "jornales"}`, basicFormula);
 
     const absenceDiscount = salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays;
-    addRow(remRows, "Inasistencia injustificada", -absenceDiscount, `${absentDays} dia${absentDays !== 1 ? "s" : ""} / divisor ${monthDivisor}`);
+    addRow(remRows, "Inasistencia injustificada", -absenceDiscount, `${absentDays} dia${absentDays !== 1 ? "s" : ""} / divisor ${monthDivisor}`, salaryType === "monthly" ? `${calcNum(basic)} / ${monthDivisor} x ${absentDays}` : `${calcNum(categoryDay)} x ${absentDays}`);
 
     const seniorityRule = rules.seniority || {};
     let seniority = 0;
     if (checked("genSeniority", seniorityRule.enabled !== false)) {
       const yearsForCalc = seniorityRule.capYears ? Math.min(years, Number(seniorityRule.capYears)) : years;
       seniority = basic * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
-      addRow(remRows, "Antiguedad", seniority, `${Number(seniorityRule.percentPerYear || 0)}% x ${yearsForCalc} años`);
+      addRow(remRows, "Antiguedad", seniority, `${Number(seniorityRule.percentPerYear || 0)}% x ${yearsForCalc} años`, `${calcNum(basic)} x ${Number(seniorityRule.percentPerYear || 0)} x ${yearsForCalc} / 100`);
     }
 
     const presentismRule = rules.presentism || {};
     if (checked("genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0)) {
       const allowed = !presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0;
-      if (allowed) addRow(remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`);
+      if (allowed) addRow(remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`, `${calcNum(basic + seniority)} x ${presentismRule.percent} / 100`);
       else addRow(details, "Presentismo", 0, "No corresponde por inasistencias injustificadas");
     }
 
     const hourValue = (sumRows(remRows) || basic) / hourDivisor;
-    addRow(remRows, "Horas extra 50%", hourValue * num("genExtra50", 0) * 1.5, `Base habitual / ${hourDivisor} x 1,5`);
-    addRow(remRows, "Horas extra 100%", hourValue * num("genExtra100", 0) * 2, `Base habitual / ${hourDivisor} x 2`);
+    addRow(remRows, "Horas extra 50%", hourValue * num("genExtra50", 0) * 1.5, `Base habitual / ${hourDivisor} x 1,5`, `${calcNum(hourValue)} x ${calcNum(num("genExtra50", 0))} x 1,5`);
+    addRow(remRows, "Horas extra 100%", hourValue * num("genExtra100", 0) * 2, `Base habitual / ${hourDivisor} x 2`, `${calcNum(hourValue)} x ${calcNum(num("genExtra100", 0))} x 2`);
 
     const noRemScaleRaw = firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(cat, period)) || 0;
     const noRemScaleBase = noRemScaleRaw * monthPct * scaleCoef;
@@ -1155,11 +1220,16 @@
       });
       const amountValue = calcGenericConceptAmount(concept, inputValue, baseValue, period);
       const target = concept.rowType === "nonRemunerative" ? noRemRows : concept.rowType === "deduction" ? deductionRows : remRows;
-      addRow(target, concept.label, amountValue, concept.detail || concept.group || "Concepto del convenio");
+      const formula = concept.calculation === "fixed"
+        ? `${calcNum(conceptPeriodAmount(concept, period, ["amountByPeriod", "amountPorPeriodo"], concept.amount))} x ${inputValue}`
+        : concept.calculation === "amountPerUnit"
+          ? `${calcNum(conceptPeriodAmount(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"], concept.unitAmount || concept.amount))} x ${inputValue}`
+          : `${calcNum(baseValue)} x ${Number(concept.percent || 0) || 0} / 100${inputValue !== 1 ? ` x ${inputValue}` : ""}`;
+      addRow(target, concept.label, amountValue, concept.detail || concept.group || "Concepto del convenio", formula);
     });
 
     if (checked("genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {
-      addRow(noRemRows, "Suma no remunerativa escala", noRemScaleBase, activeScaleDetail(conv));
+      addRow(noRemRows, "Suma no remunerativa escala", noRemScaleBase, activeScaleDetail(conv), `${calcNum(noRemScaleRaw)} x ${calcNum(monthPct * 100)} / 100 x ${calcNum(scaleCoef)}`);
       const noRemRule = rules.nonRemunerativeScale || {};
       const noRemSeniorityPct = Number(noRemRule.seniorityPercentPerYear || 0) || 0;
       const noRemPresentismPct = Number(noRemRule.presentismPercent || 0) || 0;
@@ -1167,12 +1237,12 @@
       const applyNoRemSeniority = noRemRule.seniorityEnabled !== false
         && checked("genSeniority", seniorityRule.enabled !== false || noRemSeniorityPct > 0);
       const noRemSeniority = applyNoRemSeniority ? noRemScaleBase * ((noRemSeniorityPct * noRemYears) / 100) : 0;
-      if (noRemSeniority) addRow(noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${noRemYears} años`);
+      if (noRemSeniority) addRow(noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${noRemYears} años`, `${calcNum(noRemScaleBase)} x ${calcNum(noRemSeniorityPct)} x ${calcNum(noRemYears)} / 100`);
       const allowNoRemPresentism = !noRemRule.presentismRequiresNoUnjustifiedAbsence || absentDays === 0;
       const applyNoRemPresentism = noRemRule.presentismEnabled !== false
         && checked("genPresentism", presentismRule.enabled === true || noRemPresentismPct > 0);
       if (applyNoRemPresentism && allowNoRemPresentism) {
-        addRow(noRemRows, "Presentismo no remunerativo", (noRemScaleBase + noRemSeniority) * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
+        addRow(noRemRows, "Presentismo no remunerativo", (noRemScaleBase + noRemSeniority) * (noRemPresentismPct / 100), `${noRemPresentismPct}%`, `${calcNum(noRemScaleBase + noRemSeniority)} x ${calcNum(noRemPresentismPct)} / 100`);
       }
     }
 
@@ -1464,12 +1534,13 @@
     const baseDetail = isInsalubre
       ? `${actualWeeklyHours} hs insalubres pagadas como ${paidWeeklyHours}/${fullWeeklyHours}; ${monthPct}% del mes`
       : `${actualWeeklyHours}/${fullWeeklyHours} hs semanales; ${monthPct}% del mes`;
-    addRow(remRows, "Basico", base, baseDetail);
+    const baseFormula = `${calcNum(catMonthly)} x ${calcNum(paidWeeklyHours)} / ${calcNum(fullWeeklyHours)} x ${calcNum(monthPct)} / 100`;
+    addRow(remRows, "Basico", base, baseDetail, baseFormula);
 
     let seniorityBase = base;
     const includeFixedInSeniority = checked("farmSeniorityOnFixedAdditions", true);
-    const addRegularRem = (label, amount, detail, includeForSeniority = true) => {
-      addRow(remRows, label, amount, detail);
+    const addRegularRem = (label, amount, detail, includeForSeniority = true, formula = "") => {
+      addRow(remRows, label, amount, detail, formula);
       if (includeForSeniority && includeFixedInSeniority) seniorityBase += amount;
     };
 
@@ -1477,30 +1548,31 @@
       if (!on(`farm_${key}`)) return;
       const add = conv.additionals[key];
       const scaleRow = scaleAdditionalRow(conv, key, add);
-      addRegularRem(add.label, (firstFinite(scaleRow?.monthly, add.monthly) || 0) * proportion, `Escala ${periodLbl}`);
+      const value = firstFinite(scaleRow?.monthly, add.monthly) || 0;
+      addRegularRem(add.label, value * proportion, `Escala ${periodLbl}`, true, `${calcNum(value)} x ${calcNum(proportion)}`);
     });
 
-    if (on("farmCajero")) addRegularRem("Adicional cajero", base * ((rules.cajeroPct || 10) / 100), `${rules.cajeroPct || 10}% de ${fmt(base)} (Basico)`);
-    if (on("farmAdminTitle")) addRegularRem("Adicional tareas administrativas", base * ((rules.tareasAdministrativasPct || 5) / 100), `${rules.tareasAdministrativasPct || 5}% de ${fmt(base)} (Basico)`);
+    if (on("farmCajero")) addRegularRem("Adicional cajero", base * ((rules.cajeroPct || 10) / 100), `${rules.cajeroPct || 10}% de ${fmt(base)} (Basico)`, true, `${calcNum(base)} x ${calcNum(rules.cajeroPct || 10)} / 100`);
+    if (on("farmAdminTitle")) addRegularRem("Adicional tareas administrativas", base * ((rules.tareasAdministrativasPct || 5) / 100), `${rules.tareasAdministrativasPct || 5}% de ${fmt(base)} (Basico)`, true, `${calcNum(base)} x ${calcNum(rules.tareasAdministrativasPct || 5)} / 100`);
     if (on("farmAdminTenure")) {
       const pct = years > 2 ? (rules.adminTenurePctOver2Years || 10) : (rules.adminTenurePctInitial || 5);
-      addRegularRem("Adicional administrativo por antiguedad", base * (pct / 100), `${pct}% de ${fmt(base)} (Basico)`);
+      addRegularRem("Adicional administrativo por antiguedad", base * (pct / 100), `${pct}% de ${fmt(base)} (Basico)`, true, `${calcNum(base)} x ${calcNum(pct)} / 100`);
     }
-    if (on("farmPerfumeria")) addRegularRem("Adicional perfumeria", base * ((rules.perfumeriaPct || 10) / 100), `${rules.perfumeriaPct || 10}% de ${fmt(base)} (Basico)`);
-    if (on("farmBike")) addRegularRem("Adicional bici/ciclomotor/moto", base * ((rules.bikePct || 10) / 100), `${rules.bikePct || 10}% de ${fmt(base)} (Basico)`);
+    if (on("farmPerfumeria")) addRegularRem("Adicional perfumeria", base * ((rules.perfumeriaPct || 10) / 100), `${rules.perfumeriaPct || 10}% de ${fmt(base)} (Basico)`, true, `${calcNum(base)} x ${calcNum(rules.perfumeriaPct || 10)} / 100`);
+    if (on("farmBike")) addRegularRem("Adicional bici/ciclomotor/moto", base * ((rules.bikePct || 10) / 100), `${rules.bikePct || 10}% de ${fmt(base)} (Basico)`, true, `${calcNum(base)} x ${calcNum(rules.bikePct || 10)} / 100`);
 
     const initialABase = initialAMonthly * proportion;
-    addRegularRem("Adicional idioma", initialABase * ((rules.languagePct || 10) / 100) * num("farmLanguages", 0), `${rules.languagePct || 10}% de ${fmt(initialABase)} x ${num("farmLanguages", 0)}`);
+    addRegularRem("Adicional idioma", initialABase * ((rules.languagePct || 10) / 100) * num("farmLanguages", 0), `${rules.languagePct || 10}% de ${fmt(initialABase)} x ${num("farmLanguages", 0)}`, true, `${calcNum(initialABase)} x ${calcNum(rules.languagePct || 10)} / 100 x ${calcNum(num("farmLanguages", 0))}`);
 
     const employeeFirstBase = empleadoFarmaciaMonthly * proportion;
     if (on("farmAuxTitle")) {
-      addRegularRem("Titulo auxiliar de farmacia", employeeFirstBase * ((rules.auxTitlePct || 20) / 100), `${rules.auxTitlePct || 20}% de ${fmt(employeeFirstBase)}`);
+      addRegularRem("Titulo auxiliar de farmacia", employeeFirstBase * ((rules.auxTitlePct || 20) / 100), `${rules.auxTitlePct || 20}% de ${fmt(employeeFirstBase)}`, true, `${calcNum(employeeFirstBase)} x ${calcNum(rules.auxTitlePct || 20)} / 100`);
     }
 
     let seniorityAmount = 0;
     if (on("farmSeniority")) {
       seniorityAmount = seniorityBase * (pctAnt / 100);
-      addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`);
+      addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`, `${calcNum(seniorityBase)} x ${calcNum(pctAnt)} / 100`);
     }
 
     const regularRem = sumRows(remRows);
@@ -1512,36 +1584,37 @@
     const pharmacyDayNotWorked = Math.max(0, num("farmPharmacyDayNotWorked", 0));
     const vacationDays = Math.max(0, num("farmVacationDays", 0));
     const holidayNotWorkedPlus = Math.max(0, vacationDayValue - standardDayValue);
-    addRow(remRows, "Feriado trabajado", vacationDayValue * holidayWorkedDays, `Adicional feriado trabajado: /${vacationDivisor}`);
-    addRow(remRows, "Feriado no trabajado", holidayNotWorkedPlus * holidayNotWorkedDays, `Diferencia feriado: /${vacationDivisor} - /${dayDivisor}`);
-    addRow(remRows, "Dia empleado farmacia trabajado", vacationDayValue * pharmacyDayWorked, `${rules.pharmacyEmployeeDay || "6 de septiembre"} - adicional /${vacationDivisor}`);
-    addRow(remRows, "Dia empleado farmacia no trabajado", holidayNotWorkedPlus * pharmacyDayNotWorked, `${rules.pharmacyEmployeeDay || "6 de septiembre"} - diferencia /${vacationDivisor} - /${dayDivisor}`);
+    addRow(remRows, "Feriado trabajado", vacationDayValue * holidayWorkedDays, `Adicional feriado trabajado: /${vacationDivisor}`, `${calcNum(regularRem)} / ${calcNum(vacationDivisor)} x ${calcNum(holidayWorkedDays)}`);
+    addRow(remRows, "Feriado no trabajado", holidayNotWorkedPlus * holidayNotWorkedDays, `Diferencia feriado: /${vacationDivisor} - /${dayDivisor}`, `(${calcNum(regularRem)} / ${calcNum(vacationDivisor)} - ${calcNum(regularRem)} / ${calcNum(dayDivisor)}) x ${calcNum(holidayNotWorkedDays)}`);
+    addRow(remRows, "Dia empleado farmacia trabajado", vacationDayValue * pharmacyDayWorked, `${rules.pharmacyEmployeeDay || "6 de septiembre"} - adicional /${vacationDivisor}`, `${calcNum(regularRem)} / ${calcNum(vacationDivisor)} x ${calcNum(pharmacyDayWorked)}`);
+    addRow(remRows, "Dia empleado farmacia no trabajado", holidayNotWorkedPlus * pharmacyDayNotWorked, `${rules.pharmacyEmployeeDay || "6 de septiembre"} - diferencia /${vacationDivisor} - /${dayDivisor}`, `(${calcNum(regularRem)} / ${calcNum(vacationDivisor)} - ${calcNum(regularRem)} / ${calcNum(dayDivisor)}) x ${calcNum(pharmacyDayNotWorked)}`);
     if (vacationDays > 0) {
-      addRow(remRows, "Vacaciones", vacationDayValue * vacationDays, `Remuneracion normal / ${vacationDivisor} x ${vacationDays}`);
+      addRow(remRows, "Vacaciones", vacationDayValue * vacationDays, `Remuneracion normal / ${vacationDivisor} x ${vacationDays}`, `${calcNum(regularRem)} / ${calcNum(vacationDivisor)} x ${calcNum(vacationDays)}`);
       if (checked("farmDiscountVacationDays", true)) {
-        addRow(remRows, "Descuento dias vacaciones", -standardDayValue * vacationDays, `Remuneracion normal / ${dayDivisor} x ${vacationDays}`);
+        addRow(remRows, "Descuento dias vacaciones", -standardDayValue * vacationDays, `Remuneracion normal / ${dayDivisor} x ${vacationDays}`, `-${calcNum(regularRem)} / ${calcNum(dayDivisor)} x ${calcNum(vacationDays)}`);
       }
     }
 
     const hourBase = sumRows(remRows);
     const hourValue = hourBase / hourDivisor;
-    addRow(remRows, "Horas extra 50%", hourValue * num("farmExtra50", 0) * 1.5, `${num("farmExtra50", 0)} hs x ${fmt(hourValue)} x 1,5`);
-    addRow(remRows, "Horas extra 100%", hourValue * num("farmExtra100", 0) * 2, `${num("farmExtra100", 0)} hs x ${fmt(hourValue)} x 2`);
-    addRow(remRows, "Adicional nocturno voluntario", hourValue * num("farmNightHours", 0) * ((rules.nightPct || 100) / 100), `${num("farmNightHours", 0)} hs x ${fmt(hourValue)} x ${(rules.nightPct || 100) / 100}`);
+    addRow(remRows, "Horas extra 50%", hourValue * num("farmExtra50", 0) * 1.5, `${num("farmExtra50", 0)} hs x ${fmt(hourValue)} x 1,5`, `${calcNum(hourBase)} / ${calcNum(hourDivisor)} x ${calcNum(num("farmExtra50", 0))} x 1,5`);
+    addRow(remRows, "Horas extra 100%", hourValue * num("farmExtra100", 0) * 2, `${num("farmExtra100", 0)} hs x ${fmt(hourValue)} x 2`, `${calcNum(hourBase)} / ${calcNum(hourDivisor)} x ${calcNum(num("farmExtra100", 0))} x 2`);
+    addRow(remRows, "Adicional nocturno voluntario", hourValue * num("farmNightHours", 0) * ((rules.nightPct || 100) / 100), `${num("farmNightHours", 0)} hs x ${fmt(hourValue)} x ${(rules.nightPct || 100) / 100}`, `${calcNum(hourBase)} / ${calcNum(hourDivisor)} x ${calcNum(num("farmNightHours", 0))} x ${calcNum(rules.nightPct || 100)} / 100`);
 
     if (checked("farmSac", false)) {
       const sacDays = Math.max(0, Math.min(180, num("farmSacDays", 180)));
       const currentForSac = sumRows(remRows);
       const sacBase = Math.max(num("farmSacBestRem", 0), currentForSac);
-      addRow(remRows, "SAC proporcional", (sacBase / 2 / 180) * sacDays, `Base ${fmt(sacBase)} / 2 / 180 x ${sacDays}`);
+      addRow(remRows, "SAC proporcional", (sacBase / 2 / 180) * sacDays, `Base ${fmt(sacBase)} / 2 / 180 x ${sacDays}`, `${calcNum(sacBase)} / 2 / 180 x ${calcNum(sacDays)}`);
     }
 
     if (on("farmFallaCaja")) {
-      addRow(noRemRows, "Fondo falla de caja", (base + seniorityAmount) * ((rules.fallaCajaPct || 10) / 100), `${rules.fallaCajaPct || 10}% de ${fmt(base + seniorityAmount)} (Basico + Ant.)`);
+      addRow(noRemRows, "Fondo falla de caja", (base + seniorityAmount) * ((rules.fallaCajaPct || 10) / 100), `${rules.fallaCajaPct || 10}% de ${fmt(base + seniorityAmount)} (Basico + Ant.)`, `${calcNum(base + seniorityAmount)} x ${calcNum(rules.fallaCajaPct || 10)} / 100`);
     }
 
     if (on("farmNonRem")) {
-      addRow(noRemRows, "Suma no remunerativa escala", (firstFinite(activeCatRow?.nonRemunerative, cat.nonRem[period]) || 0) * noRemProportion, `${periodLbl}; dias no rem. ${noRemDays}/${workingDays}`);
+      const noRemValue = firstFinite(activeCatRow?.nonRemunerative, cat.nonRem[period]) || 0;
+      addRow(noRemRows, "Suma no remunerativa escala", noRemValue * noRemProportion, `${periodLbl}; dias no rem. ${noRemDays}/${workingDays}`, `${calcNum(noRemValue)} x ${calcNum(noRemProportion)}`);
       ["tituloFarmaceutico", "adscripcion", "bloqueo"].forEach((key) => {
         if (!on(`farm_${key}`)) return;
         const add = conv.additionals[key];
@@ -1626,16 +1699,19 @@
     const baseDetail = absenceDiscount > 0
       ? `${paidDays} jornales - ${absentDaysUnjust} inasist. injust.`
       : `${paidDays} jornales x ${fmt(baseDay)}`;
+    const baseFormula = absenceDiscount > 0
+      ? `(${paidDays} x ${calcNum(baseDay)}) - (${absentDaysUnjust} x ${calcNum(baseDay)})`
+      : `${paidDays} x ${calcNum(baseDay)}`;
 
-    addRow(remRows, "Basico proporcional", base, baseDetail);
+    addRow(remRows, "Basico proporcional", base, baseDetail, baseFormula);
 
     // CCT 40/89 Art. 4.2.11: comida, viaticos y pernoctada son NO REMUNERATIVOS
     // (no requieren comprobantes, no integran remuneración ni sufren cargas sociales)
     if (on("camComida")) {
-      addRow(noRemRows, "Comida", items.comida * coef * noRemDays, `Item 4.1.12 / 4.2.11 - ${fmt(items.comida * coef)}/dia x ${noRemDays} dias`);
+      addRow(noRemRows, "Comida", items.comida * coef * noRemDays, `Item 4.1.12 / 4.2.11 - ${fmt(items.comida * coef)}/dia x ${noRemDays} dias`, `${calcNum(items.comida * coef)} x ${noRemDays}`);
     }
     if (on("camViaticoEspecial")) {
-      addRow(noRemRows, "Viatico especial", items.viaticoEspecial * coef * noRemDays, `Item 4.1.13 / 4.2.11 - ${fmt(items.viaticoEspecial * coef)}/dia x ${noRemDays} dias`);
+      addRow(noRemRows, "Viatico especial", items.viaticoEspecial * coef * noRemDays, `Item 4.1.13 / 4.2.11 - ${fmt(items.viaticoEspecial * coef)}/dia x ${noRemDays} dias`, `${calcNum(items.viaticoEspecial * coef)} x ${noRemDays}`);
     }
     addRow(noRemRows, "Pernoctada", items.pernoctada * coef * num("camPernoctadaDays", 0), `${num("camPernoctadaDays", 0)} dias x ${fmt(items.pernoctada * coef)}`);
     addRow(noRemRows, "Permanencia fuera de residencia", items.permanencia * coef * num("camPermanencia", 0), `${num("camPermanencia", 0)} dias x ${fmt(items.permanencia * coef)}`);
@@ -1656,7 +1732,7 @@
     addRow(remRows, "Adicional bitrenes", items.bitrenes * coef * num("camBitrenes", 0), "Valor planilla");
     addRow(remRows, "Plus vacacional", items.plusVacacionalDia * coef * num("camVacationPlusDays", 0), `Item 3.3.2 - ${fmt(items.plusVacacionalDia * coef)}/dia`);
     if (checked("camPresentism", true) && absentDaysUnjust === 0) {
-      addRow(remRows, "Presentismo", base * ((items.presentismoPct || 8.33) / 100), `${items.presentismoPct || 8.33}% de ${fmt(base)} (Basico)`);
+      addRow(remRows, "Presentismo", base * ((items.presentismoPct || 8.33) / 100), `${items.presentismoPct || 8.33}% de ${fmt(base)} (Basico)`, `${calcNum(base)} x ${items.presentismoPct || 8.33} / 100`);
     }
 
     const customPct = num("camAdditionalPct", 0);
@@ -1684,7 +1760,7 @@
     // CCT 40/89 Item 6.1.5: Antiguedad 1% por año SIN TOPE sobre rubros remuneratorios fijos
     const subtotalBeforeSeniority = sumRows(remRows);
     if (checked("camSeniority", true)) {
-      addRow(remRows, "Antiguedad", subtotalBeforeSeniority * (years / 100), `${years}% de ${fmt(subtotalBeforeSeniority)} (Suma remunerativos)`);
+      addRow(remRows, "Antiguedad", subtotalBeforeSeniority * (years / 100), `${years}% de ${fmt(subtotalBeforeSeniority)} (Suma remunerativos)`, `${calcNum(subtotalBeforeSeniority)} x ${years} / 100`);
     }
 
     const hourValue = baseDay / 8;
@@ -1692,9 +1768,9 @@
     const extra50 = hourValue * num("camExtra50", 0) * 1.5;
     const extra100 = hourValue * num("camExtra100", 0) * 2;
     const extraNight = hourValue * num("camNightHours", 0) * 2;
-    if (extra50 > 0) addRow(remRows, "Horas extra 50%", extra50, `${num("camExtra50", 0)} hs x ${fmt(hourValue)} x 1,5`);
-    if (extra100 > 0) addRow(remRows, "Horas extra 100%", extra100, `${num("camExtra100", 0)} hs x ${fmt(hourValue)} x 2`);
-    if (extraNight > 0) addRow(remRows, "Horas nocturnas 100%", extraNight, `${num("camNightHours", 0)} hs x ${fmt(hourValue)} x 2`);
+    if (extra50 > 0) addRow(remRows, "Horas extra 50%", extra50, `${num("camExtra50", 0)} hs x ${fmt(hourValue)} x 1,5`, `${calcNum(hourValue)} x ${num("camExtra50", 0)} x 1,5`);
+    if (extra100 > 0) addRow(remRows, "Horas extra 100%", extra100, `${num("camExtra100", 0)} hs x ${fmt(hourValue)} x 2`, `${calcNum(hourValue)} x ${num("camExtra100", 0)} x 2`);
+    if (extraNight > 0) addRow(remRows, "Horas nocturnas 100%", extraNight, `${num("camNightHours", 0)} hs x ${fmt(hourValue)} x 2`, `${calcNum(hourValue)} x ${num("camNightHours", 0)} x 2`);
 
     addCommonManualRows(remRows, noRemRows, deductionRows);
 
@@ -1827,10 +1903,12 @@
 
   function renderAll(result) {
     $("receipt").className = "";
+    $("calculation").className = "";
     $("details").className = "";
     $("scales").className = "";
     renderMetrics(result.totals);
     $("receipt").innerHTML = renderReceipt(result);
+    $("calculation").innerHTML = renderCalculation(result);
     $("details").innerHTML = renderDetails(result);
     $("scales").innerHTML = renderScales(result);
     renderConventionSummaryPane(result);
