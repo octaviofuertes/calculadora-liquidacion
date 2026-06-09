@@ -2674,6 +2674,9 @@ tr:hover td {
 }
 
 .detail-grid {
+  --summary-accent: var(--blue);
+  --summary-soft: #edf4ff;
+  --summary-ink: var(--blue-dark);
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
@@ -2691,6 +2694,10 @@ tr:hover td {
   margin: 0 0 11px;
   color: var(--blue-dark);
   font-size: 13px;
+}
+
+.detail-card-body {
+  overflow-x: auto;
 }
 
 .source-list {
