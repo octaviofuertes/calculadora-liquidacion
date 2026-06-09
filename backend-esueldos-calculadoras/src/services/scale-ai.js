@@ -564,7 +564,8 @@ function convertRawTextToMarkdown(text) {
       continue;
     }
     
-    const isHeading = line.length < 85 && (
+    const hasMonetaryValue = /\$?\s*\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{5,}/.test(line);
+    const isHeading = !hasMonetaryValue && line.length < 85 && (
       /^[A-Z0-9\s.,()\-#\/º°"':;]+$/.test(line) 
       || /^(ARTICULO|ART\.|CONVENIO|CCT|ESCALA|VIGENCIA|VIGENTE|ACUERDO|ANEXO|CIRCULAR)/i.test(line)
     );

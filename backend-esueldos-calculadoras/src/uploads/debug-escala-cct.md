@@ -1,89 +1,193 @@
-### Escala Salarial de Peluquerías
-Remuneraciones vigentes para el mes de Abril de 2026.
-Personal Técnico Especializado
-Oficial Peluquero/a234.049$      32%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Oficial Peluquero/a Estilista234.049$      32%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Oficial Entretejedor/a Adaptador/a234.049$      32%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Peinador/a Exclusivo/a234.049$      30%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Peinador/a Todo Servicio234.049$      25%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Colorista234.049$      27%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Permanentista234.049$      27%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Entretejedor/a234.049$      30%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Depilador/a234.049$      27%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Masajista Corporal234.049$      25%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Ayudante de Peinador/a234.049$      25%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Ayudante de depilación234.049$      20%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Instructor/a de Gimnasia234.049$      25%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Auxiliar de Instructor/a234.049$      20%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Promotor/a y/o Consultor/a de tratamiento234.049$      25%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Encargado con Producción234.049$      34%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Manicura234.049$      32%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Pedicura234.049$      32%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Masajista Capilar234.049$      27%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Ayudante de Oficial234.049$      27%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Ayudante de profesor/a234.049$      25%1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$
-Asistente de Sauna o baño1.438.434$    3.458$              13.209$            1.455.101$      50.000$            1.505.101$      Más adicionales
-* Los porcentajes de comisión están referidos al monto de la producción bruta mensual del trabajador, sobre el que deberá extraerse.
-Personal Administrativo y de Servicios
-Director/a1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Secretaria/o1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Encargado/a administrativo/a de salón1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Encargado de lavandería / lavandero/a1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Cajero/a1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Recepcionista1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Empleado/a oficinista1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Auxiliar de lavandería1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Maestranza1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Cadete1.438.434$   3.458$              13.209$         1.455.101$      50.000$            1.505.101$      más plus y adicionales
-Total a abonar
-LA SUMA FIJA NO REMUNERATIVA DEBERÁ SER INCLUIDA EN LA BASE DE CÁLCULO PARA EL PAGO DE S.A.C., APORTES DE CUOTA SINDICAL, APORTES SOLIDARIOS, CONTRIBUCION
-PATRONAL A Fe.N.T.P.E.A. Y APORTES Y CONTRIBUCIONES DE OBRA SOCIAL.
-suma fija no
-remunerativa
-| $ | 50.000 |
-| --- | --- |
-| $ | 50.000 |
+## Archivo escala: 2026-04-Completa.pdf
+### ESCALA SALARIAL
+### JORNADA COMPLETA
+### ABRIL   2026
+### OBESERVACIONES Y NOVEDADES
+* AL CONCEPTO NO REMUNERATIVO “ASIG. EXT. NO REM” SE LE REALIZARAN DESCUENTOS DE SOMRA Y OBRAS SOCIAL
+* SE ABONARA EL ADIC. DEL 20% MAS SOBRE LOS SUELDOS DENOMINADOS ZONA FRIA
+* SE INCORPORA A PARTIR DE ACUERDO MAYO 2025 ADICIONAL METROBUS Y ASIG. INTEGRACION  SOCIAL (AIS)
+### MAZA 2282-CABA - 013220-0430   -WWW.SOM.ORG.AR
+### ( HASTA 21 DIAS)
+### VALOR POR DIA
+### 462.137,00
+### 462.356,00
+### 464.064,00
+### 467.039,00
+### 470.461,00
+### 94.244,00
+### 94.244,00
+### 94.244,00
+### 94.244,00
+### 94.244,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 110.039,00
+### 110.109,00
+### 110.651,00
+### 111.593,00
+### 112.680,00
+### 990.934,00
+### 991.223,00
+### 993.473,00
+### 997.390,00
+### 1.001.899,00
+### 18.659,00
+### 31.160.,00
+### 43.682,00
+### 32.761,00
+### 7.805,00
+### 35.257,00
+### 8.380,00
+### 27.657,00
+### 10.593,00
+### 10.593,00
+### 50.957,00
+### 36.203,00
+### 36.203,00
+### 21.811,00
+### 31.813,00
+### 71.715,00
+### 95.711,00
+### 75.367,00
+### 96.848,00
+### 129.071,00
+### 104.298,00
+### 77.243,00101.367,00
+### 485.045.00
+### 39.492,0078.884,00
+### 46.658,00
+### 22.533,00
+### 5.430,00
+### 82.190,00
+### 110.849,00
+### 36.203,00
+### 28.965,00
+### 47.297,00
+### 73.247,00
+### 47.297,00
 
-suma fija no
-remunerativa
-Total a abonar
-| $ | 1.505.101 |
-| --- | --- |
-| $ | 1.505.101 |
+---
 
-LOS ADICIONALES EXTRAORDINARIOS DE CARÁCTER REMUNERATIVO Y NO REMUNERATIVO SERÁN ABONADOS A TODO EL PERSONAL COMPRENDIDO POR LOS CONVENIOS COLECTIVOS
-### DE LA ACTIVIDAD INCLUIDO EL PERSONAL ADMINISTRATIVO Y DE SERVICIOS
-| $ | 1.455.101 |
-| --- | --- |
+## Archivo escala: 2026-04-Reducida.pdf
+### ESCALA SALARIAL
+### MEDIA JORNADA
+### ABRIL  2026
+### OBESERVACIONES Y NOVEDADES
+* AL CONCEPTO NO REMUNERATIVO “ASIG. EXT. NO REM” SE LE REALIZARAN DESCUENTOS DE SOMRA Y OBRAS SOCIAL
+* SE ABONARA EL ADIC. DEL 20% MAS SOBRE LOS SUELDOS DENOMINADOS ZONA FRIA
+* SE INCORPORA A PARTIR DE ACUERDO MAYO 2025 ADICIONAL METROBUS Y ASIG. INTEGRACION  SOCIAL (AIS)
+### MAZA 2282-CABA - 0113220-0430   -WWW.SOM.ORG.AR
+### (HASTA 21 DIAS)
+### VALOR POR DIA
+Resolución N° 79/2026 vigente desde Abril 2026 modificó Rangos y Montos de Asignaciones
+IGF hasta
+IGF hasta $1.058.088
+IGF hasta
+IGF hasta
+IGF hasta
+### 231.578,00
+### 231.754,00
+### 232.667,00
+### 234.106,00
+### 235.813,00
+### 45.176,00
+### 45.176,00
+### 45.176,00
+### 45.176,00
+### 45.176,00
+### 31.595,00
+### 31.595,00
+### 31.595,00
+### 31.595,00
+### 31.595,00
+### 139.290,00
+### 139.290,00
+### 139.290,00
+### 139.290,00
+### 139.290,00
+### 55.031,00
+### 55.031,00
+### 55.031,00
+### 55.031,00
+### 55.031,00
+### 502.670,00
+### 502.846,00
+### 503.759,00
+### 505.198,00
+### 506.905,00
+### 9.329,0015.580,0021.841,00
+### 16.381,00
+### 3.906,00
+### 13.829,00
+### 5.296,00
+### 5.296,00
+### 14.480,00
+### 18.101,00
+### 3.105,00
+$1.058.088
+IGF hasta $1.058.088
+$5.603.102
+$4.907.218
+$5.603.102
+$68.341,00
+$68.341,00
+$222.511,00
+$119.275,00
+$85.000,00
+$79.660,00
 
-Clasificación
-Remuneración  Productividad
-Garantizada
-s/básico
-Productividad
-Garantizada
-s/comisión
-Sueldo Mínimo
-Garantizado
-Profesor de Peluquería y/o Cosmetología y/o
-maquillaje y/o manicuría y/o pedicuría y/o
-Depilación y/o Masajes y/o elaboración e
-Implantación de prótesis capilares
-| $ | 234.049 25% | $ | 1.438.434 | $ | 3.458 | $ | 13.209 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+---
 
-Sueldo Mínimo
-Garantizado
-Maquillador/a o Experto/a en belleza o
-Cosmetólogo/a
-| $ | 234.049 27% | $ | 1.438.434 | $ | 3.458 | $ | 13.209 | $ | 1.455.101 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-
-Clasificación Básico Comisión
-Remuneración
-Productividad
-Garantizada
-s/básico
-Productividad
-Garantizada
-s/comisión
+## Archivo escala: 2026-04-Supervisores.pdf
+### ESCALA SALARIAL
+### SUPERVISORES Y ADMINISTRATIVOS
+### COMPLETA Y REDUCIDA  ABRIL 2026
+### OBESERVACIONES Y NOVEDADES
+* AL CONCEPTO NO REMUNERATIVO “ASIG. EXT. NO REM” SE LE REALIZARAN DESCUENTOS DE SOMRA Y OBRAS SOCIAL
+* SE ABONARA EL ADIC. DEL 20% MAS SOBRE LOS SUELDOS DENOMINADOS ZONA FRIA
+* SE INCORPORA A PARTIR DE ACUERDO MAYO 2025 ADICIONAL METROBUS Y ASIG. INTEGRACION  SOCIAL (AIS)
+### MAZA 2282-CABA - 0113220-0430   -WWW.SOM.ORG.AR
+### 533.597,00
+### 505.999,00
+### 525.332,00
+### 113.972,00
+### 107.730,00
+### 111.215,00
+### 62.094,00
+### 62.094,00
+### 62.094,00
+### 262.420,00
+### 262.420,00
+### 262.420,00
+### 138.559,00
+### 127.886,00
+### 135.073,00
+### 254.428,00
+### 264.476,00
+### 53.139,00
+### 55.655,00
+### 31.595,00
+### 31.595,00
+### 139.290,00
+### 139.290,00
+### 64.605,00
+### 68.532,00
+### 1.110.642,00
+### 1.066.129,00
+### 1.096.134,00
+### 543.057,00
+### 559.548,00
+### 5.430,00
+### 3.105,00
+### ( HASTA 21 DIAS)
+### VALOR POR DIA
+### ( HASTA 21 DIAS)
+### VALOR POR DIA

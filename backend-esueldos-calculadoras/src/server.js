@@ -84,7 +84,7 @@ const conventionUpload = multer({
       cb(null, `${Date.now()}-${safeFileName(file.originalname)}`);
     }
   }),
-  limits: { fileSize: conventionUploadMaxBytes, files: 2 },
+  limits: { fileSize: conventionUploadMaxBytes, files: 6 },
   fileFilter: (req, file, cb) => {
     if (isSupportedConventionDocument(file)) {
       cb(null, true);
@@ -631,12 +631,12 @@ app.get("/api/convention-drafts/:id", async (req, res, next) => {
 
 app.post("/api/convention-drafts/upload", conventionUpload.fields([
   { name: "cctPdf", maxCount: 1 },
-  { name: "scalePdf", maxCount: 1 }
+  { name: "scalePdf", maxCount: 5 }
 ]), async (req, res, next) => {
   try {
     const cctFile = req.files?.cctPdf?.[0] || null;
-    const scaleFile = req.files?.scalePdf?.[0] || null;
-    if (!cctFile && !scaleFile) {
+    const scaleFiles = req.files?.scalePdf || [];
+    if (!cctFile && !scaleFiles.length) {
       res.status(400).json({ error: "Subi al menos el documento o imagen del CCT o una escala salarial." });
       return;
     }
@@ -654,7 +654,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       convention: {
         name: "",
         shortName: "",
-        source: cctFile?.originalname || scaleFile?.originalname || "",
+        source: cctFile?.originalname || scaleFiles.map((file) => file.originalname).filter(Boolean).join(" + ") || "",
         periods: [],
         zones: [],
         categories: [],
@@ -672,19 +672,20 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       useFallbackDefaults: false
     });
 
+    const scalePdfs = await Promise.all(scaleFiles.map(async (file) => ({
+      buffer: await fs.promises.readFile(file.path),
+      mimeType: file.mimetype,
+      sourceFileName: file.originalname
+    })));
+    const scalePdf = scalePdfs[0] || null;
     const cctPdf = cctFile ? {
       buffer: await fs.promises.readFile(cctFile.path),
       mimeType: cctFile.mimetype,
       sourceFileName: cctFile.originalname
     } : null;
-    const scalePdf = scaleFile ? {
-      buffer: await fs.promises.readFile(scaleFile.path),
-      mimeType: scaleFile.mimetype,
-      sourceFileName: scaleFile.originalname
-    } : null;
     const processingPipeline = analyzeConventionDocuments([
       cctPdf && { ...cctPdf, field: "cctPdf" },
-      scalePdf && { ...scalePdf, field: "scalePdf" }
+      ...scalePdfs.map((file) => ({ ...file, field: "scalePdf" }))
     ]);
 
     if (!apiKey) {
@@ -704,6 +705,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
           fallbackModels: geminiFallbackModels(),
           cctPdf,
           scalePdf,
+          scalePdfs,
           draftName,
           notes
         });
@@ -769,7 +771,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       return;
     }
 
-    const files = [cctFile, scaleFile].filter(Boolean).map((file) => ({
+    const files = [cctFile, ...scaleFiles].filter(Boolean).map((file) => ({
       field: file.fieldname,
       originalName: file.originalname,
       storedFileName: file.filename,
@@ -1038,10 +1040,11 @@ app.get("/api/scales/:id", async (req, res, next) => {
   }
 });
 
-app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next) => {
+app.post("/api/scales/upload", scaleUpload.array("pdf", 20), async (req, res, next) => {
   try {
-    if (!req.file) {
-      res.status(400).json({ error: "Selecciona un PDF de escala salarial." });
+    const files = req.files || [];
+    if (!files.length) {
+      res.status(400).json({ error: "Selecciona al menos un PDF de escala salarial." });
       return;
     }
 
@@ -1051,86 +1054,90 @@ app.post("/api/scales/upload", scaleUpload.single("pdf"), async (req, res, next)
     const periodLabel = req.body.periodLabel || monthLabel(period);
     const now = new Date();
     const apiKey = geminiScaleApiKey();
-    let aiStatus = "SIN_API_KEY";
-    let aiError = null;
-    let aiModel = null;
-    let aiModelsTried = [];
-    let parsedScales = [{
-      period,
-      periodLabel,
-      conventionId: convention.id,
-      conventionName: convention.name,
-      cct: convention.source || "",
-      sourceFileName: req.file.originalname,
-      sourceSummary: "",
-      confidence: 0,
-      categories: [],
-      additionals: [],
-      zones: [],
-      nonRemunerative: [],
-      notes: [],
-      warnings: ["Carga pendiente de lectura por IA."]
-    }];
+    const batchId = `${now.getTime()}-${safeFileName(files[0].originalname)}`;
+    const docs = [];
 
-    if (apiKey) {
-      try {
-        const pdfBuffer = await fs.promises.readFile(req.file.path);
-        const result = await extractScalesFromPdf({
-          apiKey,
-          model: process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
-          fallbackModels: geminiFallbackModels(),
-          convention,
-          period,
-          periodLabel,
-          pdfBuffer,
-          mimeType: req.file.mimetype,
-          sourceFileName: req.file.originalname
-        });
-        parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
-        aiStatus = "DETECTADA_POR_IA";
-        aiModel = result.model;
-        aiModelsTried = result.modelsTried;
-      } catch (error) {
-        aiStatus = "ERROR_IA";
-        aiError = error.message || "No se pudo leer el PDF con leIA.";
-        aiModel = error.model || null;
-        aiModelsTried = error.modelsTried || [];
-        parsedScales[0].warnings = [aiError];
+    for (const file of files) {
+      let aiStatus = "SIN_API_KEY";
+      let aiError = null;
+      let aiModel = null;
+      let aiModelsTried = [];
+      let parsedScales = [{
+        period,
+        periodLabel,
+        conventionId: convention.id,
+        conventionName: convention.name,
+        cct: convention.source || "",
+        sourceFileName: file.originalname,
+        sourceSummary: "",
+        confidence: 0,
+        categories: [],
+        additionals: [],
+        zones: [],
+        nonRemunerative: [],
+        notes: [],
+        warnings: ["Carga pendiente de lectura por IA."]
+      }];
+
+      if (apiKey) {
+        try {
+          const pdfBuffer = await fs.promises.readFile(file.path);
+          const result = await extractScalesFromPdf({
+            apiKey,
+            model: process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+            fallbackModels: geminiFallbackModels(),
+            convention,
+            period,
+            periodLabel,
+            pdfBuffer,
+            mimeType: file.mimetype,
+            sourceFileName: file.originalname
+          });
+          parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
+          aiStatus = "DETECTADA_POR_IA";
+          aiModel = result.model;
+          aiModelsTried = result.modelsTried;
+        } catch (error) {
+          aiStatus = "ERROR_IA";
+          aiError = error.message || "No se pudo leer el PDF con leIA.";
+          aiModel = error.model || null;
+          aiModelsTried = error.modelsTried || [];
+          parsedScales[0].warnings = [aiError];
+        }
       }
-    }
 
-    const docs = parsedScales.map((parsedScale) => ({
-      conventionId: convention.id,
-      conventionName: convention.name,
-      shortName: convention.shortName || convention.name,
-      cct: convention.source || "",
-      period: normalizePeriod(parsedScale.period) || period,
-      periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
-      status: "PENDIENTE_REVISION",
-      aiStatus,
-      aiError,
-      aiModel,
-      aiModelsTried,
-      sourceFileName: req.file.originalname,
-      storedFileName: req.file.filename,
-      filePath: req.file.path,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype,
-      parsedScale: {
-        ...parsedScale,
+      docs.push(...parsedScales.map((parsedScale) => ({
+        conventionId: convention.id,
+        conventionName: convention.name,
+        shortName: convention.shortName || convention.name,
+        cct: convention.source || "",
         period: normalizePeriod(parsedScale.period) || period,
-        periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
-      },
-      auditNote: req.body.auditNote || "",
-      uploadedBatchId: `${now.getTime()}-${safeFileName(req.file.originalname)}`,
-      createdAt: now,
-      updatedAt: now
-    }));
+        periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
+        status: "PENDIENTE_REVISION",
+        aiStatus,
+        aiError,
+        aiModel,
+        aiModelsTried,
+        sourceFileName: file.originalname,
+        storedFileName: file.filename,
+        filePath: file.path,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        parsedScale: {
+          ...parsedScale,
+          period: normalizePeriod(parsedScale.period) || period,
+          periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
+        },
+        auditNote: req.body.auditNote || "",
+        uploadedBatchId: batchId,
+        createdAt: now,
+        updatedAt: now
+      })));
+    }
 
     const insertResult = await db.collection("salaryScales").insertMany(docs);
     const created = docs.map((doc, index) => serializeScale({ _id: insertResult.insertedIds[index], ...doc }));
     res.status(201).json({
-      ...created[0],
       created,
       count: created.length,
       detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel }))
@@ -1536,7 +1543,10 @@ app.get("*", (req, res) => {
 app.use((error, req, res, next) => {
   console.error(error);
   if (error instanceof multer.MulterError) {
-    res.status(400).json({ error: error.message || "No se pudo subir el archivo." });
+    const message = error.code === "LIMIT_FILE_COUNT"
+      ? "Podés subir 1 archivo CCT y hasta 5 archivos de escala salarial."
+      : error.message || "No se pudo subir el archivo.";
+    res.status(400).json({ error: message });
     return;
   }
   if (error instanceof ScaleAIError) {

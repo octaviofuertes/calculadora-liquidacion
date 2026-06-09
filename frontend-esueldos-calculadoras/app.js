@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let DATA = window.PAYROLL_DATA;
   let dataOrigin = "local";
   const API_BASE = getApiBase();
@@ -189,9 +189,9 @@
     return ui.round2 ? ui.round2(value) : Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
-  function addRow(list, label, amount, detail = "") {
+  function addRow(list, label, amount, detail = "", formula = detail) {
     if (!Number.isFinite(amount) || Math.abs(amount) < 0.005) return;
-    list.push({ label, amount: round2(amount), detail });
+    list.push({ label, amount: round2(amount), detail, formula });
   }
 
   function sumRows(rows) {
@@ -724,6 +724,13 @@
     if (!rows.length) return `<div class="empty">Sin conceptos para mostrar.</div>`;
     return `<table><colgroup><col style="width:38%"><col style="width:37%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Detalle</th><th class="num">Monto</th></tr></thead><tbody>
       ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.detail || "")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  function calculationRows(rows) {
+    if (!rows.length) return `<div class="empty">Sin calculos para mostrar.</div>`;
+    return `<table><colgroup><col style="width:34%"><col style="width:41%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Cuenta</th><th class="num">Resultado</th></tr></thead><tbody>
+      ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.formula || row.detail || "Importe informado")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
     </tbody></table>`;
   }
 
@@ -1884,6 +1891,10 @@
       <div class="detail-card">
         <h3>Deducciones trabajador</h3>
         ${tableRows(result.deductionRows)}
+      </div>
+      <div class="detail-card">
+        <h3>Como se liquido cada concepto</h3>
+        ${calculationRows([...result.remRows, ...result.noRemRows, ...result.deductionRows])}
       </div>
       <div class="detail-card">
         <h3>Costo empleador</h3>
@@ -3339,7 +3350,12 @@
     const headers = new Headers(options.headers || {});
     const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    if (!response.ok) {
+      const details = Array.isArray(payload.errores) && payload.errores.length
+        ? payload.errores.slice(0, 3).map((item) => `${item.path ? `${item.path}: ` : ""}${item.message || item}`).join(" | ")
+        : "";
+      throw new Error(payload.error || details || `HTTP ${response.status}`);
+    }
     return payload;
   }
 
@@ -3651,15 +3667,15 @@
 
   async function uploadScalePdf(event) {
     event.preventDefault();
-    const file = $("scalePdf")?.files?.[0];
+    const files = Array.from($("scalePdf")?.files || []);
     const conventionId = $("scaleConvention")?.value || str("convention", firstConventionId());
     const period = $("scalePeriod")?.value || selectedPeriodMonth();
-    if (!file) {
+    if (!files.length) {
       setScaleStatus("Selecciona un documento o imagen para analizar.", "bad");
       return;
     }
     const formData = new FormData();
-    formData.append("pdf", file);
+    files.forEach((file) => formData.append("pdf", file));
     formData.append("conventionId", conventionId);
     formData.append("period", period);
     formData.append("periodLabel", monthLabel(period));
@@ -3921,20 +3937,62 @@
   function flatScaleValues(conv = {}) {
     return (conv.escalas || []).flatMap((scale) => (scale.valores || []).map((value) => ({
       escala_id: value.escala_id || scale.escala_id,
+      mes: isPeriodLikeValue(value.periodicidad) ? value.periodicidad : (scale.periodo_desde || scale.nombre_escala || value.periodicidad || ""),
       categoria_id: value.categoria_id,
       concepto_id: value.concepto_id,
       unidad_pago: value.unidad_pago,
       periodicidad: value.periodicidad,
       valor: value.valor,
       moneda: value.moneda || scale.moneda,
-      zona: value.zona || scale.zona
+      zona: value.zona || scale.zona,
+      modalidad: value.modalidad || ""
     })));
+  }
+
+  function isPeriodLikeValue(value) {
+    const raw = String(value || "").trim();
+    return /\b20\d{2}[-/](0?[1-9]|1[0-2])(?:[-/]\d{1,2})?\b/.test(raw)
+      || /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)\b/i.test(raw);
+  }
+
+  function salaryAuditRows(conv = {}) {
+    const categoryById = new Map((conv.categorias || []).map((category) => [String(category.categoria_id || ""), category]));
+    return flatScaleValues(conv)
+      .filter(isBasicScaleValue)
+      .map((value) => {
+        const category = categoryById.get(String(value.categoria_id || "")) || {};
+        let unit = value.unidad_pago || "mensual";
+        if (unit === "daily") unit = "jornal";
+        if (unit === "hourly") unit = "hora";
+        if (unit === "monthly") unit = "mensual";
+        return {
+          mes: value.mes,
+          categoria_id: value.categoria_id || category.categoria_id || "",
+          categoria_nombre: category.categoria_nombre || value.categoria_nombre || "",
+          sueldo_base: value.valor,
+          unidad_pago: unit,
+          concepto_id: value.concepto_id || "SUELDO_BASICO",
+          modalidad: value.modalidad || "",
+          moneda: value.moneda || "ARS",
+          zona: value.zona || ""
+        };
+      })
+      .sort((a, b) => String(a.mes || "").localeCompare(String(b.mes || "")) || String(a.categoria_nombre || a.categoria_id || "").localeCompare(String(b.categoria_nombre || b.categoria_id || "")));
   }
 
   function isBasicScaleValue(value = {}) {
     const key = summaryKey(`${value.concepto_id || ""} ${value.concepto || ""} ${value.nombre_concepto || ""}`);
-    return (key === "basico" || key.includes("basico") || key.includes("sueldo_basico") || key.includes("salario_basico"))
-      && !/(no_rem|no_remunerativo|total|adicional|presentismo|antiguedad|viatico|deduccion|retencion|cuota|aporte)/.test(key);
+    return (
+      key === "basico" ||
+      key.includes("basico") ||
+      key.includes("sueldo_basico") ||
+      key.includes("salario_basico") ||
+      key.includes("jornal") ||
+      key.includes("hora") ||
+      key.includes("changa") ||
+      key.includes("valor_dia") ||
+      key === "dia"
+    ) && !/(no_rem|no_remunerativo|total|adicional|presentismo|antiguedad|viatico|deduccion|retencion|cuota|aporte)/.test(key);
   }
 
   function categoryBaseSalaryInfo(conv = {}, category = {}) {
@@ -3957,10 +4015,22 @@
   }
 
   function categoryAuditRows(conv = {}) {
-    return (conv.categorias || []).map((category) => ({
-      ...category,
-      ...categoryBaseSalaryInfo(conv, category)
-    }));
+    return (conv.categorias || []).map((category) => {
+      const variant = category.modalidad_aplicable || categoryVariantFromId(category.categoria_id);
+      const name = String(category.categoria_nombre || category.nombre || "");
+      return {
+        ...category,
+        categoria_nombre: variant && !name.toLowerCase().includes(variant.toLowerCase()) ? `${name} - ${variant}` : name,
+        modalidad_aplicable: category.modalidad_aplicable || variant
+      };
+    });
+  }
+
+  function categoryVariantFromId(id) {
+    const key = summaryKey(id || "");
+    if (key.endsWith("sin_retiro")) return "Sin retiro";
+    if (key.endsWith("con_retiro")) return "Con retiro";
+    return "";
   }
 
   function conceptAuditGroup(concept = {}) {
@@ -3998,6 +4068,24 @@
       { value: "true", label: "Sí" },
       { value: "false", label: "No" }
     ];
+    const unitChoices = [
+      { value: "mensual", label: "Mensual" },
+      { value: "jornal", label: "Jornal" },
+      { value: "hora", label: "Hora" }
+    ];
+    const basicConceptChoices = [
+      { value: "SUELDO_BASICO", label: "Sueldo Básico" },
+      { value: "VALOR_JORNAL", label: "Valor Jornal" },
+      { value: "VALOR_HORA", label: "Valor Hora" },
+      { value: "VALOR_CHANGA", label: "Valor Changa" },
+      { value: "TOTAL_7H", label: "Total 7 Horas" },
+      { value: "TOTAL_8H", label: "Total 8 Horas" }
+    ];
+    const salaryRowsData = salaryAuditRows(conv);
+    const hasJornal = salaryRowsData.some((row) => row.unidad_pago === "jornal");
+    const hasHourly = salaryRowsData.some((row) => row.unidad_pago === "hora");
+    const salaryLabel = hasJornal ? "Jornal" : (hasHourly ? "Valor hora" : "Sueldo base");
+
     return `
       ${options.includeGeneral === false ? "" : conventionGeneralEditor(conv, locked)}
       ${auditTable("Ámbitos", "ambitos", "Alcance territorial, personal o de actividad detectado.", [
@@ -4010,8 +4098,6 @@
         { field: "categoria_id", label: "ID categoría" },
         { field: "categoria_nombre", label: "Nombre" },
         { field: "grupo_nombre", label: "Rama / grupo" },
-        { field: "sueldo_base", label: "Sueldo base" },
-        { field: "escala_id", label: "Escala" },
         { field: "descripcion", label: "Descripción", type: "textarea" },
         { field: "modalidad_aplicable", label: "Modalidad" }
       ], categoryAuditRows(conv), { locked })}
@@ -4054,15 +4140,16 @@
         { field: "condicion", label: "Condición", type: "textarea" },
         { field: "es_liquidable", label: "Liquidable", type: "select", choices: liquidableChoices }
       ], conceptAuditRows(conv, "deducciones"), { locked })}
-      ${auditTable("Escalas salariales", "escalas", "Vigencias o tablas salariales publicadas.", [
-        { field: "escala_id", label: "ID escala" },
-        { field: "nombre_escala", label: "Nombre" },
-        { field: "periodo_desde", label: "Desde" },
-        { field: "periodo_hasta", label: "Hasta" },
+      ${auditTable("Escalas salariales", "escalas", "Básicos extraídos por mes y categoría.", [
+        { field: "mes", label: "Mes" },
+        { field: "categoria_id", label: "Categoría" },
+        { field: "categoria_nombre", label: "Nombre" },
+        { field: "concepto_id", label: "Concepto", type: "select", choices: basicConceptChoices },
+        { field: "unidad_pago", label: "Unidad", type: "select", choices: unitChoices },
+        { field: "modalidad", label: "Jornada / Modalidad" },
         { field: "zona", label: "Zona" },
-        { field: "moneda", label: "Moneda" },
-        { field: "alcance", label: "Alcance" }
-      ], conv.escalas || [], { locked })}
+        { field: "sueldo_base", label: salaryLabel }
+      ], salaryRowsData, { locked })}
       ${auditTable("Adicionales y reglas particulares", "adicionales", "Adicionales detectados que pueden alimentar conceptos o controles humanos.", [
         { field: "adicional_id", label: "ID adicional" },
         { field: "concepto_id", label: "Concepto vinculado" },
@@ -4164,46 +4251,61 @@
         return item;
       })
       .filter((item) => Object.values(item).some((value) => String(value || "").trim() !== ""));
-    const escalas = collectRows("escalas").map((scale, index) => ({
-      ...scale,
-      escala_id: scale.escala_id || `escala-${index + 1}`,
-      valores: []
-    }));
-    const scaleById = new Map(escalas.map((scale) => [scale.escala_id, scale]));
-    if (!escalas.length) {
-      const firstScale = { escala_id: "escala-1", nombre_escala: "", periodo_desde: "", periodo_hasta: "", moneda: "ARS", valores: [] };
-      escalas.push(firstScale);
-      scaleById.set(firstScale.escala_id, firstScale);
-    }
     const rawCategoryRows = collectRows("categorias");
     const categoryIds = new Set(rawCategoryRows.map((item) => item.categoria_id).filter(Boolean));
+    const salaryRows = collectRows("escalas");
+    const scaleByMonth = new Map();
+    const escalas = [];
+    const findBaseScale = (month) => (base.escalas || []).find((scale) => String(scale.periodo_desde || scale.nombre_escala || scale.escala_id || "") === String(month || ""));
+    const ensureScale = (month, index = 0) => {
+      const key = String(month || "").trim() || "sin-mes";
+      if (scaleByMonth.has(key)) return scaleByMonth.get(key);
+      const baseScale = findBaseScale(key) || {};
+      const scale = {
+        ...baseScale,
+        escala_id: baseScale.escala_id || `escala-${escalas.length + 1}`,
+        nombre_escala: baseScale.nombre_escala || key,
+        periodo_desde: baseScale.periodo_desde || key,
+        valores: []
+      };
+      escalas.push(scale);
+      scaleByMonth.set(key, scale);
+      return scale;
+    };
+    if (!salaryRows.length) {
+      (base.escalas || []).forEach((scale) => {
+        const copy = { ...scale, valores: [] };
+        escalas.push(copy);
+        scaleByMonth.set(String(scale.periodo_desde || scale.nombre_escala || scale.escala_id || escalas.length), copy);
+      });
+    }
+    const scaleById = new Map(escalas.map((scale) => [scale.escala_id, scale]));
     (base.escalas || []).forEach((scale) => {
       (scale.valores || []).forEach((value, index) => {
         if (isBasicScaleValue(value)) return;
         if (value.categoria_id && !categoryIds.has(value.categoria_id)) return;
-        const escalaId = value.escala_id || scale.escala_id || escalas[0]?.escala_id || "escala-1";
-        if (!scaleById.has(escalaId)) return;
+        const targetScale = scaleById.get(value.escala_id || scale.escala_id) || ensureScale(value.periodicidad || scale.periodo_desde || scale.nombre_escala);
+        const escalaId = targetScale.escala_id;
+        if (!scaleById.has(escalaId)) scaleById.set(escalaId, targetScale);
         scaleById.get(escalaId).valores.push({ ...value, valor_id: value.valor_id || `valor-extra-${index + 1}`, escala_id: escalaId });
       });
     });
-    rawCategoryRows.forEach((category, index) => {
-      if (!String(category.sueldo_base || "").trim()) return;
-      const escalaId = category.escala_id || escalas[0]?.escala_id || "escala-1";
-      if (!scaleById.has(escalaId)) {
-        const created = { escala_id: escalaId, nombre_escala: escalaId, periodo_desde: "", periodo_hasta: "", valores: [] };
-        scaleById.set(escalaId, created);
-        escalas.push(created);
-      }
-      scaleById.get(escalaId).valores.push({
-        valor_id: `basico-${category.categoria_id || index + 1}`,
-        escala_id: escalaId,
-        categoria_id: category.categoria_id,
-        concepto_id: "SUELDO_BASICO",
-        unidad_pago: category.unidad_pago || "mensual",
-        periodicidad: category.periodicidad || scaleById.get(escalaId).periodo_desde || "",
-        valor: category.sueldo_base,
-        moneda: category.moneda || scaleById.get(escalaId).moneda || "ARS",
-        zona: category.zona || scaleById.get(escalaId).zona || ""
+    salaryRows.forEach((salary, index) => {
+      if (!String(salary.sueldo_base || "").trim()) return;
+      const scale = ensureScale(salary.mes, index);
+      scaleById.set(scale.escala_id, scale);
+      const conceptId = salary.concepto_id || "SUELDO_BASICO";
+      scale.valores.push({
+        valor_id: `basico-${index + 1}-${salary.categoria_id || "sin-categoria"}-${salary.mes || "sin-mes"}-${conceptId}`,
+        escala_id: scale.escala_id,
+        categoria_id: salary.categoria_id,
+        concepto_id: conceptId,
+        unidad_pago: salary.unidad_pago || "mensual",
+        modalidad: salary.modalidad || "",
+        periodicidad: salary.mes || scale.periodo_desde || "",
+        valor: salary.sueldo_base,
+        moneda: salary.moneda || scale.moneda || "ARS",
+        zona: salary.zona || scale.zona || ""
       });
     });
     const categorias = rawCategoryRows.map((category) => {
@@ -4232,11 +4334,11 @@
     const parsed = parseConventionJsonEditor();
     const nextIndex = (items) => (Array.isArray(items) ? items.length + 1 : 1);
     if (section === "ambitos") parsed.ambitos = [...(parsed.ambitos || []), { ambito_id: `ambito-${nextIndex(parsed.ambitos)}`, nombre: "", tipo: "", descripcion: "" }];
-    if (section === "categorias") parsed.categorias = [...(parsed.categorias || []), { categoria_id: "", categoria_nombre: "", grupo_nombre: "", sueldo_base: "", escala_id: parsed.escalas?.[0]?.escala_id || "", descripcion: "", modalidad_aplicable: "" }];
+    if (section === "categorias") parsed.categorias = [...(parsed.categorias || []), { categoria_id: "", categoria_nombre: "", grupo_nombre: "", descripcion: "", modalidad_aplicable: "" }];
     if (section === "conceptos_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "conceptos_no_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "no_remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "conceptos_deducciones") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "descuento", naturaleza: "retencion", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
-    if (section === "escalas") parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", periodo_hasta: "", zona: "", moneda: "ARS", alcance: "", valores: [] }];
+    if (section === "escalas") parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", moneda: "ARS", valores: [{ concepto_id: "SUELDO_BASICO", categoria_id: "", valor: "", periodicidad: "" }] }];
     if (section === "adicionales") parsed.adicionales = [...(parsed.adicionales || []), { adicional_id: `adicional-${nextIndex(parsed.adicionales)}`, concepto_id: "", nombre: "", formula: "", base_calculo: "", porcentaje: "", importe_fijo: "", condicion: "" }];
     conventionBuilderState.selected.parsedConvention = parsed;
     renderConventionJsonEditor(conventionBuilderState.selected);
@@ -4534,14 +4636,14 @@
   async function uploadConventionDraft(event) {
     event.preventDefault();
     const cctFile = $("builderCctPdf")?.files?.[0];
-    const scaleFile = $("builderScalePdf")?.files?.[0];
-    if (!cctFile && !scaleFile) {
+    const scaleFiles = Array.from($("builderScalePdf")?.files || []);
+    if (!cctFile && !scaleFiles.length) {
       setConventionBuilderStatus("Subi al menos un documento o imagen de CCT o escala.", "bad");
       return;
     }
     const formData = new FormData();
     if (cctFile) formData.append("cctPdf", cctFile);
-    if (scaleFile) formData.append("scalePdf", scaleFile);
+    scaleFiles.forEach((file) => formData.append("scalePdf", file));
     formData.append("name", $("builderConventionName")?.value || "");
     formData.append("notes", $("builderNotes")?.value || "");
 
