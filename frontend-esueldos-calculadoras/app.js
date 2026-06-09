@@ -756,6 +756,52 @@
     addRow(deductionRows, "Descuentos varios", num("otherDeductions", 0), "Carga manual");
   }
 
+  function isExtraHoursConcept(concept = {}) {
+    const key = summaryKey(`${concept.id || ""} ${concept.label || ""} ${concept.name || ""} ${concept.nombre || ""}`);
+    const isHours = key.includes("horas_extra") || key.includes("hs_extra") || key.includes("hora_extra");
+    return isHours && /(^|_)(50|100)(_|$)/.test(key);
+  }
+
+  function isSystemPayrollConcept(item = {}) {
+    const labelKey = summaryKey(item.label || item.name || item.nombre || item.concepto || "");
+    const idKey = summaryKey(item.id || item.concepto_id || "");
+    const key = summaryKey([
+      item.id,
+      item.label,
+      item.name,
+      item.nombre,
+      item.concepto_id,
+      item.concepto,
+      item.detail,
+      item.detalle
+    ].filter(Boolean).join(" "));
+    const has = (...parts) => parts.every((part) => key.includes(part));
+    if (isExtraHoursConcept(item)) return true;
+    if (has("sueldo", "basico") || has("valor", "hora") || has("valor", "dia")) return true;
+    if (labelKey === "no_remunerativo" || idKey === "no_remunerativo" || key.includes("no_remunerativo_de_escala")) return true;
+    if (has("zona", "desfavorable")) return true;
+    if (key.includes("agravamiento_indemnizatorio")) return true;
+    if (key.includes("total_remunerativo") || key.includes("total_no_remunerativo") || key.includes("total_72_horas") || key.includes("total_horas")) return true;
+    if (key.includes("despido") || key.includes("licencia") || key.includes("vacacion") || key.includes("indemnizacion")) return true;
+    if (key.includes("multa") || key.includes("incumplimiento") || key.includes("compensacion_por_interrupcion")) return true;
+    if (key === "sac" || key.includes("aguinaldo") || has("sueldo", "anual", "complementario")) return true;
+    if (has("aporte", "jubilatorio") || key.includes("sipa") || key.includes("pami") || key.includes("ley_19_032")) return true;
+    if (has("aporte", "obra", "social") || has("seguridad", "social") || has("riesgos", "trabajo") || key === "art" || has("art", "variable")) return true;
+    return false;
+  }
+
+  function userFacingConcepts(items = []) {
+    return (items || []).filter((item) => !isSystemPayrollConcept(item));
+  }
+
+  function userFacingGroupName(group = "") {
+    const key = summaryKey(group);
+    if (key === "requiere_revision_manual") return "Adicionales sujetos a revision";
+    if (key === "remunerativo") return "Remunerativos variables";
+    if (key === "no_remunerativo") return "No remunerativos variables";
+    return group || "Adicionales";
+  }
+
   function applyWorkerDeductions(deductionRows, remTotal, osBase, conv) {
     const c = DATA.constants;
     // Aportes del trabajador se calculan sobre el total remunerativo bruto (sin detracción)
@@ -1008,9 +1054,9 @@
         addRow(targetRows, item.label, amountValue, item.detail || fallbackDetail);
       });
     };
-    applyItems(model.deductions, deductionRows, "Aporte propio del convenio", true);
-    applyItems(model.retentions, deductionRows, "Retencion propia del convenio", true, "gen_retention");
-    applyItems(model.employerContributions, employerRows, "Contribucion propia del convenio");
+    applyItems(userFacingConcepts(model.deductions), deductionRows, "Aporte propio del convenio", true);
+    applyItems(userFacingConcepts(model.retentions), deductionRows, "Retencion propia del convenio", true, "gen_retention");
+    applyItems(userFacingConcepts(model.employerContributions), employerRows, "Contribucion propia del convenio");
   }
 
   function calcGenericConvention(conv) {
@@ -1092,7 +1138,7 @@
     const noRemScaleRaw = firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(cat, period)) || 0;
     const noRemScaleBase = noRemScaleRaw * monthPct * scaleCoef;
 
-    const conceptRows = Array.isArray(model.concepts) ? model.concepts : [];
+    const conceptRows = Array.isArray(model.concepts) ? userFacingConcepts(model.concepts) : [];
     conceptRows.forEach((concept) => {
       const inputId = `gen_${concept.id}`;
       const inputValue = concept.inputType === "number" ? Math.max(0, num(inputId, 0)) : (checked(inputId, !!concept.defaultValue) ? 1 : 0);
@@ -1869,11 +1915,11 @@
     const source = result.activeScale
       ? `<div class="scale-source-note">Liquidacion basada en escala aprobada vigente: ${escapeHtml(result.activeScale.periodLabel || monthLabel(result.activeScale.period))}.</div>`
       : `<div class="scale-source-note">Liquidacion basada en la escala base cargada en el sistema.</div>`;
-    if (result.conv.id === "uocra") return source + renderUocraScale(result);
-    if (result.conv.id === "farmacia") return source + renderFarmaciaScale(result);
-    if (result.conv.id === "camioneros") return source + renderCamionerosScale(result);
-    if (isGenericConvention(result.conv)) return source + renderGenericScale(result);
-    return source + renderGenericScale(result);
+    let content = renderGenericScale(result);
+    if (result.conv.id === "uocra") content = renderUocraScale(result);
+    if (result.conv.id === "farmacia") content = renderFarmaciaScale(result);
+    if (result.conv.id === "camioneros") content = renderCamionerosScale(result);
+    return `<div class="scale-compact-view">${source}${content}</div>`;
   }
 
   function renderConventionSummaryPane(result = null) {
@@ -2078,43 +2124,49 @@
   function renderSummarySection(title, rows) {
     const cleanRows = (rows || []).filter(Boolean);
     if (!cleanRows.length) return "";
-    return `<section class="summary-section">
-      <h3>${escapeHtml(title)}</h3>
-      <div class="summary-definition-list">
-        ${cleanRows.map((row) => `<div class="summary-definition">
-          <span>${escapeHtml(row.label)}</span>
-          <strong>${escapeHtml(summaryValue(row.value))}</strong>
-          ${row.detail ? `<p>${escapeHtml(row.detail)}</p>` : ""}
-        </div>`).join("")}
+    return `<details class="summary-section summary-collapsible">
+      <summary><span>${escapeHtml(title)}</span><em>${cleanRows.length} items</em></summary>
+      <div class="summary-collapsible-body">
+        <div class="summary-definition-list">
+          ${cleanRows.map((row) => `<div class="summary-definition">
+            <span>${escapeHtml(row.label)}</span>
+            <strong>${escapeHtml(summaryValue(row.value))}</strong>
+            ${row.detail ? `<p>${escapeHtml(row.detail)}</p>` : ""}
+          </div>`).join("")}
+        </div>
       </div>
-    </section>`;
+    </details>`;
   }
 
   function renderSummaryBulletSection(title, items) {
     const cleanItems = summaryArray(items);
     if (!cleanItems.length) return "";
-    return `<section class="summary-section">
-      <h3>${escapeHtml(title)}</h3>
-      <ul class="summary-bullets">
-        ${cleanItems.map((item) => `<li>${escapeHtml(summaryValue(item))}</li>`).join("")}
-      </ul>
-    </section>`;
+    return `<details class="summary-section summary-collapsible">
+      <summary><span>${escapeHtml(title)}</span><em>${cleanItems.length} items</em></summary>
+      <div class="summary-collapsible-body">
+        <ul class="summary-bullets">
+          ${cleanItems.map((item) => `<li>${escapeHtml(summaryValue(item))}</li>`).join("")}
+        </ul>
+      </div>
+    </details>`;
   }
 
   function renderSummaryTable(title, headers, rows) {
     const cleanRows = (rows || []).filter(Boolean);
     if (!cleanRows.length) return "";
-    return `<section class="summary-section">
-      <h3>${escapeHtml(title)}</h3>
-      <div class="summary-table-wrap">
-        <table class="summary-table">
-          <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-          <tbody>
-            ${cleanRows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(summaryValue(cell))}</td>`).join("")}</tr>`).join("")}
-          </tbody>
-        </table>
+    return `<details class="summary-section summary-collapsible">
+      <summary><span>${escapeHtml(title)}</span><em>${cleanRows.length} filas</em></summary>
+      <div class="summary-collapsible-body">
+        <div class="summary-table-wrap">
+          <table class="summary-table">
+            <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+            <tbody>
+              ${cleanRows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(summaryValue(cell))}</td>`).join("")}</tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </section>`;
+    </details>`;
   }
 
   function renderCategoryGuide(conv, result = null) {
@@ -2630,26 +2682,36 @@
     const period = result.period;
     const model = conv.liquidationModel || {};
     return `<div class="tables">
-      <table><thead><tr><th>Categoria</th><th class="num">Mensual</th><th class="num">Jornal</th><th class="num">Hora</th><th class="num">No rem.</th></tr></thead><tbody>
-        ${(conv.categories || []).map((cat) => {
-          const row = scaleCategoryRow(conv, cat, result.zone);
-          return `<tr>
-            <td>${escapeHtml(cat.label)}</td>
-            <td class="num">${fmt(firstFinite(row?.monthly, cat.monthly) || 0)}</td>
-            <td class="num">${fmt(firstFinite(row?.day, cat.day) || 0)}</td>
-            <td class="num">${fmt(firstFinite(row?.hourly, cat.hourly) || 0)}</td>
-            <td class="num">${fmt(firstFinite(row?.nonRemunerative, periodNonRemValue(cat, period)) || 0)}</td>
-          </tr>`;
-        }).join("")}
-      </tbody></table>
-      <table><thead><tr><th>Concepto</th><th>Tipo</th><th>Cómo se calcula</th><th>Base de cálculo</th></tr></thead><tbody>
-        ${(model.concepts || []).map((concept) => `<tr>
-          <td>${escapeHtml(humanizeTechnicalText(concept.label || concept.id))}</td>
-          <td>${escapeHtml(humanConceptType(concept))}</td>
-          <td>${escapeHtml(humanConceptCalculation(concept))}</td>
-          <td>${escapeHtml(humanConceptBase(concept.base || "basic"))}</td>
-        </tr>`).join("") || `<tr><td colspan="4">Sin conceptos variables cargados.</td></tr>`}
-      </tbody></table>
+      <section class="scale-table-card">
+        <h3>Categorias</h3>
+        <div class="scale-table-scroll">
+          <table><thead><tr><th>Categoria</th><th class="num">Mensual</th><th class="num">Jornal</th><th class="num">Hora</th><th class="num">No rem.</th></tr></thead><tbody>
+            ${(conv.categories || []).map((cat) => {
+              const row = scaleCategoryRow(conv, cat, result.zone);
+              return `<tr>
+                <td>${escapeHtml(cat.label)}</td>
+                <td class="num">${fmt(firstFinite(row?.monthly, cat.monthly) || 0)}</td>
+                <td class="num">${fmt(firstFinite(row?.day, cat.day) || 0)}</td>
+                <td class="num">${fmt(firstFinite(row?.hourly, cat.hourly) || 0)}</td>
+                <td class="num">${fmt(firstFinite(row?.nonRemunerative, periodNonRemValue(cat, period)) || 0)}</td>
+              </tr>`;
+            }).join("")}
+          </tbody></table>
+        </div>
+      </section>
+      <section class="scale-table-card">
+        <h3>Conceptos</h3>
+        <div class="scale-table-scroll">
+          <table><thead><tr><th>Concepto</th><th>Tipo</th><th>Cómo se calcula</th><th>Base de cálculo</th></tr></thead><tbody>
+            ${(model.concepts || []).map((concept) => `<tr>
+              <td>${escapeHtml(humanizeTechnicalText(concept.label || concept.id))}</td>
+              <td>${escapeHtml(humanConceptType(concept))}</td>
+              <td>${escapeHtml(humanConceptCalculation(concept))}</td>
+              <td>${escapeHtml(humanConceptBase(concept.base || "basic"))}</td>
+            </tr>`).join("") || `<tr><td colspan="4">Sin conceptos variables cargados.</td></tr>`}
+          </tbody></table>
+        </div>
+      </section>
       <div class="scale-summary">Convenio generado por leIA con motor generico JSON. Edita el convenio desde Convenios IA si necesitás ajustar reglas finas.</div>
     </div>`;
   }
@@ -3288,7 +3350,12 @@
     const headers = new Headers(options.headers || {});
     const response = await fetch(apiUrl(path), { ...options, headers });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    if (!response.ok) {
+      const details = Array.isArray(payload.errores) && payload.errores.length
+        ? payload.errores.slice(0, 3).map((item) => `${item.path ? `${item.path}: ` : ""}${item.message || item}`).join(" | ")
+        : "";
+      throw new Error(payload.error || details || `HTTP ${response.status}`);
+    }
     return payload;
   }
 
@@ -3870,7 +3937,7 @@
   function flatScaleValues(conv = {}) {
     return (conv.escalas || []).flatMap((scale) => (scale.valores || []).map((value) => ({
       escala_id: value.escala_id || scale.escala_id,
-      mes: value.periodicidad || scale.periodo_desde || scale.nombre_escala || "",
+      mes: isPeriodLikeValue(value.periodicidad) ? value.periodicidad : (scale.periodo_desde || scale.nombre_escala || value.periodicidad || ""),
       categoria_id: value.categoria_id,
       concepto_id: value.concepto_id,
       unidad_pago: value.unidad_pago,
@@ -3880,6 +3947,12 @@
       zona: value.zona || scale.zona,
       modalidad: value.modalidad || ""
     })));
+  }
+
+  function isPeriodLikeValue(value) {
+    const raw = String(value || "").trim();
+    return /\b20\d{2}[-/](0?[1-9]|1[0-2])(?:[-/]\d{1,2})?\b/.test(raw)
+      || /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)\b/i.test(raw);
   }
 
   function salaryAuditRows(conv = {}) {
@@ -3942,7 +4015,22 @@
   }
 
   function categoryAuditRows(conv = {}) {
-    return conv.categorias || [];
+    return (conv.categorias || []).map((category) => {
+      const variant = category.modalidad_aplicable || categoryVariantFromId(category.categoria_id);
+      const name = String(category.categoria_nombre || category.nombre || "");
+      return {
+        ...category,
+        categoria_nombre: variant && !name.toLowerCase().includes(variant.toLowerCase()) ? `${name} - ${variant}` : name,
+        modalidad_aplicable: category.modalidad_aplicable || variant
+      };
+    });
+  }
+
+  function categoryVariantFromId(id) {
+    const key = summaryKey(id || "");
+    if (key.endsWith("sin_retiro")) return "Sin retiro";
+    if (key.endsWith("con_retiro")) return "Con retiro";
+    return "";
   }
 
   function conceptAuditGroup(concept = {}) {
@@ -4208,7 +4296,7 @@
       scaleById.set(scale.escala_id, scale);
       const conceptId = salary.concepto_id || "SUELDO_BASICO";
       scale.valores.push({
-        valor_id: `basico-${salary.categoria_id || index + 1}-${salary.mes || index + 1}-${conceptId}`,
+        valor_id: `basico-${index + 1}-${salary.categoria_id || "sin-categoria"}-${salary.mes || "sin-mes"}-${conceptId}`,
         escala_id: scale.escala_id,
         categoria_id: salary.categoria_id,
         concepto_id: conceptId,
@@ -5136,31 +5224,34 @@
     if (isGenericConvention(conv)) {
       const model = conv.liquidationModel || {};
       const rules = model.rules || {};
-      const grouped = (model.concepts || []).reduce((acc, concept) => {
+      const visibleConcepts = userFacingConcepts(model.concepts || []);
+      const visibleDeductions = userFacingConcepts(model.deductions || []);
+      const visibleRetentions = userFacingConcepts(model.retentions || []);
+      const grouped = visibleConcepts.reduce((acc, concept) => {
         const key = concept.group || "Adicionales";
         if (!acc[key]) acc[key] = [];
         acc[key].push(concept);
         return acc;
       }, {});
       const conceptHtml = Object.entries(grouped).map(([group, concepts]) => `
-        <div class="generic-section-title">${escapeHtml(group)}</div>
+        <div class="generic-section-title">${escapeHtml(userFacingGroupName(group))}</div>
         <div class="check-grid generic-checks">
           ${concepts.map((concept) => concept.inputType === "number"
             ? `<label class="field"><span>${escapeHtml(concept.label)}</span><input id="gen_${escapeHtml(concept.id)}" type="number" min="0" step="0.01" value="${escapeHtml(concept.defaultValue || 0)}"></label>`
             : `<label class="check-row"><input id="gen_${escapeHtml(concept.id)}" type="checkbox" ${concept.defaultValue ? "checked" : ""}><span>${escapeHtml(concept.label)}</span></label>`
           ).join("")}
         </div>`).join("");
-      const deductionHtml = (model.deductions || []).length ? `
+      const deductionHtml = visibleDeductions.length ? `
         <div class="generic-section-title">Descuentos del convenio</div>
         <div class="check-grid generic-checks">
-          ${model.deductions.map((item) => `
+          ${visibleDeductions.map((item) => `
             <label class="check-row"><input id="gen_deduction_${escapeHtml(item.id)}" type="checkbox" ${item.defaultValue === false ? "" : "checked"}><span>${escapeHtml(item.label)}</span></label>
           `).join("")}
         </div>` : "";
-      const retentionHtml = (model.retentions || []).length ? `
+      const retentionHtml = visibleRetentions.length ? `
         <div class="generic-section-title">Retenciones del convenio</div>
         <div class="check-grid generic-checks">
-          ${model.retentions.map((item) => `
+          ${visibleRetentions.map((item) => `
             <label class="check-row"><input id="gen_retention_${escapeHtml(item.id)}" type="checkbox" ${item.defaultValue === false ? "" : "checked"}><span>${escapeHtml(item.label)}</span></label>
           `).join("")}
         </div>` : "";
@@ -5176,7 +5267,6 @@
         <div class="check-grid generic-checks">
           <label class="check-row"><input id="genSeniority" type="checkbox" ${rules.seniority?.enabled !== false || (rules.nonRemunerativeScale?.seniorityEnabled !== false && Number(rules.nonRemunerativeScale?.seniorityPercentPerYear || 0) > 0) ? "checked" : ""}><span>Antiguedad segun convenio</span></label>
           <label class="check-row"><input id="genPresentism" type="checkbox" ${rules.presentism?.enabled || (rules.nonRemunerativeScale?.presentismEnabled !== false && Number(rules.nonRemunerativeScale?.presentismPercent || 0) > 0) ? "checked" : ""}><span>Presentismo segun convenio</span></label>
-          <label class="check-row"><input id="genNonRemScale" type="checkbox" ${rules.nonRemunerativeScale?.enabled === false ? "" : "checked"}><span>No remunerativo de escala</span></label>
         </div>
         ${conceptHtml || `<p class="generic-note">Este convenio no tiene conceptos variables adicionales. Pod&eacute;s editarlos desde Convenios IA.</p>`}
         ${deductionHtml}
