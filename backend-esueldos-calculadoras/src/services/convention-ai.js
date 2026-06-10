@@ -802,11 +802,13 @@ function buildConventionPrompt({ draftName, notes }) {
     "EXTRAER OBLIGATORIAMENTE haberes remunerativos: sueldo basico, antiguedad, presentismo, puntualidad, titulo, funcion, caja, zona, altura, riesgo, horas extras, nocturnidad, feriados, francos trabajados, guardias, disponibilidad, productividad, comisiones y premios.",
     "SUELDO_BASICO es solo salario basico de escala. Sueldo Anual Complementario, SAC o Aguinaldo debe ir como concepto SAC, nunca como SUELDO_BASICO.",
     "Para cada concepto extraer datos compactos: nombre, articulo, formula corta, base de calculo, porcentaje, importe fijo, condicion breve, tope y frecuencia. No copies parrafos completos.",
+    "ATENCION: Toma TODOS los valores salariales y periodos correspondientes al año actual. No omitas ningun mes del año en curso.",
     "EXTRAER OBLIGATORIAMENTE haberes no remunerativos: sumas no remunerativas, no remunerativos de escala, asignaciones, bonos, gratificaciones extraordinarias, viaticos, beneficios en especie y ticket alimentacion. Extraer formula corta, condiciones breves, base, tope y vigencia.",
-    "Todo haber no remunerativo debe ir en conceptos con tipo_concepto haber o no_remunerativo, naturaleza no_remunerativo, unidad_calculo, formula_base, base_calculo, condicion y es_liquidable true salvo que el documento lo declare solo informativo.",
+    "Todo haber no remunerativo debe ir en conceptos con tipo_concepto haber y estrictamente naturaleza no_remunerativo, unidad_calculo, formula_base, base_calculo, condicion y es_liquidable true salvo que el documento lo declare solo informativo.",
     "Clasificacion obligatoria de conceptos: tipo_concepto debe ser haber, descuento, retencion, aporte_patronal o referencia. No uses remunerativo/no_remunerativo como tipo_concepto; eso va en naturaleza.",
     "Naturaleza obligatoria: remunerativo, no_remunerativo, retencion, contribucion_patronal, referencial o requiere_revision_manual si el documento no permite determinarlo. No dejar naturaleza vacia.",
     "Dividir conceptos en tres grupos liquidatorios principales: haberes remunerativos = tipo_concepto haber + naturaleza remunerativo; haberes no remunerativos = tipo_concepto haber + naturaleza no_remunerativo; deducciones = tipo_concepto descuento o retencion + naturaleza retencion. No clasifiques deducciones, aportes del trabajador, cuota sindical, obra social ni fondos como haberes remunerativos.",
+    "ATENCION CRITICA: Revisa minuciosamente los haberes que sean 'no remunerativos'. Asegurate de separarlos correctamente asignandoles SIEMPRE naturaleza 'no_remunerativo'. BAJO NINGUN CONCEPTO los agrupes o clasifiques como 'remunerativo'.",
     "Base de calculo obligatoria y computable: sueldo_basico, total_remunerativo, haberes_remunerativos, remuneracion_sujeta_a_aporte, escala_salarial, valor_hora, valor_dia, monto_fijo o requiere_revision_manual. Si el documento da otra base, conservarla como texto breve en base_calculo.",
     "Formula de calculo obligatoria en formula_base: valor_escala_categoria, monto_fijo, porcentaje_sobre_base, porcentaje_sobre_valor_hora, cantidad_por_valor_unitario, valor_referencia_escala o requiere_revision_manual. Si el documento muestra una formula concreta, resumirla sin inventar.",
     "EXTRAER OBLIGATORIAMENTE descuentos y retenciones legales y convencionales: jubilacion, Ley 19032, obra social, seguro, cuota sindical, fondo solidario, aportes especiales y contribuciones extraordinarias. Extraer base imponible, porcentaje, tope y condiciones.",
@@ -834,6 +836,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "Usa schemaVersion esueldos-cct-estructura-excel-v1 y la estructura Excel: convenio, ambitos, categorias, conceptos, escalas con valores y adicionales.",
     "Diferencia haberes remunerativos, haberes no remunerativos, descuentos, retenciones y aportes patronales en conceptos.tipo_concepto y conceptos.naturaleza.",
     "Para haberes: tipo_concepto siempre debe ser haber; naturaleza indica si es remunerativo o no_remunerativo.",
+    "ES IMPRESCINDIBLE diferenciar los haberes NO REMUNERATIVOS. Verifica que su naturaleza sea exactamente 'no_remunerativo'.",
     "Las tablas separadas de adicionales deben ir en adicionales o conceptos, no como categorias.",
     "No inventes zona desfavorable, plus zona ni porcentajes regionales. Solo extraelos si aparecen explicitamente en la documentacion analizada.",
     "La zona General/Base/Sin adicional debe conservarse en zona como General o general cuando aparezca.",
@@ -846,24 +849,32 @@ function buildConventionPrompt({ draftName, notes }) {
 
 function buildConventionCorePrompt({ draftName, notes }) {
   return [
-    "Actua como contador laboral argentino e ingeniero de sistemas senior.",
-    "Extrae SOLO datos nucleares del CCT actual para liquidacion. No uses memoria, catalogos ni otros convenios. VALORES ACTUALES: Extrae únicamente las reglas, importes, adicionales y escalas vigentes y actuales del periodo más reciente. Descarta el historial de periodos anteriores.",
-    "No extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
-    "Devolve JSON valido y compacto con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
-    "schemaVersion debe ser esueldos-cct-estructura-excel-v1.",
-    "convenio: numero, anio, denominacion, actividad, rama, jurisdiccion, ambito, partes, homologacion, vigencia y fuente.",
-    "Clasifica el adjunto como CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, ESCALA_SALARIAL, ANEXO_ESCALA, ANEXO_REGLAS, RESOLUCION u OTRO. Guardar esa clasificacion en documento_tipo/documento_rol/fuente_documento de los objetos extraidos, no como campo raiz.",
-    "Todo dato importante debe incluir evidencia corta, pagina y confianza cuando sea posible.",
-    "categorias: todas las categorias detectadas con categoria_id y categoria_nombre.",
-    "Si una categoria tiene variantes liquidatorias por modalidad, jornada, alcance, rama o condicion con valores distintos, mantener el cargo como categoria y cargar la variante en modalidad_aplicable o escalas[].valores[].modalidad. Solo separar categorias si el documento nombra cargos/clases diferentes.",
-    "conceptos: solo conceptos liquidables remunerativos, no remunerativos, retenciones y contribuciones detectadas, con campos minimos completos. No incluir licencias o derechos informativos como haberes.",
-    "SAC, aguinaldo o Sueldo Anual Complementario debe ser concepto SAC; nunca SUELDO_BASICO.",
-    "No omitas haberes no remunerativos si el texto menciona sumas no remunerativas, no rem, asignaciones, bonos, viaticos o beneficios.",
-    "Usa tipo_concepto haber/descuento/retencion/aporte_patronal/referencia y naturaleza remunerativo/no_remunerativo/retencion/contribucion_patronal/referencial/requiere_revision_manual. Completa base_calculo computable.",
-    "No clasifiques todo como haber remunerativo: separar haberes remunerativos, haberes no remunerativos y deducciones segun el texto.",
-    "Si falta un dato usar \"Informacion no encontrada en la documentacion analizada\" o null segun corresponda. No inventar.",
-    "No agregues markdown ni explicaciones.",
-    "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Actúa como el mejor Contador Laboral Argentino, Ingeniero de Sistemas Senior y Analista Funcional Experto.",
+    "Tu objetivo en esta llamada es extraer SOLO los datos nucleares y el esqueleto legal del CCT. NO extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
+    "[AISLAMIENTO ABSOLUTO] Cada ejecución comienza desde cero. Ignora convenios anteriores o conocimientos preexistentes. Si un dato no está en el documento, escribe null o [].",
+    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "schemaVersion debe ser 'esueldos-cct-estructura-excel-v1'.",
+    
+    // 1. CONVENIO Y TRAZABILIDAD
+    "CONVENIO: Extrae numero, anio, denominacion, actividad, rama, jurisdiccion, ambito_territorial, partes_firmantes, fecha_homologacion y vigencia.",
+    "Clasifica el origen del bloque/documento dentro de 'documento_tipo' como: CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, RESOLUCION u OTRO.",
+    
+    // 2. CATEGORÍAS (Estructura de Puestos)
+    "CATEGORÍAS: Identifica los puestos reales. Si el CCT divide por Ramas, Sectores o Agrupamientos y los nombres se repiten, genera un 'categoria_id' único y compuesto (ej: 'RAMA_TALLER_OPERARIO_A').",
+    "Variantes de jornada o modalidad (ej: Con Retiro/Sin Retiro, Completa/Media) NO deben duplicar la categoría base salvo que sean puestos jerárquicos distintos. Se diferenciarán luego en las escalas.",
+    
+    // 3. CONCEPTOS LIQUIDABLES (Reglas y Motores de Cálculo)
+    "CONCEPTOS: Identifica todos los conceptos remunerativos, no remunerativos y retenciones mencionados en el texto legal.",
+    "Prohibido crear conceptos dinámicos por mes o año (ej: NO crees BASICO_OCT_25). Usa ID genéricos: SUELDO_BASICO, VALOR_HORA, VALOR_DIARIO, NO_REMUNERATIVO, ADICIONAL_CONVENIO.",
+    "El Sueldo Anual Complementario debe mapearse como concepto_id: 'SAC', nunca como SUELDO_BASICO.",
+    "Diferencia estrictamente la NATURALEZA de los conceptos: Remunerativos (haber / remunerativo), No Remunerativos (haber / no_remunerativo), Deducciones (retencion o descuento / retencion). Es CRÍTICO que los adicionales calificados como 'no rem' tengan estrictamente esa naturaleza.",
+    "Cada concepto debe parametrizarse con: unidad_calculo (monthly, hourly, daily, percentage, fixed), formula_base, base_calculo (sueldo_basico, total_remunerativo, etc.) y condicion.",
+    
+    // 5 y 6. ADICIONALES FIJOS Y REGLAS DE LIQUIDACIÓN
+    "Antigüedad: Determina la base de cálculo y la regla (ej: 1% por año de servicio) y estructurala en 'formula_base'.",
+    "Presentismo: Identifica si es un porcentaje (ej: 8.33% o doceava parte) o suma fija, y las causales de pérdida.",
+    "Si el CCT define divisores explícitos (ej: divisor vacacional 25, divisor hora 200), regístralo en las condiciones del concepto. Si no figura, coloca 'requiere_revision_manual'.",
+    
     draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
     notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
   ].join("\n");
@@ -871,49 +882,29 @@ function buildConventionCorePrompt({ draftName, notes }) {
 
 function buildScalePrompt({ draftName, notes }) {
   return [
-    "Actua como Analista Funcional Senior especializado en escalas salariales de CCT de Argentina.",
-    "Lee SOLO la escala salarial adjunta y extrae categorias y valores salariales publicados.",
-    "Clasifica el adjunto/bloque como ESCALA_SALARIAL o ANEXO_ESCALA salvo que sea claramente ACTA_ACUERDO, HOMOLOGACION, RESOLUCION u OTRO. Guardar esa clasificacion en documento_tipo/documento_rol/fuente_documento dentro de escalas, categorias, conceptos, adicionales y valores.",
-    "Cada valor importante debe incluir evidencia corta, pagina y confianza cuando sea posible. No copiar parrafos largos.",
-    "No resumas la escala. No omitas columnas. No inventes valores.",
-    "NO crees conceptos por mes, por categoria ni por columna. Prohibido generar IDs como BASICO_OCT_2025 o NO_REM_OCT_2025.",
-    "Usa pocos conceptos canonicos reutilizables: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO. Solo crea otro concepto si la escala lo nombra claramente.",
-    "SAC o Sueldo Anual Complementario no es SUELDO_BASICO. Si aparece, crear concepto SAC separado y no usarlo como valor basico de categoria.",
-    "Columnas llamadas No Rem, No Remunerativo, Suma No Remunerativa, Asignacion No Remunerativa, Bono No Remunerativo o similares son haberes no remunerativos: concepto_id NO_REMUNERATIVO salvo que el documento les de un nombre especifico.",
-    "El sueldo mensual de una categoria solo debe salir de columnas Basico, Sueldo Basico o Salario Basico. No uses columnas No Remunerativo, Total, Viatico, Adicional, Premio, Bono, Aporte o Deduccion como mensual.",
-    "Para conceptos de escala: SUELDO_BASICO debe ser tipo_concepto haber y naturaleza remunerativo; NO_REMUNERATIVO debe ser tipo_concepto haber y naturaleza no_remunerativo; totales publicados deben ser tipo_concepto referencia, naturaleza referencial y es_liquidable false.",
-    "Todo concepto creado desde una columna salarial debe tener base_calculo: escala_salarial. Si una columna adicional indica porcentaje o base especifica, usar sueldo_basico, total_remunerativo, haberes_remunerativos, remuneracion_sujeta_a_aporte, valor_hora, valor_dia, monto_fijo o requiere_revision_manual segun corresponda.",
-    "Todos los importes deben ir en escalas[].valores[]. No repitas importes dentro de conceptos.",
-    "VALORES ACTUALES: Extraer únicamente las escalas y valores del periodo más reciente/actual. Omitir por completo el historial de escalas y periodos anteriores que ya no estén vigentes. Por cada categoría del periodo actual, extraer fecha desde, fecha hasta, categoria, sueldo basico, haberes no remunerativos, valor hora, valor dia, valor jornal, valor changa, total remunerativo, total jornada 7 horas, total jornada 8 horas y cualquier otro valor publicado.",
-    "Usar una matriz conceptual: categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada importe de esa matriz debe crear un item en escalas[].valores[].",
-    "Soportar formatos publicos comunes: una categoria por pagina con meses como filas; categorias por filas con meses como columnas; agrupamientos como PERSONAL JERARQUICO/ADMINISTRATIVO/SERVICIO; regiones/provincias/zonas como subtitulos; columnas BASICO, NO REM, TOTAL, VALOR HORA, VALOR DIA y adicionales.",
-    "Si la tabla aparece fragmentada por la lectura del PDF, reconstruir cada fila completa uniendo la linea de categoria con las lineas siguientes de importes hasta la proxima categoria.",
-    "Mapear columnas por posicion cuando los encabezados esten separados de las filas. Ejemplo: si el encabezado dice BASICO Abril 2026, el importe de esa columna debe ser SUELDO_BASICO para ese periodo.",
-    "No dupliques categorias entre CCT y escala: si el CCT dice Categoria Inicial A y la escala dice CAT. INICIAL A, deben usar el mismo categoria_id.",
-    "Distinguir filas de categoria laboral vs filas de concepto/adicional. Una fila cuyo nombre sea Adicional, Plus, Premio, Bono, Viatico, Asignacion, Presentismo, Antiguedad, Titulo, Falla/Quebranto de caja, Movilidad, Refrigerio, No Remunerativo, Aporte, Cuota, Fondo o Contribucion NO es categoria laboral.",
-    "No crear categorias con modalidades puras como con retiro, sin retiro, mismo empleador, distintos empleadores, jornada completa, media jornada, mensualizado o jornalizado. Si tienen importes, usarlas como modalidad de la categoria laboral correspondiente.",
-    "Si un adicional aparece dentro de la tabla salarial, no lo pongas en categorias. Crealo en conceptos y/o adicionales, y sus importes deben ir en escalas[].valores[] con concepto_id del adicional. Si no aplica a una categoria especifica, deja categoria_id vacio.",
-    "Solo son categorias laborales las filas que representan puestos, niveles, grupos, ramas o clases de trabajadores con basico propio.",
-    "Antes de responder, verificar que toda categoria listada en categorias que tenga fila salarial en la tabla tenga al menos un valor SUELDO_BASICO en escalas[].valores[]. Si la tabla tiene columnas no remunerativas, cada categoria/periodo con importe debe tener tambien un valor NO_REMUNERATIVO o concepto no remunerativo especifico.",
-    "No perder informacion por considerarla repetida. Si hay varias ramas, zonas, jornadas o modalidades, conservarlas.",
-    "Si una misma categoria tiene valores distintos por modalidad, jornada, alcance, rama o condicion de trabajo, crear categorias separadas con categoria_id diferenciado y modalidad_aplicable clara. No uses una modalidad combinada como \"Sin retiro / Con retiro\" cuando hay importes separados.",
-    "La respuesta debe ser compacta: no copies encabezados largos, notas completas ni parrafos legales. Extrae valores y relaciones.",
-    "Diferenciar conceptos liquidables de referencias/totales. Los no remunerativos son haberes liquidables con naturaleza no_remunerativo; no son referencias. TOTAL_7H, TOTAL_8H, TOTAL_REMUNERATIVO y VALOR_CHANGA deben conservarse como referencia si el documento los publica como total o valor informativo.",
-    "No mezclar clasificacion: remunerativo/no_remunerativo nunca debe ir en tipo_concepto; debe ir en naturaleza.",
-    "Si una regla o columna no puede determinarse con certeza, escribir: requiere revision manual.",
-    "REGLA CRITICA: devolve un JSON plano con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales. No agregues ningun otro campo raiz.",
-    "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
-    "Tu objetivo principal es extraer categorias y escalas salariales. No inventes valores.",
-    "No crear escalas vacias. Solo crear una escala si hay nombre_escala, periodo_desde, periodo_hasta o al menos un valor salarial dentro de valores.",
-    "Cada valor salarial debe ir en escalas[].valores[] con categoria_id, zona, modalidad, unidad_pago, periodicidad, valor y moneda.",
-    "Cada valor debe apuntar a la categoria variante correcta si existe. Ejemplos genericos: SUPERVISOR_CON_RETIRO, SUPERVISOR_SIN_RETIRO; OPERARIO_JORNADA_8H, OPERARIO_JORNADA_6H.",
-    "IMPORTANTE: en Argentina el punto suele separar miles y la coma decimales. Ejemplo: 860.281 es ochocientos sesenta mil doscientos ochenta y uno, no 860 coma 281.",
-    "Si la escala divide por zona, rama o agrupamiento, conservarlo en zona o grupo_nombre.",
-    "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
-    "Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
-    "Devolve JSON valido con esta forma exacta: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
-    "conceptos debe ser corto: maximo 12 conceptos canonicos. escalas[].valores puede tener muchas filas.",
-    "Campos internos importantes: categorias[].categoria_id/categoria_nombre; conceptos[].concepto_id/nombre/tipo_concepto/naturaleza/unidad_calculo/formula_base/base_calculo/condicion/es_liquidable; escalas[].valores[].categoria_id/concepto_id/modalidad/unidad_pago/periodicidad/valor/moneda/zona. Trazabilidad opcional por objeto: documento_tipo, documento_rol, evidencia, pagina, confianza.",
+    "Actúa como Analista Funcional Senior especializado en escalas salariales de CCT de Argentina.",
+    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto.",
+    "[AISLAMIENTO ABSOLUTO] No uses memoria ni otros CCT. Solo el texto y las tablas de esta escala. Si falta un dato usa null o []. No inventes valores.",
+    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    
+    // 4. MATRIZ DE ESCALAS SALARIALES (El núcleo de esta función)
+    "Piensa en una matriz multidimensional: Categoría x Periodo (Vigencia) x Concepto x Zona x Modalidad.",
+    "Cada celda con valor monetario de la tabla salarial debe generar un elemento puro en el array 'escalas[].valores[]'.",
+    "Para el año actual, extrae de forma exhaustiva TODOS los periodos de vigencia concatenados o segmentados que aparezcan. No omitas ningún mes del año en curso.",
+    "Identifica correctamente el divisor y la unidad de pago: si la escala expresa valores por hora, setea 'unidad_pago' en 'hourly'; si es jornal, 'daily'; si es sueldo mensual, 'monthly'. No uses 'monthly' por defecto.",
+    "Mapear columnas por posición cuando los encabezados estén separados de las filas (ej: si el encabezado dice 'Básico Abril 2026', el importe de esa columna es SUELDO_BASICO para ese periodo).",
+    "Si la tabla aparece fragmentada por la lectura del PDF, reconstruye cada fila completa uniendo la línea de categoría con las líneas siguientes de importes hasta la próxima categoría.",
+    
+    // Mapeo de Conceptos desde las Columnas de la Tabla
+    "No crees conceptos por mes ni por categoría. Usa ID canónicos reutilizables en escalas[].valores[].concepto_id: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, VALOR_HORA, VALOR_DIARIO, VIATICO.",
+    "Columnas llamadas No Rem, Suma No Remunerativa o Incremento Solidario son haberes no remunerativos: asignales concepto_id 'NO_REMUNERATIVO' y en la sección conceptos dales naturaleza 'no_remunerativo' de forma estricta.",
+    "Los totales publicados (ej: Total Remunerativo, Neto) deben guardarse con tipo_concepto 'referencia', naturaleza 'referencial' y es_liquidable false.",
+    "Si un adicional (ej: Presentismo, Plus Asistencia) aparece con un importe fijo dentro de la tabla salarial, crealo en conceptos/adicionales y mandá sus montos a escalas[].valores[] con el categoria_id vacío si es general.",
+    
+    // Control de Errores Numéricos
+    "CRÍTICO: En Argentina, el punto (.) separa miles y la coma (,) separa decimales en documentos legales. Procesa los números bajo este criterio estricto (ej: 860.281 es ochocientos sesenta mil doscientos ochenta y uno).",
+    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones.",
+
     draftName ? `Etiqueta informativa: ${draftName}.` : "Etiqueta informativa: sin etiqueta.",
     notes ? `Notas informativas: ${notes}.` : "Notas informativas: sin notas."
   ].join("\n");
@@ -921,27 +912,23 @@ function buildScalePrompt({ draftName, notes }) {
 
 function buildScaleCompactPrompt({ draftName, notes }) {
   return [
-    "Extrae SOLO la escala salarial en JSON valido.",
-    "Clasifica el adjunto como ESCALA_SALARIAL/ANEXO_ESCALA/ACTA_ACUERDO/HOMOLOGACION/RESOLUCION/OTRO y conserva esa clasificacion en documento_tipo/documento_rol/fuente_documento de los objetos extraidos.",
-    "VALORES ACTUALES: Extraer únicamente los valores del periodo más reciente/actual, ignorando el historial de periodos anteriores. Usa matriz categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada importe publicado debe ir en escalas[].valores[].",
-    "No uses memoria ni otros CCT. Solo el texto de esta escala.",
-    "No crear conceptos por periodo/categoria. conceptos maximo: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO.",
-    "SAC o Sueldo Anual Complementario no es SUELDO_BASICO. Si aparece, crear concepto SAC separado.",
-    "Toda columna No Rem, No Remunerativo, Suma No Remunerativa, Asignacion No Remunerativa, Bono No Remunerativo o similar debe extraerse como valor de escala con concepto_id NO_REMUNERATIVO o un concepto no remunerativo especifico si el documento lo nombra.",
-    "Clasifica conceptos compactos: SUELDO_BASICO haber/remunerativo/base escala_salarial; NO_REMUNERATIVO haber/no_remunerativo/base escala_salarial; totales referencia/referencial/es_liquidable false.",
-    "Todos los importes van exclusivamente en escalas[].valores[].",
-    "Cada valor debe ser minimo y compacto: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona solo si cambia o es indispensable.",
-    "Si una categoria tiene importes distintos por modalidad, jornada, alcance, rama o condicion, crear categorias separadas con IDs diferenciados y hacer que cada valor apunte a la categoria variante. No uses modalidad combinada tipo \"Sin retiro / Con retiro\" cuando hay importes separados.",
-    "Usa categoria_nombre solo en categorias, no lo repitas en cada valor.",
-    "Reconstruye filas partidas: una categoria seguida por varias lineas con importes pertenece a la misma fila hasta la proxima categoria.",
-    "No dupliques categorias abreviadas: CAT. INICIAL A, Categoria Inicial A y CAT_INI_A son una sola categoria con un solo categoria_id.",
-    "Filas llamadas Adicional, Plus, Premio, Bono, Viatico, Asignacion, Presentismo, Antiguedad, Titulo, Falla/Quebranto de caja, Movilidad, Refrigerio, No Remunerativo, Aporte, Cuota, Fondo o Contribucion son conceptos/adicionales, no categorias.",
-    "Los importes de adicionales dentro de la tabla van en escalas[].valores[] con concepto_id del adicional y categoria_id vacio si son generales.",
-    "Cada concepto debe incluir tipo_concepto, naturaleza, formula_base, base_calculo, condicion y es_liquidable. Si la naturaleza o base no surge del documento, usar requiere_revision_manual, no inventar.",
-    "Cada categoria con basico publicado debe tener valor SUELDO_BASICO. Cada categoria con no remunerativo publicado debe tener valor NO_REMUNERATIVO o concepto no remunerativo especifico.",
-    "Respuesta raiz exacta: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
-    "Devuelve solo JSON, compacto, sin explicaciones.",
-    "Contrato: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Extrae SOLO la escala salarial en JSON válido. Sé lo más compacto posible para evitar límites de tokens de salida.",
+    "Devuelve exclusivamente el contrato JSON sin markdown, notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "[AISLAMIENTO ABSOLUTO] Usa únicamente el texto de esta escala salarial. Si falta información usa null o [].",
+    
+    // Directivas de Ultra-Compactación (Exclusivas de esta función)
+    "Aplica estrictamente una matriz conceptual compacta: categoría x periodo x concepto x zona x modalidad. Cada importe va en escalas[].valores[].",
+    "Cada ítem de 'valores' debe ser mínimo: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona SOLO si cambia o es estrictamente indispensable para diferenciar la celda.",
+    "Usa 'categoria_nombre' únicamente en el array raíz de categorías; NO repitas el nombre de la categoría dentro de cada objeto del vector de valores.",
+    "Conceptos permitidos en esta llamada (Máximo 12 ID canónicos): SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, VALOR_HORA, VALOR_DIARIO, VALOR_JORNAL, VIATICO. No crees conceptos por mes (Prohibido BASICO_OCT_25).",
+    
+    // Clasificación y Tratamiento Rápido
+    "SUELDO_BASICO: tipo_concepto haber, naturaleza remunerativo, base escala_salarial. NO_REMUNERATIVO: tipo_concepto haber, naturaleza no_remunerativo, base escala_salarial.",
+    "El Sueldo Anual Complementario (SAC) no es SUELDO_BASICO. Si aparece en la tabla, crear concepto 'SAC' por separado.",
+    "Si una categoría tiene importes separados por modalidad (ej: Con Retiro / Sin Retiro), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante.",
+    "Reconstruye filas partidas del PDF: una categoría seguida por varias líneas de importes numéricos corresponden a la misma fila de la matriz.",
+    "Formato numérico argentino obligatorio: el punto (.) son miles y la coma (,) son decimales.",
+
     draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
     notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
   ].join("\n");
