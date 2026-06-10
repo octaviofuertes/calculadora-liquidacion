@@ -2700,6 +2700,10 @@ tr:hover td {
   overflow-x: auto;
 }
 
+.calculation-view {
+  padding: 14px;
+}
+
 .source-list {
   display: grid;
   gap: 12px;
