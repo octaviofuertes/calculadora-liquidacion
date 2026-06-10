@@ -790,7 +790,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "Debes analizar la totalidad de la documentacion enviada en esta solicitud: texto principal, actas complementarias, acuerdos salariales, escalas salariales, anexos, tablas, imagenes, cuadros, notas al pie, adendas y resoluciones homologatorias.",
     "Primero clasifica cada adjunto o bloque de texto como uno de estos tipos: CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, ESCALA_SALARIAL, ANEXO_ESCALA, ANEXO_REGLAS, RESOLUCION, OTRO. No lo agregues como campo raiz; conserva la clasificacion en documento_tipo/documento_rol/fuente_documento de los objetos extraidos.",
     "Cada dato importante debe tener trazabilidad compacta cuando sea posible: fuente_documento, documento_tipo, pagina, evidencia y confianza. evidencia debe ser una frase o fragmento corto, no un parrafo largo.",
-    "AISLAMIENTO ABSOLUTO: cada estructuracion empieza desde cero. Ignora por completo convenios anteriores, ejemplos de otros CCT, catalogos internos, memoria de conversaciones, borradores previos, datos aprobados, nombres de archivos anteriores y cualquier convenio precargado.",
+    "AISLAMIENTO ABSOLUTO: cada estructuracion empieza desde cero. Ignora por completo convenios anteriores, ejemplos de otros CCT, catalogos internos, memoria de conversaciones, borradores previos, datos aprobados, nombres de archivos anteriores y cualquier convenio precargado. VALORES ACTUALES: Extrae únicamente las reglas, importes, adicionales y escalas vigentes y actuales. Si la documentación contiene múltiples periodos o el historial de acuerdos anteriores, descártalos y quédate solo con los valores actuales del periodo más reciente.",
     "Nunca completes datos usando otro CCT aunque parezca parecido. Si el documento actual no contiene el dato, escribir: Informacion no encontrada en la documentacion analizada.",
     "Todo dato que afecte el calculo del sueldo debe ser identificado y clasificado. No omitir conceptos. No resumir articulos. No inventar informacion.",
     "Si una regla no puede determinarse con certeza, escribir: requiere revision manual.",
@@ -847,7 +847,7 @@ function buildConventionPrompt({ draftName, notes }) {
 function buildConventionCorePrompt({ draftName, notes }) {
   return [
     "Actua como contador laboral argentino e ingeniero de sistemas senior.",
-    "Extrae SOLO datos nucleares del CCT actual para liquidacion. No uses memoria, catalogos ni otros convenios.",
+    "Extrae SOLO datos nucleares del CCT actual para liquidacion. No uses memoria, catalogos ni otros convenios. VALORES ACTUALES: Extrae únicamente las reglas, importes, adicionales y escalas vigentes y actuales del periodo más reciente. Descarta el historial de periodos anteriores.",
     "No extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
     "Devolve JSON valido y compacto con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
     "schemaVersion debe ser esueldos-cct-estructura-excel-v1.",
@@ -884,7 +884,7 @@ function buildScalePrompt({ draftName, notes }) {
     "Para conceptos de escala: SUELDO_BASICO debe ser tipo_concepto haber y naturaleza remunerativo; NO_REMUNERATIVO debe ser tipo_concepto haber y naturaleza no_remunerativo; totales publicados deben ser tipo_concepto referencia, naturaleza referencial y es_liquidable false.",
     "Todo concepto creado desde una columna salarial debe tener base_calculo: escala_salarial. Si una columna adicional indica porcentaje o base especifica, usar sueldo_basico, total_remunerativo, haberes_remunerativos, remuneracion_sujeta_a_aporte, valor_hora, valor_dia, monto_fijo o requiere_revision_manual segun corresponda.",
     "Todos los importes deben ir en escalas[].valores[]. No repitas importes dentro de conceptos.",
-    "Extraer TODAS las escalas por vigencia: fecha desde, fecha hasta, categoria, sueldo basico, haberes no remunerativos, valor hora, valor dia, valor jornal, valor changa, total remunerativo, total jornada 7 horas, total jornada 8 horas y cualquier otro valor publicado.",
+    "VALORES ACTUALES: Extraer únicamente las escalas y valores del periodo más reciente/actual. Omitir por completo el historial de escalas y periodos anteriores que ya no estén vigentes. Por cada categoría del periodo actual, extraer fecha desde, fecha hasta, categoria, sueldo basico, haberes no remunerativos, valor hora, valor dia, valor jornal, valor changa, total remunerativo, total jornada 7 horas, total jornada 8 horas y cualquier otro valor publicado.",
     "Usar una matriz conceptual: categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada importe de esa matriz debe crear un item en escalas[].valores[].",
     "Soportar formatos publicos comunes: una categoria por pagina con meses como filas; categorias por filas con meses como columnas; agrupamientos como PERSONAL JERARQUICO/ADMINISTRATIVO/SERVICIO; regiones/provincias/zonas como subtitulos; columnas BASICO, NO REM, TOTAL, VALOR HORA, VALOR DIA y adicionales.",
     "Si la tabla aparece fragmentada por la lectura del PDF, reconstruir cada fila completa uniendo la linea de categoria con las lineas siguientes de importes hasta la proxima categoria.",
@@ -923,7 +923,7 @@ function buildScaleCompactPrompt({ draftName, notes }) {
   return [
     "Extrae SOLO la escala salarial en JSON valido.",
     "Clasifica el adjunto como ESCALA_SALARIAL/ANEXO_ESCALA/ACTA_ACUERDO/HOMOLOGACION/RESOLUCION/OTRO y conserva esa clasificacion en documento_tipo/documento_rol/fuente_documento de los objetos extraidos.",
-    "Usa matriz categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada importe publicado debe ir en escalas[].valores[].",
+    "VALORES ACTUALES: Extraer únicamente los valores del periodo más reciente/actual, ignorando el historial de periodos anteriores. Usa matriz categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada importe publicado debe ir en escalas[].valores[].",
     "No uses memoria ni otros CCT. Solo el texto de esta escala.",
     "No crear conceptos por periodo/categoria. conceptos maximo: SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, TOTAL_7H, TOTAL_8H, VALOR_HORA, VALOR_DIA, VALOR_JORNAL, VALOR_CHANGA, VIATICO.",
     "SAC o Sueldo Anual Complementario no es SUELDO_BASICO. Si aparece, crear concepto SAC separado.",
