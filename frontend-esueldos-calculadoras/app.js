@@ -901,6 +901,70 @@
     return group || "Adicionales";
   }
 
+  function conceptQuantityUnit(concept = {}) {
+    const raw = summaryKey([
+      concept.id,
+      concept.label,
+      concept.group,
+      concept.detail,
+      concept.base,
+      concept.calculation,
+      concept.unidad_calculo,
+      concept.formula_base
+    ].filter(Boolean).join(" "));
+    if (raw.includes("km") || raw.includes("kilometr")) return "km";
+    if (raw.includes("hora")) return "horas";
+    if (raw.includes("viaje") || raw.includes("traslado")) return "viajes/dias";
+    if (raw.includes("dia") || raw.includes("diari") || raw.includes("viatic") || raw.includes("comida") || raw.includes("pernoct")) return "dias";
+    return "cantidad";
+  }
+
+  function conceptUsesQuantity(concept = {}) {
+    if (concept.calculation === "amountPerUnit") return true;
+    const raw = summaryKey([
+      concept.id,
+      concept.label,
+      concept.group,
+      concept.detail,
+      concept.base,
+      concept.calculation,
+      concept.unidad_calculo,
+      concept.formula_base
+    ].filter(Boolean).join(" "));
+    return /(cantidad|valor_unitario|por_unidad|por_dia|diario|valor_dia|por_hora|valor_hora|kilometr|_km|viaje|traslado|viatic|pernoct|comida)/.test(raw);
+  }
+
+  function conceptUsesNumberInput(concept = {}) {
+    return concept.inputType === "number" || conceptUsesQuantity(concept);
+  }
+
+  function conceptInputNumber(concept, suffix = "", fallback = 0) {
+    const direct = $(`gen_${concept.id}${suffix}`);
+    const field = direct || Array.from(document.querySelectorAll("[data-concept-id]"))
+      .find((item) => item.dataset.conceptId === String(concept.id) && item.dataset.conceptSuffix === suffix);
+    if (!field) return fallback;
+    const value = Number(String(field.value).replace(",", "."));
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function normalizedConceptRowType(concept = {}) {
+    const raw = summaryKey([concept.rowType, concept.naturaleza, concept.group, concept.label, concept.id].filter(Boolean).join(" "));
+    if (raw.includes("no_remunerativo") || raw.includes("non_remunerative") || raw.includes("nonremunerative")) return "nonRemunerative";
+    if (raw.includes("deduction") || raw.includes("deduccion") || raw.includes("descuento") || raw.includes("retencion")) return "deduction";
+    return concept.rowType || "remunerative";
+  }
+
+  function genericConceptInputValue(concept) {
+    const inputId = `gen_${concept.id}`;
+    return conceptUsesNumberInput(concept)
+      ? Math.max(0, conceptInputNumber(concept, "", 0))
+      : (checked(inputId, !!concept.defaultValue) ? 1 : 0);
+  }
+
+  function genericConceptUnitAmount(concept, period) {
+    return conceptPeriodAmount(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"], concept.unitAmount || concept.amount);
+  }
+
   function applyWorkerDeductions(deductionRows, remTotal, osBase, conv) {
     const c = DATA.constants;
     // Aportes del trabajador se calculan sobre el total remunerativo bruto (sin detracción)
@@ -1174,6 +1238,10 @@
   }
 
   function calcGenericConceptAmount(concept, inputValue, baseValue, period) {
+    if (conceptUsesQuantity(concept)) {
+      const unitAmount = genericConceptUnitAmount(concept, period) || Math.max(0, conceptInputNumber(concept, "_unit", 0));
+      return unitAmount * inputValue;
+    }
     if (concept.calculation === "scaleValue") {
       return baseValue * inputValue;
     }
@@ -1300,8 +1368,7 @@
 
     const conceptRows = Array.isArray(model.concepts) ? userFacingConcepts(model.concepts) : [];
     conceptRows.forEach((concept) => {
-      const inputId = `gen_${concept.id}`;
-      const inputValue = concept.inputType === "number" ? Math.max(0, num(inputId, 0)) : (checked(inputId, !!concept.defaultValue) ? 1 : 0);
+      const inputValue = genericConceptInputValue(concept);
       if (!inputValue) return;
       const baseValue = genericBaseAmount({
         concept,
@@ -1314,8 +1381,14 @@
         noRemScale: noRemScaleBase
       });
       const amountValue = calcGenericConceptAmount(concept, inputValue, baseValue, period);
-      const target = concept.rowType === "nonRemunerative" ? noRemRows : concept.rowType === "deduction" ? deductionRows : remRows;
-      const formula = concept.calculation === "fixed"
+      const rowType = normalizedConceptRowType(concept);
+      const target = rowType === "nonRemunerative" ? noRemRows : rowType === "deduction" ? deductionRows : remRows;
+      const unitAmount = conceptUsesQuantity(concept)
+        ? (genericConceptUnitAmount(concept, period) || Math.max(0, conceptInputNumber(concept, "_unit", 0)))
+        : 0;
+      const formula = conceptUsesQuantity(concept)
+        ? `${calcNum(unitAmount)} x ${calcNum(inputValue)}`
+        : concept.calculation === "fixed"
         ? `${calcNum(conceptPeriodAmount(concept, period, ["amountByPeriod", "amountPorPeriodo"], concept.amount))} x ${inputValue}`
         : concept.calculation === "scaleValue"
           ? `${calcNum(baseValue)} x ${inputValue}`
@@ -3209,7 +3282,7 @@
       const model = result.conv.liquidationModel || {};
       const enabledConcepts = (model.concepts || []).filter((concept) => {
         const input = parameters[`gen_${concept.id}`];
-        return concept.inputType === "number" ? Number(input || 0) > 0 : !!input;
+        return conceptUsesNumberInput(concept) ? Number(input || 0) > 0 : !!input;
       });
       const remLabels = (result.remRows || []).map((row) => String(row.label || "").toLowerCase()).join(" | ");
       addChecklist("Convenio IA: motor generico activo", true, "La liquidacion uso reglas aprobadas de Convenios IA.");
@@ -5407,6 +5480,19 @@
         : (rules.monthDivisor || rules.dayDivisor || 30);
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
+      const period = getPeriod(conv);
+      const conceptInputHtml = (concept) => {
+        if (conceptUsesQuantity(concept)) {
+          const unitAmount = genericConceptUnitAmount(concept, period);
+          const quantityField = `<label class="field"><span>${escapeHtml(concept.label)} (${escapeHtml(conceptQuantityUnit(concept))})</span><input id="gen_${escapeHtml(concept.id)}" data-concept-id="${escapeHtml(concept.id)}" data-concept-suffix="" type="number" min="0" step="0.01" value="${escapeHtml(concept.defaultValue || 0)}" placeholder="0"></label>`;
+          const unitField = unitAmount ? "" : `<label class="field"><span>${escapeHtml(concept.label)} - importe unitario</span><input id="gen_${escapeHtml(concept.id)}_unit" data-concept-id="${escapeHtml(concept.id)}" data-concept-suffix="_unit" type="number" min="0" step="0.01" value="0" placeholder="0"></label>`;
+          return `${quantityField}${unitField}`;
+        }
+        if (concept.inputType === "number") {
+          return `<label class="field"><span>${escapeHtml(concept.label)}</span><input id="gen_${escapeHtml(concept.id)}" data-concept-id="${escapeHtml(concept.id)}" data-concept-suffix="" type="number" min="0" step="0.01" value="${escapeHtml(concept.defaultValue || 0)}" placeholder="0"></label>`;
+        }
+        return `<label class="check-row"><input id="gen_${escapeHtml(concept.id)}" type="checkbox" ${concept.defaultValue ? "checked" : ""}><span>${escapeHtml(concept.label)}</span></label>`;
+      };
       const grouped = visibleConcepts.reduce((acc, concept) => {
         const key = concept.group || "Adicionales";
         if (!acc[key]) acc[key] = [];
@@ -5416,10 +5502,7 @@
       const conceptHtml = Object.entries(grouped).map(([group, concepts]) => `
         <div class="generic-section-title">${escapeHtml(userFacingGroupName(group))}</div>
         <div class="check-grid generic-checks">
-          ${concepts.map((concept) => concept.inputType === "number"
-            ? `<label class="field"><span>${escapeHtml(concept.label)}</span><input id="gen_${escapeHtml(concept.id)}" type="number" min="0" step="0.01" value="${escapeHtml(concept.defaultValue || 0)}"></label>`
-            : `<label class="check-row"><input id="gen_${escapeHtml(concept.id)}" type="checkbox" ${concept.defaultValue ? "checked" : ""}><span>${escapeHtml(concept.label)}</span></label>`
-          ).join("")}
+          ${concepts.map(conceptInputHtml).join("")}
         </div>`).join("");
       const deductionHtml = visibleDeductions.length ? `
         <div class="generic-section-title">Descuentos del convenio</div>

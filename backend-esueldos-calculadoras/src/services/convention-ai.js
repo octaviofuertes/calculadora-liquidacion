@@ -933,6 +933,7 @@ function buildConventionCorePrompt({ draftName, notes }) {
     "El Sueldo Anual Complementario debe mapearse como concepto_id: 'SAC', nunca como SUELDO_BASICO.",
     "Diferencia estrictamente la NATURALEZA de los conceptos: Remunerativos (haber / remunerativo), No Remunerativos (haber / no_remunerativo), Deducciones (retencion o descuento / retencion). Es CRÍTICO que los adicionales calificados como 'no rem' tengan estrictamente esa naturaleza.",
     "Cada concepto debe parametrizarse con: unidad_calculo (monthly, hourly, daily, percentage, fixed), formula_base, base_calculo (sueldo_basico, total_remunerativo, etc.), condicion y detail (la evidencia).",
+    "Viaticos, traslados, comida, pernocte, kilometraje u otros conceptos por dia, viaje, km u hora deben quedar como cantidad_por_valor_unitario o amountPerUnit, con unidad_calculo clara y valor unitario si existe. No los modeles como checkbox mensual salvo que el documento diga suma fija mensual.",
     
     // 4. LICENCIAS Y REGLAS
     "LICENCIAS: Dentro de la clave raíz 'rules', extrae un arreglo 'licenses' donde cada objeto tenga { name: 'string', rule: 'regla extraída', evidence: 'texto de evidencia' }. Incluye aquí licencias, vacaciones, maternidad, etc.",
@@ -974,6 +975,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     "Columnas llamadas No Rem, Suma No Remunerativa o Incremento Solidario son haberes no remunerativos: asignales concepto_id 'NO_REMUNERATIVO' y en la sección conceptos dales naturaleza 'no_remunerativo' de forma estricta.",
     "Los totales publicados (ej: Total Remunerativo, Neto) deben guardarse con tipo_concepto 'referencia', naturaleza 'referencial' y es_liquidable false.",
     "Si un adicional (ej: Presentismo, Plus Asistencia) aparece con un importe fijo dentro de la tabla salarial, crealo en conceptos/adicionales y mandá sus montos a escalas[].valores[] con el categoria_id vacío si es general.",
+    "Si una columna de viatico, traslado, comida, pernocte, kilometraje o valor por dia/viaje/km/hora representa valor unitario, modelala para pedir cantidad en liquidacion: calculation amountPerUnit o formula_base cantidad_por_valor_unitario.",
     
     // Control de Errores Numéricos
     "CRÍTICO: En Argentina, el punto (.) separa miles y la coma (,) separa decimales en documentos legales. Procesa los números bajo este criterio estricto (ej: 860.281 es ochocientos sesenta mil doscientos ochenta y uno).",

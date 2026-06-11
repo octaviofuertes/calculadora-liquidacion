@@ -978,13 +978,20 @@ function runtimeConceptRowType(concept = {}) {
 }
 
 function runtimeConceptCalculation(concept = {}) {
-  const formula = slugId(`${concept.formula_base || ""} ${concept.unidad_calculo || ""}`);
+  const formula = slugId(`${concept.concepto_id || ""} ${concept.nombre || ""} ${concept.formula_base || ""} ${concept.unidad_calculo || ""} ${concept.base_calculo || ""} ${concept.condicion || ""}`);
+  if (/CANTIDAD_POR_VALOR_UNITARIO|VALOR_UNITARIO|POR_DIA|DIARIO|DIA|VALOR_DIA|POR_HORA|VALOR_HORA|HORA|KILOMETR|KM|VIAJE|TRASLADO|VIATIC/.test(formula)) return "amountPerUnit";
   if (numericAmount(concept.importe_fijo) !== null || /MONTO_FIJO|IMPORTE_FIJO|SUMA_FIJA|FIJO/.test(formula)) return "fixed";
   if (numericAmount(concept.porcentaje) !== null || /PORCENTAJE|PERCENT|SOBRE_BASE|SOBRE_VALOR/.test(formula)) return "percentOfBase";
   if (/VALOR_ESCALA|ESCALA_SALARIAL|ESCALA_CATEGORIA/.test(formula)) return "scaleValue";
-  if (/VALOR_HORA|HORA/.test(formula)) return "amountPerUnit";
   if (/REFERENCIA/.test(formula)) return "reference";
   return text(concept.formula_base || "requiresReview");
+}
+
+function runtimeConceptInputType(concept = {}) {
+  const calculation = runtimeConceptCalculation(concept);
+  if (calculation === "amountPerUnit") return "number";
+  const raw = slugId(`${concept.unidad_calculo || ""} ${concept.formula_base || ""}`);
+  return /CANTIDAD|UNIDAD|HORAS?|DIAS?|KM|VIAJE/.test(raw) ? "number" : "checkbox";
 }
 
 function toRuntimeConvention(input = {}) {
@@ -1082,17 +1089,26 @@ function toRuntimeConvention(input = {}) {
     liquidationModel: {
       version: "generic-v1",
       rules,
-      concepts: excel.conceptos.map((concept) => ({
-        id: concept.concepto_id,
-        label: concept.nombre,
-        group: concept.naturaleza || concept.tipo_concepto,
-        rowType: runtimeConceptRowType(concept),
-        calculation: runtimeConceptCalculation(concept),
-        amount: numericAmount(concept.importe_fijo),
-        percent: numericAmount(concept.porcentaje) || 0,
-        base: concept.base_calculo || "requiere_revision_manual",
-        detail: concept.condicion || concept.formula_base || concept.fuente_documento
-      })).filter((concept) => concept.id && concept.label)
+      concepts: excel.conceptos.map((concept) => {
+        const calculation = runtimeConceptCalculation(concept);
+        const amountValue = numericAmount(concept.importe_fijo);
+        return {
+          id: concept.concepto_id,
+          label: concept.nombre,
+          group: concept.naturaleza || concept.tipo_concepto,
+          naturaleza: concept.naturaleza,
+          unidad_calculo: concept.unidad_calculo,
+          formula_base: concept.formula_base,
+          rowType: runtimeConceptRowType(concept),
+          calculation,
+          inputType: runtimeConceptInputType(concept),
+          amount: calculation === "amountPerUnit" ? null : amountValue,
+          unitAmount: calculation === "amountPerUnit" ? amountValue : null,
+          percent: numericAmount(concept.porcentaje) || 0,
+          base: concept.base_calculo || "requiere_revision_manual",
+          detail: concept.condicion || concept.formula_base || concept.fuente_documento
+        };
+      }).filter((concept) => concept.id && concept.label)
     },
     excelConvention: excel
   };

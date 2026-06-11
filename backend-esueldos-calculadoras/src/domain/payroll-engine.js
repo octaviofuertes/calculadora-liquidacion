@@ -208,6 +208,42 @@ function genericConventionItemBase(item, remTotal, noRemTotal, basic) {
   return remTotal;
 }
 
+function genericConceptSignature(concept) {
+  return normalizeMatchText([
+    concept?.id,
+    concept?.label,
+    concept?.group,
+    concept?.calculation,
+    concept?.unidad_calculo,
+    concept?.formula_base,
+    concept?.base,
+    concept?.detail,
+    concept?.naturaleza
+  ].filter(Boolean).join(" "));
+}
+
+function genericConceptUsesQuantity(concept) {
+  const signature = genericConceptSignature(concept);
+  return concept?.calculation === "amountPerUnit"
+    || /\b(cantidad|valor unitario|por dia|diario|valor dia|por hora|valor hora|kilometr|km|viaje|traslado|viatic|pernoct|comida)\b/.test(signature);
+}
+
+function genericConceptUsesNumberInput(concept) {
+  return concept?.inputType === "number" || genericConceptUsesQuantity(concept);
+}
+
+function genericConceptUnitAmount(ctx, concept, period) {
+  const configured = periodAmountValue(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"]) ?? amount(concept?.unitAmount || concept?.amount);
+  return configured || inputValue(ctx.inputs, `gen_${concept.id}_unit`, 0);
+}
+
+function genericConceptRowType(concept) {
+  const signature = genericConceptSignature(concept);
+  if (/(no remunerativo|non remunerative|nonremunerative)/.test(signature)) return "nonRemunerative";
+  if (/(deduction|deduccion|descuento|retencion|retention)/.test(signature)) return "deduction";
+  return concept?.rowType || "remunerative";
+}
+
 function applyGenericConventionDeductions(ctx, rows, remTotal, noRemTotal, basic) {
   const model = ctx.convention.liquidationModel || {};
   const applyItems = (items, targetRows, fallbackDetail, userSelectable = false, inputPrefix = "gen_deduction") => {
@@ -336,19 +372,25 @@ function calcGeneric(ctx) {
   const noRemScaleBase = (firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(ctx.category, period)) || 0) * monthPct * scaleCoef;
   (model.concepts || []).forEach((concept) => {
     const key = `gen_${concept.id}`;
-    const enabled = concept.inputType === "number" ? inputValue(ctx.inputs, key, 0) : (inputBool(ctx.inputs, key, !!concept.defaultValue) ? 1 : 0);
+    const enabled = genericConceptUsesNumberInput(concept) ? inputValue(ctx.inputs, key, 0) : (inputBool(ctx.inputs, key, !!concept.defaultValue) ? 1 : 0);
     if (!enabled) return;
     const base = concept.base === "remunerative" ? sumRows(rows.remRows) : concept.base === "nonRemunerativeScale" ? noRemScaleBase : concept.base === "seniorityBase" ? basic + seniority : basic;
-    let value = concept.calculation === "fixed"
-      ? (periodAmountValue(concept, period, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(concept.amount)) * enabled
-      : concept.calculation === "amountPerUnit"
-        ? (periodAmountValue(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"]) ?? amount(concept.unitAmount || concept.amount)) * enabled
-        : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
+    const usesQuantity = genericConceptUsesQuantity(concept);
+    const unitAmount = genericConceptUnitAmount(ctx, concept, period);
+    let value = usesQuantity
+      ? unitAmount * enabled
+      : concept.calculation === "fixed"
+        ? (periodAmountValue(concept, period, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(concept.amount)) * enabled
+        : concept.calculation === "amountPerUnit"
+          ? unitAmount * enabled
+          : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
     if (!value) {
       const scaleVal = activeCatRow?.conceptValues?.[concept.id] ?? periodAmountValue(ctx.category, period, [`concept_${concept.id}`]);
       if (scaleVal) value = scaleVal * monthPct * enabled;
     }
-    addRow(concept.rowType === "nonRemunerative" ? rows.noRemRows : concept.rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, concept.detail || concept.group || "Concepto del convenio");
+    const rowType = genericConceptRowType(concept);
+    const detail = usesQuantity ? `${unitAmount} x ${enabled}` : concept.detail || concept.group || "Concepto del convenio";
+    addRow(rowType === "nonRemunerative" ? rows.noRemRows : rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, detail);
   });
   if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {
     addRow(rows.noRemRows, "Suma no remunerativa escala", noRemScaleBase, ctx.activeScale ? "Escala aprobada" : "Escala base");
