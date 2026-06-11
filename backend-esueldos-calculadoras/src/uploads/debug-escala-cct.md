@@ -1,39 +1,96 @@
-## Archivo escala: escalas (1).pdf
-Rama   Categoria   Basico   Presentismo Puntualidad
-Total
-remunerativo
-Viatico    Total 7 h
-Adicional
-Rem 8h
-Adicional
-Viatico 8 h
-Total 8 h Valor Changa
-Maestro860.281$      47.678$        31.785$        939.744$      193.122$      1.132.867$   75.180$        15.450$        1.223.496$   66.084$
-Oficial704.775$      47.678$        31.785$        784.238$      172.626$      956.864$      62.739$        13.810$        1.033.414$   55.817$
-Ayudante635.636$      47.678$        31.785$        715.099$      172.626$      887.725$      57.208$        13.810$        958.743$      51.784$
-Dependiente 1°713.171$      47.678$        31.785$        792.634$      172.626$      965.260$      63.411$        13.810$        1.042.481$
-Dependiente 2°646.693$      47.678$        31.785$        726.156$      172.626$      898.782$      58.092$        13.810$        970.685$
-Cajero736.560$      47.678$        31.785$        816.023$      172.626$      988.650$      65.282$        13.810$        1.067.742$
-Peon Limpieza611.639$      47.678$        31.785$        691.102$      172.626$      863.728$      55.288$        13.810$        932.826$
-Aprendiz611.639$      47.678$        31.785$        691.102$      172.626$      863.728$      55.288$        13.810$        932.826$
-Maestro890.906$      47.678$        31.785$        970.369$      193.122$      1.163.491$   77.629$        15.450$        1.256.570$
-Oficial719.418$      47.678$        31.785$        798.881$      172.626$      971.508$      63.911$        13.810$        1.049.228$
-Ayudante644.021$      47.678$        31.785$        723.484$      172.626$      896.110$      57.879$        13.810$        967.799$
-Peon Limpieza611.639$      47.678$        31.785$        691.102$      172.626$      863.728$      55.288$        13.810$        932.826$
-Aprendiz611.639$      47.678$        31.785$        691.102$      172.626$      863.728$      55.288$        13.810$        932.826$
-Administrativo 1°720.723$      47.678$        31.785$        800.186$      172.626$      972.812$      64.015$        13.810$        1.050.637$
-Administrativo 2°666.326$      47.678$        31.785$        745.789$      172.626$      918.415$      59.663$        13.810$        991.889$
-reparto693.048$      47.678$        31.785$        772.511$      172.626$      945.137$      61.801$        13.810$        1.020.748$
-Mantenimiento644.021$      47.678$        31.785$        723.484$      172.626$      896.110$      57.879$        13.810$        967.799$
-4 DE AGOSTO DIA DE LOS TRABAJADORES PANADEROS: ES NO LABORABLE Y EQUIVALENTE A UN FERIADO NACIONAL - C.C.T. 461/06
-ESCALAFON ANTIGÜEDAD: Además del salario básico mensual, percibirá una bonificación por antigüedad, con carácter remuneratorio, discriminada de la siguiente forma:
-a) El trabajador a partir de cumplido un (1) año de antigüedad y hasta los cinco (5) años inclusive, percibirá un 1% ( uno por ciento) sobre el sueldo básico, debiendo
-computarse a partir del sexto año la bonificación por antigüedad de un 1,2% ( uno c/ veinte por ciento) sobre el sueldo básico por cada año de servicio posterior al quinto.-
-Enero de 2026
-Panaderia
-Especialidades
-Adm. Y
-Expedicion
-### SOCIEDAD DE OBREROS PANADEROS DE CORDOBA CAPITAL Y ZONA DE ACTUACION
-Personeria Gremial N° 1497 - C.C.T. 461 / 06
-### ANEXO ACUERDO SALARIAL CCT 461/ 06 - EXPTE
+## Archivo escala: ESCALA-EMPLEADOS-DE-COMERCIO-PARITARIAS-2026.pdf
+### ESCALA SALARIAL PARA EMPLEADOS DE COMERCIO - PARITARIA 2024
+### ESCALA SALARIAL PARA EMPLEADOS DE COMERCIO - PARITARIAS 2026
+Básico
+(2% +
+incorpora do)
+SUMA FIJA Ac.
+Jun/25
+SUMA FIJA Ac.
+Dic/25
+SUMA FIJA Ac.
+Abr/26
+Básico
+(1,5% +
+incorpora do)
+SUMA FIJA Ac.
+Jun/25
+SUMA FIJA Ac.
+Dic/25
+SUMA FIJA Ac.
+Abr/26
+Básico
+(1,5% +
+incorpora do)
+SUMA FIJA Ac.
+Jun/25
+SUMA FIJA Ac.
+Dic/25
+SUMA FIJA Ac.
+Abr/26
+Maestranza "A"1.078.91140.00060.00020.0001.  096.24840.00060.00020.0001.  113.58540.00060.00020.000
+Maestranza "B"1.082.02940.00060.00020.0001.  099.41240.00060.00020.0001.  116.79440.00060.00020.000
+Maestranza "C"1.092.95140.00060.00020.0001.  110.49540.00060.00020.0001.  128.03840.00060.00020.000
+Administratativo "A"1.090.61340.00060.00020.0001.  108.12240.00060.00020.0001.  125.63140.00060.00020.000
+Administratativo "B"1.095.29840.00060.00020.0001.  112.87640.00060.00020.0001.  130.45440.00060.00020.000
+Administratativo "C"1.099.97740.00060.00020.0001.  117.62340.00060.00020.0001.  135.27040.00060.00020.000
+Administratativo "D"1.114.02240.00060.00020.0001.  131.87540.00060.00020.0001.  149.72940.00060.00020.000
+Administratativo "E"1.125.72440.00060.00020.0001.  143.74940.00060.00020.0001.  161.77540.00060.00020.000
+Administratativo "F"1.142.89040.00060.00020.0001.  161.16740.00060.00020.0001.  179.44540.00060.00020.000
+Cajero "A"1.094.51340.00060.00020.0001.  112.07940.00060.00020.0001.  129.64640.00060.00020.000
+Cajero "B"1.099.97740.00060.00020.0001.  117.62340.00060.00020.0001.  135.27040.00060.00020.000
+Cajero "C"1.106.99940.00060.00020.0001.  124.74940.00060.00020.0001.  142.49940.00060.00020.000
+Auxiliar "A"1.094.51340.00060.00020.0001.  112.07940.00060.00020.0001.  129.64640.00060.00020.000
+Auxiliar "B"1.102.31540.00060.00020.0001.  119.99640.00060.00020.0001.  137.67740.00060.00020.000
+Auxiliar "C"1.128.06540.00060.00020.0001.  146.12540.00060.00020.0001.  164.18440.00060.00020.000
+Auxiliar Especializado "A"1.103.87940.00060.00020.0001.  121.58340.00060.00020.0001.  139.28740.00060.00020.000
+Auxiliar Especializado "B"1.117.92240.00060.00020.0001.  135.83240.00060.00020.0001.  153.74340.00060.00020.000
+Vendedor "A"1.094.51340.00060.00020.0001.  112.07940.00060.00020.0001.  129.64640.00060.00020.000
+Vendedor "B"1.117.92540.00060.00020.0001.  135.83540.00060.00020.0001.  153.74640.00060.00020.000
+Vendedor "C"1.125.72440.00060.00020.0001.  143.74940.00060.00020.0001.  161.77540.00060.00020.000
+Vendedor "D"1.142.89040.00060.00020.0001.  161.16740.00060.00020.0001.  179.44540.00060.00020.000
+Abr/26 May/26 Jun/26
+### 112,00
+### 128,56
+### 130,62
+### 42.816,51
+### 43.502,49
+### 134.077,82
+### 136.229,70
+### ADICIONALES
+### Art.23 Armado de vidriera
+### Art. 36 Chofer 1º 100 Km
+### Art. 36 Chofer + 100 Km
+### Art.30 Cajeros "B"
+### 113,93
+### 113,77
+### 132,68
+### Art. 18 Ac. Jun/11
+### 527.988,85
+### 536.459,27
+### 1.  635,18
+### 1.  635,18
+### 89,75
+### 91,19
+### 110,39
+### 112,16
+### 110,23
+Art. 2 Ac. Abr/26: Los import es no remunerativos deberán ser tomados   en cuenta para el cálculo del
+sueldo anual complementario, indemnizaciones, horas extraordinarias, para el cálculo de la licencia
+ordinaria por vacaciones.
+EN COMÚN A CUERDO ENTRE LA F.A.E.C.Y.S Y LAS CÁMARAS EMPRESARIALES ASUMEN EL COMPROMISO DE REUNIR SE EN EL MES DE JUNIO DE 2026, A FIN DE ANALIZAR LAS ESCALAS
+SALARIALES CONVENCIONALES, ATENTO A LAS VARIACIONES ECONÓMICAS QUE PODRIAN HABER AFECTADO DICHAS ESCALAS.
+ANTIGÜEDAD:  Es el 1% por año trabajado sobre básico y    sumas no remunerativas.
+PRESENTISMO:  Las cifras remunerativas y no remunerativas deberán ser incrementadas con la
+asignación complementaria est
+ablecida por el art. 40 del CCT 130/75 (8,33%).
+CATEGORÍA
+Abril 2026 Mayo 2026 Junio 2026
+### Art.36 Ayud. Chof. 1º 100Km
+### 44.188,47
+### 138.381,58
+### 544.929,70
+### 1.  635,18
+### 92,63
+### Art.30 Cajeros "A" y "C"
+### Art.36 Ayud. Chof. + 100Km

@@ -1023,12 +1023,15 @@ function toRuntimeConvention(input = {}) {
           valuePeriods.forEach((scalePeriod) => {
             if (conceptId === "NO_REMUNERATIVO") {
               row.nonRem[scalePeriod] = amountValue;
-              return;
+            } else {
+              const field = runtimeSalaryField(value);
+              if (field === "day") row.dayByPeriod[scalePeriod] = amountValue;
+              else if (field === "hourly") row.hourlyByPeriod[scalePeriod] = amountValue;
+              else if (!conceptId || conceptId === "SUELDO_BASICO") row.monthlyByPeriod[scalePeriod] = amountValue;
             }
-            const field = runtimeSalaryField(value);
-            if (field === "day") row.dayByPeriod[scalePeriod] = amountValue;
-            else if (field === "hourly") row.hourlyByPeriod[scalePeriod] = amountValue;
-            else if (!conceptId || conceptId === "SUELDO_BASICO") row.monthlyByPeriod[scalePeriod] = amountValue;
+            const key = `concept_${conceptId}`;
+            if (!row[key]) row[key] = {};
+            row[key][scalePeriod] = amountValue;
           });
         });
     });

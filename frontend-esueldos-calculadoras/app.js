@@ -4012,7 +4012,11 @@
 
   function auditInput(field, value, options = {}) {
     const disabled = options.locked ? "disabled" : "";
-    const safeValue = escapeHtml(auditFieldValue(value));
+    let rawValue = auditFieldValue(value);
+    if (field === "formula_base") {
+      rawValue = rawValue.replace(/_/g, " ");
+    }
+    const safeValue = escapeHtml(rawValue);
     const placeholder = options.placeholder ? ` placeholder="${escapeHtml(options.placeholder)}"` : "";
     if (options.type === "textarea") {
       return `<textarea data-field="${escapeHtml(field)}" rows="1" ${disabled}${placeholder}>${safeValue}</textarea>`;
@@ -4276,7 +4280,7 @@
         { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
         { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
         { field: "unidad_calculo", label: "Unidad" },
-        { field: "formula_base", label: "Cómo se calcula" },
+        { field: "formula_base", label: "Cómo se calcula", type: "textarea" },
         { field: "base_calculo", label: "Base" },
         { field: "porcentaje", label: "%" },
         { field: "importe_fijo", label: "Importe" },
@@ -4289,7 +4293,7 @@
         { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
         { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
         { field: "unidad_calculo", label: "Unidad" },
-        { field: "formula_base", label: "Cómo se calcula" },
+        { field: "formula_base", label: "Cómo se calcula", type: "textarea" },
         { field: "base_calculo", label: "Base" },
         { field: "porcentaje", label: "%" },
         { field: "importe_fijo", label: "Importe" },
@@ -4302,7 +4306,7 @@
         { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
         { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
         { field: "unidad_calculo", label: "Unidad" },
-        { field: "formula_base", label: "Cómo se calcula" },
+        { field: "formula_base", label: "Cómo se calcula", type: "textarea" },
         { field: "base_calculo", label: "Base" },
         { field: "porcentaje", label: "%" },
         { field: "importe_fijo", label: "Importe" },
