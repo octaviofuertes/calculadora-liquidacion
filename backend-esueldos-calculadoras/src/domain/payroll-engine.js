@@ -344,8 +344,9 @@ function calcGeneric(ctx) {
       : concept.calculation === "amountPerUnit"
         ? (periodAmountValue(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"]) ?? amount(concept.unitAmount || concept.amount)) * enabled
         : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
-    if (!value && activeCatRow?.conceptValues?.[concept.id]) {
-      value = activeCatRow.conceptValues[concept.id] * monthPct * enabled;
+    if (!value) {
+      const scaleVal = activeCatRow?.conceptValues?.[concept.id] ?? periodAmountValue(ctx.category, period, [`concept_${concept.id}`]);
+      if (scaleVal) value = scaleVal * monthPct * enabled;
     }
     addRow(concept.rowType === "nonRemunerative" ? rows.noRemRows : concept.rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, concept.detail || concept.group || "Concepto del convenio");
   });

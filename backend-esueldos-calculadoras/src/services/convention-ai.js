@@ -640,153 +640,216 @@ function universalConventionTemplateForPrompt() {
 
 function conventionExtractionContractForPrompt() {
   return {
-    convention: {
-      identification: {
-        id: "string slug estable extraido del documento",
-        name: "string nombre legal o actividad extraida",
-        shortName: "string",
-        source: "string CCT, acta o resolucion detectada",
-        type: "monthly | daily | hourly | empty"
+    "convention": {
+      "identification": {
+        "id": "string (slug estable extraído del documento)",
+        "name": "string (nombre legal o actividad extraída)",
+        "shortName": "string",
+        "source": "string (CCT, acta o resolución detectada)",
+        "type": "monthly | daily | hourly | empty"
       },
-      periods: [{
-        id: "string YYYY-MM",
-        label: "string",
-        effectiveFrom: "string fecha o empty",
-        effectiveTo: "string fecha o empty",
-        sourceFileName: "string"
-      }],
-      zones: [{
-        id: "string",
-        label: "string",
-        coef: "number | null",
-        description: "string"
-      }],
-      categories: [{
-        id: "string",
-        label: "string categoria laboral",
-        group: "string agrupador o jornada",
-        description: "string",
-        zone: "string id zona o empty",
-        monthly: "number | null",
-        day: "number | null",
-        hourly: "number | null",
-        monthlyByPeriod: { "YYYY-MM": "number" },
-        dayByPeriod: { "YYYY-MM": "number" },
-        hourlyByPeriod: { "YYYY-MM": "number" },
-        nonRem: { "YYYY-MM": "number" },
-        normalWeeklyHours: "number | null",
-        normalDailyHours: "number | null",
-        legalReferences: ["string"],
-        notes: ["string"]
-      }],
-      rules: {
-        salaryType: "monthly | daily | hourly | empty",
-        monthDivisor: "number | null",
-        dayDivisor: "number | null",
-        hourDivisor: "number | null",
-        weeklyHours: "number | null",
-        vacationDivisor: "number | null",
-        licenses: ["object con regla extraida y evidencia"],
-        legalReferences: ["string"]
+      "periods": [
+        {
+          "id": "string (format YYYY-MM)",
+          "label": "string",
+          "effectiveFrom": "string (YYYY-MM-DD o empty)",
+          "effectiveTo": "string (YYYY-MM-DD o empty)",
+          "sourceFileName": "string"
+        }
+      ],
+      "zones": [
+        {
+          "id": "string",
+          "label": "string",
+          "coef": "number | null",
+          "description": "string"
+        }
+      ],
+      "categories": [
+        {
+          "id": "string",
+          "label": "string (categoría laboral)",
+          "group": "string (agrupador o jornada)",
+          "description": "string",
+          "zone": "string (id de zona o empty)",
+          "monthly": "number | null",
+          "day": "number | null",
+          "hourly": "number | null",
+          "monthlyByPeriod": {
+            "YYYY-MM": "number"
+          },
+          "dayByPeriod": {
+            "YYYY-MM": "number"
+          },
+          "hourlyByPeriod": {
+            "YYYY-MM": "number"
+          },
+          "nonRem": {
+            "YYYY-MM": "number"
+          },
+          "normalWeeklyHours": "number | null",
+          "normalDailyHours": "number | null",
+          "legalReferences": [
+            "string"
+          ],
+          "notes": [
+            "string"
+          ]
+        }
+      ],
+      "rules": {
+        "salaryType": "monthly | daily | hourly | empty",
+        "monthDivisor": "number | null",
+        "dayDivisor": "number | null",
+        "hourDivisor": "number | null",
+        "weeklyHours": "number | null",
+        "vacationDivisor": "number | null",
+        "licenses": [
+          {
+            "name": "string",
+            "rule": "string (regla extraída)",
+            "evidence": "string"
+          }
+        ],
+        "legalReferences": [
+          "string"
+        ]
       },
-      liquidationModel: {
-        rules: {
-          seniority: {
-            enabled: "boolean | null",
-            mode: "string",
-            percentPerYear: "number | null",
-            capYears: "number | null",
-            base: "string",
-            legalReferences: ["string"]
+      "liquidationModel": {
+        "rules": {
+          "seniority": {
+            "enabled": "boolean | null",
+            "mode": "string",
+            "percentPerYear": "number | null",
+            "capYears": "number | null",
+            "base": "string",
+            "legalReferences": [
+              "string"
+            ]
           },
-          presentism: {
-            enabled: "boolean | null",
-            percent: "number | null",
-            base: "string",
-            requiresNoUnjustifiedAbsence: "boolean | null",
-            legalReferences: ["string"]
+          "presentism": {
+            "enabled": "boolean | null",
+            "percent": "number | null",
+            "base": "string",
+            "requiresNoUnjustifiedAbsence": "boolean | null",
+            "legalReferences": [
+              "string"
+            ]
           },
-          nonRemunerativeScale: {
-            enabled: "boolean | null",
-            seniorityEnabled: "boolean | null",
-            seniorityPercentPerYear: "number | null",
-            seniorityCapYears: "number | null",
-            presentismEnabled: "boolean | null",
-            presentismPercent: "number | null",
-            presentismRequiresNoUnjustifiedAbsence: "boolean | null",
-            subjectToHealthInsurance: "boolean | null",
-            subjectToUnion: "boolean | null",
-            legalReferences: ["string"]
+          "nonRemunerativeScale": {
+            "enabled": "boolean | null",
+            "seniorityEnabled": "boolean | null",
+            "seniorityPercentPerYear": "number | null",
+            "seniorityCapYears": "number | null",
+            "presentismEnabled": "boolean | null",
+            "presentismPercent": "number | null",
+            "presentismRequiresNoUnjustifiedAbsence": "boolean | null",
+            "subjectToHealthInsurance": "boolean | null",
+            "subjectToUnion": "boolean | null",
+            "legalReferences": [
+              "string"
+            ]
           },
-          overtime: {
-            enabled: "boolean | null",
-            divisor: "number | null",
-            rate50: "number | null",
-            rate100: "number | null",
-            legalReferences: ["string"]
+          "overtime": {
+            "enabled": "boolean | null",
+            "divisor": "number | null",
+            "rate50": "number | null",
+            "rate100": "number | null",
+            "legalReferences": [
+              "string"
+            ]
           }
         },
-        concepts: [{
-          id: "string",
-          label: "string",
-          group: "string",
-          inputType: "checkbox | number",
-          rowType: "remunerative | nonRemunerative",
-          calculation: "fixed | percentOfBase | amountPerUnit",
-          percent: "number | null",
-          amount: "number | null",
-          amountByPeriod: { "YYYY-MM": "number" },
-          unitAmount: "number | null",
-          unitAmountByPeriod: { "YYYY-MM": "number" },
-          base: "string",
-          defaultValue: "boolean | number",
-          requiresHumanValidation: "boolean",
-          legalReferences: ["string"],
-          sourceFiles: ["string"],
-          detail: "string evidencia",
-          notes: ["string"]
-        }],
-        deductions: [{
-          id: "string",
-          label: "string descuento del trabajador",
-          calculation: "fixed | percentOfBase",
-          percent: "number | null",
-          amount: "number | null",
-          amountByPeriod: { "YYYY-MM": "number" },
-          base: "string",
-          defaultValue: "boolean",
-          appliesWhen: "string",
-          requiresHumanValidation: "boolean",
-          legalReferences: ["string"],
-          sourceFiles: ["string"],
-          detail: "string evidencia"
-        }],
-        retentions: [{
-          id: "string",
-          label: "string retencion",
-          calculation: "fixed | percentOfBase",
-          percent: "number | null",
-          amount: "number | null",
-          amountByPeriod: { "YYYY-MM": "number" },
-          base: "string",
-          defaultValue: "boolean",
-          appliesWhen: "string",
-          requiresHumanValidation: "boolean",
-          legalReferences: ["string"],
-          sourceFiles: ["string"],
-          detail: "string evidencia"
-        }]
+        "concepts": [
+          {
+            "id": "string",
+            "label": "string",
+            "group": "string",
+            "inputType": "checkbox | number",
+            "rowType": "remunerative | nonRemunerative",
+            "calculation": "fixed | percentOfBase | amountPerUnit",
+            "percent": "number | null",
+            "amount": "number | null",
+            "amountByPeriod": {
+              "YYYY-MM": "number"
+            },
+            "unitAmount": "number | null",
+            "unitAmountByPeriod": {
+              "YYYY-MM": "number"
+            },
+            "base": "string",
+            "defaultValue": "boolean | number",
+            "requiresHumanValidation": "boolean",
+            "legalReferences": [
+              "string"
+            ],
+            "sourceFiles": [
+              "string"
+            ],
+            "detail": "string (evidencia)",
+            "notes": [
+              "string"
+            ]
+          }
+        ],
+        "deductions": [
+          {
+            "id": "string",
+            "label": "string (descuento del trabajador)",
+            "calculation": "fixed | percentOfBase",
+            "percent": "number | null",
+            "amount": "number | null",
+            "amountByPeriod": {
+              "YYYY-MM": "number"
+            },
+            "base": "string",
+            "defaultValue": "boolean",
+            "appliesWhen": "string",
+            "requiresHumanValidation": "boolean",
+            "legalReferences": [
+              "string"
+            ],
+            "sourceFiles": [
+              "string"
+            ],
+            "detail": "string (evidencia)"
+          }
+        ],
+        "retentions": [
+          {
+            "id": "string",
+            "label": "string (retención)",
+            "calculation": "fixed | percentOfBase",
+            "percent": "number | null",
+            "amount": "number | null",
+            "amountByPeriod": {
+              "YYYY-MM": "number"
+            },
+            "base": "string",
+            "defaultValue": "boolean",
+            "appliesWhen": "string",
+            "requiresHumanValidation": "boolean",
+            "legalReferences": [
+              "string"
+            ],
+            "sourceFiles": [
+              "string"
+            ],
+            "detail": "string (evidencia)"
+          }
+        ]
       }
     }
-  };
-}
+  };      
+} 
 
 function buildConventionPrompt({ draftName, notes }) {
   return [
     "INSTRUCCION PARA EL AGENTE ESTRUCTURADOR DE CONVENIOS COLECTIVOS",
-    "Actua como el mejor contador laboral de Argentina y como ingeniero en sistemas full stack senior, con criterio experto en Convenios Colectivos de Trabajo y sistemas de liquidacion de haberes.",
-    "Ademas actua como Analista Funcional Senior: pensa en datos computables, relaciones, formulas, validaciones y trazabilidad documental.",
-    "Tu objetivo NO es resumir el convenio. Tu objetivo es EXTRAER y ESTRUCTURAR informacion liquidatoria computable del CCT.",
+    "Actúa como un experto liquidador de sueldos en Argentina. Tu tarea es extraer todos los datos necesarios para una liquidación de sueldos.",
+    "Debes extraer los haberes remunerativos, no remunerativos, retenciones y licencias (y las escalas salariales si corresponde).",
+    "DEBE ESTAR SÍ O SÍ el cálculo para cada concepto; si es extraído de una tabla, indícalo explícitamente.",
+    "ATENCIÓN: No metas leyes ni nada jurídico. Extrae SOLAMENTE lo estrictamente necesario para liquidar sueldos y poder calcular cada haber.",
     "Debes analizar la totalidad de la documentacion enviada en esta solicitud: texto principal, actas complementarias, acuerdos salariales, escalas salariales, anexos, tablas, imagenes, cuadros, notas al pie, adendas y resoluciones homologatorias.",
     "Primero clasifica cada adjunto o bloque de texto como uno de estos tipos: CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, ESCALA_SALARIAL, ANEXO_ESCALA, ANEXO_REGLAS, RESOLUCION, OTRO. No lo agregues como campo raiz; conserva la clasificacion en documento_tipo/documento_rol/fuente_documento de los objetos extraidos.",
     "Cada dato importante debe tener trazabilidad compacta cuando sea posible: fuente_documento, documento_tipo, pagina, evidencia y confianza. evidencia debe ser una frase o fragmento corto, no un parrafo largo.",
@@ -849,10 +912,11 @@ function buildConventionPrompt({ draftName, notes }) {
 
 function buildConventionCorePrompt({ draftName, notes }) {
   return [
-    "Actúa como el mejor Contador Laboral Argentino, Ingeniero de Sistemas Senior y Analista Funcional Experto.",
+    "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos (haberes remunerativos, no remunerativos, retenciones y licencias).",
+    "Debe estar sí o sí el cálculo para cada concepto. Si es de una tabla, indícalo. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
     "Tu objetivo en esta llamada es extraer SOLO los datos nucleares y el esqueleto legal del CCT. NO extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
     "[AISLAMIENTO ABSOLUTO] Cada ejecución comienza desde cero. Ignora convenios anteriores o conocimientos preexistentes. Si un dato no está en el documento, escribe null o [].",
-    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales, rules.",
     "schemaVersion debe ser 'esueldos-cct-estructura-excel-v1'.",
     
     // 1. CONVENIO Y TRAZABILIDAD
@@ -868,7 +932,10 @@ function buildConventionCorePrompt({ draftName, notes }) {
     "Prohibido crear conceptos dinámicos por mes o año (ej: NO crees BASICO_OCT_25). Usa ID genéricos: SUELDO_BASICO, VALOR_HORA, VALOR_DIARIO, NO_REMUNERATIVO, ADICIONAL_CONVENIO.",
     "El Sueldo Anual Complementario debe mapearse como concepto_id: 'SAC', nunca como SUELDO_BASICO.",
     "Diferencia estrictamente la NATURALEZA de los conceptos: Remunerativos (haber / remunerativo), No Remunerativos (haber / no_remunerativo), Deducciones (retencion o descuento / retencion). Es CRÍTICO que los adicionales calificados como 'no rem' tengan estrictamente esa naturaleza.",
-    "Cada concepto debe parametrizarse con: unidad_calculo (monthly, hourly, daily, percentage, fixed), formula_base, base_calculo (sueldo_basico, total_remunerativo, etc.) y condicion.",
+    "Cada concepto debe parametrizarse con: unidad_calculo (monthly, hourly, daily, percentage, fixed), formula_base, base_calculo (sueldo_basico, total_remunerativo, etc.), condicion y detail (la evidencia).",
+    
+    // 4. LICENCIAS Y REGLAS
+    "LICENCIAS: Dentro de la clave raíz 'rules', extrae un arreglo 'licenses' donde cada objeto tenga { name: 'string', rule: 'regla extraída', evidence: 'texto de evidencia' }. Incluye aquí licencias, vacaciones, maternidad, etc.",
     
     // 5 y 6. ADICIONALES FIJOS Y REGLAS DE LIQUIDACIÓN
     "Antigüedad: Determina la base de cálculo y la regla (ej: 1% por año de servicio) y estructurala en 'formula_base'.",
@@ -880,10 +947,17 @@ function buildConventionCorePrompt({ draftName, notes }) {
   ].join("\n");
 }
 
-function buildScalePrompt({ draftName, notes }) {
+function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
+  const baseCategoriesText = baseCategories.length 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS DEL CCT:\n${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA PARA EVITAR DUPLICADOS: Si la fila de la tabla salarial corresponde a una categoría de esta lista, usa EXACTAMENTE su 'categoria_id'. Si la fila contiene una categoría NUEVA que no está en la lista, extráela normalmente y créale un ID nuevo.` 
+    : "";
+  const baseConceptsText = baseConcepts.length
+    ? `\nCONCEPTOS PRE-EXTRAÍDOS DEL CCT:\n${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA PARA HABERES EN TABLAS: Si el archivo de escala cuenta con haberes o adicionales (en cuadros separados o junto a la escala), relaciónalos con los 'concepto_id' de esta lista. Si hay un valor nuevo, extráelo en escalas[].valores[] usando el concepto_id. NO extraigas estos haberes o adicionales como categorías laborales, y NO los dupliques en el array raíz de conceptos.`
+    : "";
   return [
-    "Actúa como Analista Funcional Senior especializado en escalas salariales de CCT de Argentina.",
-    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto.",
+    "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos, específicamente las escalas salariales.",
+    "Debe estar sí o sí el cálculo para cada concepto. Si es extraído de una tabla, indícalo explícitamente. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
+    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto." + baseCategoriesText + baseConceptsText,
     "[AISLAMIENTO ABSOLUTO] No uses memoria ni otros CCT. Solo el texto y las tablas de esta escala. Si falta un dato usa null o []. No inventes valores.",
     "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
     
@@ -910,9 +984,15 @@ function buildScalePrompt({ draftName, notes }) {
   ].join("\n");
 }
 
-function buildScaleCompactPrompt({ draftName, notes }) {
+function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
+  const baseCategoriesText = baseCategories.length 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs.` 
+    : "";
+  const baseConceptsText = baseConcepts.length
+    ? `\nCONCEPTOS PRE-EXTRAÍDOS: ${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA: Relaciona los adicionales o haberes de la tabla con estos 'concepto_id'. NO extraigas los adicionales como categorías y NO dupliques conceptos.`
+    : "";
   return [
-    "Extrae SOLO la escala salarial en JSON válido. Sé lo más compacto posible para evitar límites de tokens de salida.",
+    "Extrae SOLO la escala salarial en JSON válido. Sé lo más compacto posible para evitar límites de tokens de salida." + baseCategoriesText + baseConceptsText,
     "Devuelve exclusivamente el contrato JSON sin markdown, notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
     "[AISLAMIENTO ABSOLUTO] Usa únicamente el texto de esta escala salarial. Si falta información usa null o [].",
     
@@ -1150,11 +1230,11 @@ async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctP
   return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
 }
 
-async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes }) {
+async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories = [], baseConcepts = [] }) {
   if (!scaleMarkdown) {
     return { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
   }
-  const parts = [{ text: buildScalePrompt({ draftName, notes }) }];
+  const parts = [{ text: buildScalePrompt({ draftName, notes, baseCategories, baseConcepts }) }];
   if (scalePdf?.sourceFileName) {
     parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
   }
@@ -1167,7 +1247,7 @@ async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePd
   } catch (error) {
     if (error.code !== "INVALID_JSON") throw error;
     console.warn("[Gemini escala] JSON invalido. Reintentando extraccion compacta de escala.");
-    const retryParts = [{ text: buildScaleCompactPrompt({ draftName, notes }) }];
+    const retryParts = [{ text: buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts }) }];
     if (scalePdf?.sourceFileName) retryParts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
     retryParts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "escala-core" });
@@ -1209,7 +1289,9 @@ function mergeTokenUsage(...usages) {
 
 async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
   const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
-  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes });
+  const baseCategories = conventionResult.parsed?.categorias || [];
+  const baseConcepts = conventionResult.parsed?.conceptos || [];
+  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories, baseConcepts });
   const merged = mergeExcelConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName });
   console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);

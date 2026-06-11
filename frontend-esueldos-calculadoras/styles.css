@@ -1580,7 +1580,7 @@ p {
 
 .convention-audit-table textarea {
   min-width: 0;
-  resize: vertical;
+  field-sizing: content;
 }
 
 .convention-json-editor .convention-audit-table textarea,
@@ -1593,7 +1593,6 @@ p {
 
 .convention-json-editor .convention-audit-table textarea {
   min-height: 54px;
-  max-height: 130px;
 }
 
 .convention-audit-table input:focus,
@@ -1713,7 +1712,7 @@ p {
 .convention-audit-tables-area .convention-audit-table textarea {
   min-width: 210px;
   min-height: 38px;
-  max-height: 90px;
+  field-sizing: content;
 }
 
 .convention-audit-tables-area .convention-audit-table input:focus,
