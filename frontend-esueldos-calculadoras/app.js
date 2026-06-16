@@ -9,6 +9,9 @@
   let lastAudit = null;
   let currentStep = 1;
   const TOTAL_STEPS = 4;
+  const CONVENTIONS_PER_PAGE = 9;
+  let conventionPage = 0;
+  let conventionSearch = "";
   const leiaHistory = [];
   const leiaGuidedTopics = [
     {
@@ -420,14 +423,39 @@
     if (!container) return;
 
     const activeId = str("convention", firstConventionId()) || firstConventionId();
-    container.innerHTML = Object.values(DATA.conventions)
+    let search = $("conventionSearch");
+    if (!search) {
+      search = document.createElement("input");
+      search.id = "conventionSearch";
+      search.className = "convention-search";
+      search.type = "search";
+      search.placeholder = "Buscar convenio";
+      container.insertAdjacentElement("beforebegin", search);
+      search.oninput = () => {
+        conventionSearch = search.value.trim().toLowerCase();
+        conventionPage = 0;
+        renderConventionCards();
+      };
+    }
+    search.value = conventionSearch;
+
+    const conventions = Object.values(DATA.conventions).filter((conv) => {
+      const meta = conventionCardMeta(conv);
+      return `${meta.title} ${meta.code}`.toLowerCase().includes(conventionSearch);
+    });
+    const totalPages = Math.max(1, Math.ceil(conventions.length / CONVENTIONS_PER_PAGE));
+    conventionPage = Math.min(conventionPage, totalPages - 1);
+    const visibleConventions = conventions.slice(
+      conventionPage * CONVENTIONS_PER_PAGE,
+      (conventionPage + 1) * CONVENTIONS_PER_PAGE
+    );
+    container.innerHTML = visibleConventions
       .map((conv) => {
         const meta = conventionCardMeta(conv);
         const active = conv.id === activeId ? " active" : "";
         const accent = conventionAccent(conv.id);
         const periodCount = conv.periods?.length || 0;
         const categoryCount = conv.categories?.length || 0;
-        const zoneCount = conv.zones?.length || 0;
         return `<article class="convention-card${active}" role="button" tabindex="0" data-convention-id="${escapeHtml(conv.id)}" aria-pressed="${conv.id === activeId}" style="--card-accent:${accent.strong};--card-accent-soft:${accent.soft};--card-ink:${accent.ink};">
           <div class="convention-ghost" aria-hidden="true">${conventionIcon(conv.id, "convention-ghost-icon")}</div>
           <div class="convention-content">
@@ -437,33 +465,33 @@
             </div>
             <h3 class="convention-title">${escapeHtml(meta.title)}</h3>
             <div class="convention-code">${escapeHtml(meta.code)}</div>
-            <div class="convention-copy">${escapeHtml(meta.description)}</div>
             <div class="convention-meta">
               <span>${escapeHtml(plural(periodCount, "periodo", "periodos"))}</span>
               <span>${escapeHtml(plural(categoryCount, "categoria", "categorias"))}</span>
-              <span>${escapeHtml(plural(zoneCount, "zona", "zonas"))}</span>
             </div>
-            <div class="convention-bars" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <span class="use-btn"><span>Usar este convenio</span><span aria-hidden="true">&gt;</span></span>
-            <button class="convention-delete-btn" type="button" data-delete-convention-id="${escapeHtml(conv.id)}" aria-label="Borrar convenio ${escapeHtml(meta.title)}">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 7h16" />
-                <path d="M10 11v6" />
-                <path d="M14 11v6" />
-                <path d="M6 7l1 14h10l1-14" />
-                <path d="M9 7V4h6v3" />
-              </svg>
-              <span>Borrar</span>
-            </button>
           </div>
         </article>`;
       })
       .join("");
+
+    let pager = $("conventionPager");
+    if (!pager) {
+      pager = document.createElement("div");
+      pager.id = "conventionPager";
+      pager.className = "convention-pager";
+      container.insertAdjacentElement("afterend", pager);
+    }
+    pager.innerHTML = totalPages > 1 ? `
+      <button type="button" data-convention-page="prev" ${conventionPage === 0 ? "disabled" : ""}>Anterior</button>
+      <span>${conventionPage + 1} / ${totalPages}</span>
+      <button type="button" data-convention-page="next" ${conventionPage === totalPages - 1 ? "disabled" : ""}>Siguiente</button>
+    ` : "";
+    pager.onclick = (e) => {
+      const button = e.target.closest("[data-convention-page]");
+      if (!button) return;
+      conventionPage += button.dataset.conventionPage === "next" ? 1 : -1;
+      renderConventionCards();
+    };
 
     // Usar delegación de eventos para evitar re-registro en cada updateConvention()
     container.onclick = (e) => {

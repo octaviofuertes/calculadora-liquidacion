@@ -6513,9 +6513,9 @@ body {
   }
 
   .form-panel .convention-card {
-    min-height: 250px !important;
-    height: auto !important;
-    max-height: none !important;
+    min-height: 110px !important;
+    height: 110px !important;
+    max-height: 110px !important;
     border-radius: 13px !important;
     border-color: var(--target-line) !important;
     background: #fff !important;
@@ -6534,8 +6534,9 @@ body {
   }
 
   .convention-content {
-    min-height: 248px !important;
-    padding: 13px !important;
+    min-height: 108px !important;
+    height: 108px !important;
+    padding: 10px !important;
   }
 
   .convention-visual {
@@ -6555,11 +6556,19 @@ body {
 
   .convention-title {
     color: var(--target-ink);
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
     font-size: 17px !important;
     line-height: 1.02 !important;
   }
 
   .convention-code {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
     margin-top: 6px !important;
     font-size: 11.5px !important;
   }
@@ -6857,11 +6866,14 @@ body {
 /* Final card fit pass */
 @media screen and (min-width: 1181px) {
   .form-panel .convention-card {
-    min-height: 250px !important;
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
   }
 
   .convention-content {
-    min-height: 248px !important;
+    min-height: 98px !important;
+    height: 98px !important;
     padding: 12px !important;
   }
 
@@ -7529,11 +7541,14 @@ body {
   }
 
   .form-panel .convention-card {
-    min-height: 284px !important;
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
   }
 
   .convention-content {
-    min-height: 282px !important;
+    min-height: 98px !important;
+    height: 98px !important;
     padding: 15px !important;
   }
 
@@ -7716,11 +7731,14 @@ body {
   }
 
   .form-panel .convention-card {
-    min-height: 330px !important;
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
   }
 
   .convention-content {
-    min-height: 328px !important;
+    min-height: 98px !important;
+    height: 98px !important;
     padding: 18px !important;
   }
 
@@ -7924,11 +7942,14 @@ body {
   }
 
   .form-panel .convention-card {
-    min-height: 348px !important;
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
   }
 
   .convention-content {
-    min-height: 346px !important;
+    min-height: 98px !important;
+    height: 98px !important;
     padding: 20px !important;
   }
 
@@ -9388,4 +9409,100 @@ body > * {
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
+}
+
+.form-panel .convention-card {
+  box-sizing: border-box !important;
+  height: 162px !important;
+  min-height: 162px !important;
+  max-height: 162px !important;
+  overflow: hidden !important;
+}
+
+.form-panel .convention-card .convention-content {
+  box-sizing: border-box !important;
+  height: 160px !important;
+  min-height: 160px !important;
+  padding: 8px !important;
+}
+
+.form-panel .convention-card .convention-visual {
+  margin-bottom: 4px !important;
+}
+
+.form-panel .convention-card .convention-mark {
+  width: 44px !important;
+  height: 44px !important;
+  margin-bottom: 0 !important;
+}
+
+.form-panel .convention-card .convention-icon {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.form-panel .convention-card .selection-check {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.form-panel .convention-card .convention-title {
+  font-size: 17px !important;
+  line-height: 1.02 !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.form-panel .convention-card .convention-code {
+  margin-top: 3px !important;
+  font-size: 11.5px !important;
+  line-height: 1.05 !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.form-panel .convention-card .convention-meta {
+  margin-top: auto !important;
+  padding-top: 4px !important;
+}
+
+.convention-search {
+  width: 100%;
+  min-height: 38px;
+  margin: 0 0 12px;
+  padding: 0 12px;
+  border: 1px solid #cfe0ff;
+  border-radius: 12px;
+  color: #172247;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.convention-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.convention-pager button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid #b9cdf8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2457d6;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.convention-pager button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.convention-pager span {
+  color: #64739d;
+  font-size: 11px;
+  font-weight: 800;
 }
