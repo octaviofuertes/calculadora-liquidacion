@@ -515,13 +515,29 @@ function normalizeEscala(item = {}, convenioId = "", index = 0) {
   const valores = array(item.valores || item.values)
     .flatMap((value, valueIndex) => expandScaleValue(value, convenioId, escalaId, valueIndex))
     .filter((value) => value.valor !== null && value.valor !== undefined && value.valor !== "");
+  const nombreEscala = text(item.nombre_escala || item.nombre || item.name || item.periodo || item.period);
+  const periodoDesde = text(item.periodo_desde || item.fecha_desde || item.vigencia_desde || item.desde || item.periodFrom || item.period);
+  const periodoHasta = text(item.periodo_hasta || item.fecha_hasta || item.vigencia_hasta || item.hasta || item.periodTo);
+  const inferredPeriods = periodIds(
+    periodoDesde,
+    periodoHasta,
+    nombreEscala,
+    escalaId,
+    item.fuente_documento,
+    item.source,
+    item.evidencia,
+    item.contexto,
+    ...valores.flatMap((value) => [value.periodicidad, value.periodo, value.mes, value.fecha, value.vigencia_desde, value.vigencia_hasta, value.evidencia])
+  );
+  const inferredFrom = inferredPeriods[0] || "";
+  const inferredTo = inferredPeriods[inferredPeriods.length - 1] || inferredFrom;
   return {
     escala_id: escalaId,
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
-    nombre_escala: text(item.nombre_escala || item.nombre || item.name || item.periodo || item.period),
+    nombre_escala: nombreEscala,
     tipo_escala: text(item.tipo_escala || item.tipo || item.type),
-    periodo_desde: text(item.periodo_desde || item.fecha_desde || item.vigencia_desde || item.desde || item.periodFrom || item.period),
-    periodo_hasta: text(item.periodo_hasta || item.fecha_hasta || item.vigencia_hasta || item.hasta || item.periodTo),
+    periodo_desde: periodoDesde || inferredFrom,
+    periodo_hasta: periodoHasta || inferredTo,
     moneda: text(item.moneda || item.currency),
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
@@ -886,8 +902,13 @@ function periodIds(...values) {
   const raw = values.map(text).filter(Boolean).join(" ");
   const normalized = normalizedPeriodText(raw);
   const periods = [];
+  const fullYear = (year) => {
+    const value = Number(year);
+    if (!Number.isInteger(value)) return "";
+    return value < 100 ? String(2000 + value) : String(value);
+  };
   const add = (year, month) => {
-    const period = formatPeriod(year, month);
+    const period = formatPeriod(fullYear(year), month);
     if (period && !periods.includes(period)) periods.push(period);
   };
   const addRange = (year, fromMonth, toMonth) => {
@@ -901,8 +922,10 @@ function periodIds(...values) {
 
   raw.replace(/\b(20\d{2})[-/.](0?[1-9]|1[0-2])(?:[-/.]\d{1,2})?\b/g, (_, year, month) => add(year, month));
   raw.replace(/\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](20\d{2})\b/g, (_, _day, month, year) => add(year, month));
-  raw.replace(/\b(0?[1-9]|1[0-2])[-/.](20\d{2})\b/g, (_, month, year) => add(year, month));
+  raw.replace(/\b(0?[1-9]|1[0-2])[-/.](20\d{2}|\d{2})\b/g, (_, month, year) => add(year, month));
   const monthPattern = Object.keys(PERIOD_MONTHS).sort((a, b) => b.length - a.length).join("|");
+  const shortMonthYearPattern = new RegExp(`\\b(${monthPattern})\\b\\s*[-/.]?\\s*(\\d{2})\\b`, "g");
+  normalized.replace(shortMonthYearPattern, (_, month, year) => add(year, PERIOD_MONTHS[month]));
   const rangePattern = new RegExp(`\\b(${monthPattern})\\b\\s*(?:a|al|hasta|to|through|-|/)\\s*\\b(${monthPattern})\\b\\s*(?:de\\s*)?(20\\d{2})\\b`, "g");
   normalized.replace(rangePattern, (_, fromMonth, toMonth, year) => addRange(year, PERIOD_MONTHS[fromMonth], PERIOD_MONTHS[toMonth]));
 

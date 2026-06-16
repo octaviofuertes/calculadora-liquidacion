@@ -1,7 +1,8 @@
 const { geminiModelList } = require("../gemini-config");
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
-const useConventionMarkdown = String(process.env.CONVENTION_USE_MARKDOWN || "true").toLowerCase() !== "false";
+const useGeminiFilesApi = String(process.env.GEMINI_USE_FILES_API || "true").toLowerCase() !== "false";
+const GEMINI_API_BASE_URL = process.env.GEMINI_API_BASE_URL || "https://generativelanguage.googleapis.com";
 
 class GeminiConventionError extends Error {
   constructor(message, { status, model, code, modelsTried } = {}) {
@@ -894,7 +895,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "No crear categorias sin categoria_nombre si el nombre esta disponible en el texto. Si no se identifica el nombre real, no inventar.",
     "Estructura el convenio desde cero usando exclusivamente la documentacion enviada en esta solicitud. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
     "La IA solo estructura datos. No calcules sueldos ni inventes importes, porcentajes, articulos o reglas. Si falta texto usa \"\"; si falta numero usa null; si falta lista usa [].",
-    "Devuelve exclusivamente JSON valido, sin markdown ni explicaciones.",
+    "Devuelve exclusivamente JSON valido, sin explicaciones ni bloques de formato.",
     "La respuesta debe ser compacta y completa. Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
     "Usa schemaVersion esueldos-cct-estructura-excel-v1 y la estructura Excel: convenio, ambitos, categorias, conceptos, escalas con valores y adicionales.",
     "Diferencia haberes remunerativos, haberes no remunerativos, descuentos, retenciones y aportes patronales en conceptos.tipo_concepto y conceptos.naturaleza.",
@@ -916,7 +917,7 @@ function buildConventionCorePrompt({ draftName, notes }) {
     "Debe estar sí o sí el cálculo para cada concepto. Si es de una tabla, indícalo. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
     "Tu objetivo en esta llamada es extraer SOLO los datos nucleares y el esqueleto legal del CCT. NO extraigas escalas salariales completas: deja escalas: []. La escala se procesa en otra llamada.",
     "[AISLAMIENTO ABSOLUTO] Cada ejecución comienza desde cero. Ignora convenios anteriores o conocimientos preexistentes. Si un dato no está en el documento, escribe null o [].",
-    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales, rules.",
+    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques de formato. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales, rules.",
     "schemaVersion debe ser 'esueldos-cct-estructura-excel-v1'.",
     
     // 1. CONVENIO Y TRAZABILIDAD
@@ -960,7 +961,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     "Debe estar sí o sí el cálculo para cada concepto. Si es extraído de una tabla, indícalo explícitamente. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
     "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto." + baseCategoriesText + baseConceptsText,
     "[AISLAMIENTO ABSOLUTO] No uses memoria ni otros CCT. Solo el texto y las tablas de esta escala. Si falta un dato usa null o []. No inventes valores.",
-    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques markdown. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques de formato. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
     
     // 4. MATRIZ DE ESCALAS SALARIALES (El núcleo de esta función)
     "Piensa en una matriz multidimensional: Categoría x Periodo (Vigencia) x Concepto x Zona x Modalidad.",
@@ -995,7 +996,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     : "";
   return [
     "Extrae SOLO la escala salarial en JSON válido. Sé lo más compacto posible para evitar límites de tokens de salida." + baseCategoriesText + baseConceptsText,
-    "Devuelve exclusivamente el contrato JSON sin markdown, notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Devuelve exclusivamente el contrato JSON sin notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
     "[AISLAMIENTO ABSOLUTO] Usa únicamente el texto de esta escala salarial. Si falta información usa null o [].",
     
     // Directivas de Ultra-Compactación (Exclusivas de esta función)
@@ -1050,61 +1051,145 @@ function conventionAttachmentParts({ cctPdf, scalePdf } = {}) {
   return parts;
 }
 
-function convertRawTextToMarkdown(text) {
-  if (!text) return "";
-  const lines = text.split(/\r?\n/);
-  const result = [];
-  let inTable = false;
-  
-  for (let line of lines) {
-    line = line.trim();
-    if (!line) {
-      if (inTable) {
-        result.push("");
-        inTable = false;
-      }
-      continue;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function pdfInlinePart(file) {
+  return {
+    inline_data: {
+      mime_type: file.mimeType || "application/pdf",
+      data: Buffer.isBuffer(file.buffer) ? file.buffer.toString("base64") : Buffer.from(file.buffer || "").toString("base64")
     }
-    
-    const isHeading = line.length < 85 && (
-      /^[A-Z0-9\s.,()\-#\/º°"':;]+$/.test(line) 
-      || /^(ARTICULO|ART\.|CONVENIO|CCT|ESCALA|VIGENCIA|VIGENTE|ACUERDO|ANEXO|CIRCULAR)/i.test(line)
-    );
-    
-    if (isHeading) {
-      if (inTable) {
-        result.push("");
-        inTable = false;
-      }
-      result.push(`### ${line}`);
-      continue;
+  };
+}
+
+function pdfFilePart(file, uploadedFile) {
+  return {
+    file_data: {
+      mime_type: uploadedFile.mimeType || uploadedFile.mime_type || file.mimeType || "application/pdf",
+      file_uri: uploadedFile.uri
     }
-    
-    const columns = line.split(/\s{2,}|\t+/).map(c => c.trim()).filter(Boolean);
-    if (columns.length >= 2 && columns.some(col => /^\$?\s*\d+(?:\.\d{3})*(?:,\d{2})?%?$/.test(col) || /^\d+$/.test(col))) {
-      if (!inTable) {
-        inTable = true;
-        const separators = columns.map(() => "---");
-        result.push(`| ${columns.join(" | ")} |`);
-        result.push(`| ${separators.join(" | ")} |`);
-      } else {
-        result.push(`| ${columns.join(" | ")} |`);
-      }
-    } else {
-      if (inTable) {
-        inTable = false;
-        result.push("");
-      }
-      result.push(line);
-    }
+  };
+}
+
+async function getGeminiFile({ apiKey, name }) {
+  const response = await fetch(`${GEMINI_API_BASE_URL}/v1beta/${name}`, {
+    headers: { "x-goog-api-key": apiKey }
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new GeminiConventionError(payload?.error?.message || `Gemini Files respondio HTTP ${response.status}`, {
+      status: response.status,
+      code: payload?.error?.status
+    });
   }
-  return result.join("\n");
+  return payload.file || payload;
+}
+
+async function waitGeminiFileActive({ apiKey, file }) {
+  let current = file;
+  const maxPolls = Number(process.env.GEMINI_FILE_MAX_POLLS || 24);
+  const pollMs = Number(process.env.GEMINI_FILE_POLL_MS || 2500);
+  for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+    if (!current?.state || current.state === "ACTIVE") return current;
+    if (current.state === "FAILED") {
+      throw new GeminiConventionError(`Gemini no pudo procesar el archivo ${current.displayName || current.name}.`, {
+        status: 502,
+        code: "FILE_PROCESSING_FAILED"
+      });
+    }
+    await sleep(pollMs);
+    current = await getGeminiFile({ apiKey, name: current.name });
+  }
+  throw new GeminiConventionError(`Gemini tardo demasiado en procesar el archivo ${file.displayName || file.name}.`, {
+    status: 504,
+    code: "FILE_PROCESSING_TIMEOUT"
+  });
+}
+
+async function uploadGeminiFile({ apiKey, file, displayName }) {
+  const mimeType = file.mimeType || "application/pdf";
+  const buffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer || "");
+  const start = await fetch(`${GEMINI_API_BASE_URL}/upload/v1beta/files`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+      "X-Goog-Upload-Protocol": "resumable",
+      "X-Goog-Upload-Command": "start",
+      "X-Goog-Upload-Header-Content-Length": String(buffer.length),
+      "X-Goog-Upload-Header-Content-Type": mimeType
+    },
+    body: JSON.stringify({
+      file: {
+        display_name: displayName || file.sourceFileName || "documento.pdf"
+      }
+    })
+  });
+  const startPayload = await start.json().catch(() => ({}));
+  if (!start.ok) {
+    throw new GeminiConventionError(startPayload?.error?.message || `Gemini Files start respondio HTTP ${start.status}`, {
+      status: start.status,
+      code: startPayload?.error?.status
+    });
+  }
+  const uploadUrl = start.headers.get("x-goog-upload-url");
+  if (!uploadUrl) {
+    throw new GeminiConventionError("Gemini Files no devolvio URL de carga.", {
+      status: 502,
+      code: "FILE_UPLOAD_URL_MISSING"
+    });
+  }
+  const upload = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Length": String(buffer.length),
+      "X-Goog-Upload-Offset": "0",
+      "X-Goog-Upload-Command": "upload, finalize"
+    },
+    body: buffer
+  });
+  const payload = await upload.json().catch(() => ({}));
+  if (!upload.ok) {
+    throw new GeminiConventionError(payload?.error?.message || `Gemini Files upload respondio HTTP ${upload.status}`, {
+      status: upload.status,
+      code: payload?.error?.status
+    });
+  }
+  return waitGeminiFileActive({ apiKey, file: payload.file || payload });
+}
+
+async function buildPdfPartsForGemini({ apiKey, files, role }) {
+  const parts = [];
+  let uploaded = 0;
+  let inlined = 0;
+  for (const file of (files || []).filter((item) => item?.buffer)) {
+    parts.push({ text: `${role}. Nombre: ${file.sourceFileName || "archivo.pdf"}` });
+    if (useGeminiFilesApi) {
+      try {
+        const uploadedFile = await uploadGeminiFile({
+          apiKey,
+          file,
+          displayName: `${role} - ${file.sourceFileName || "archivo.pdf"}`
+        });
+        parts.push(pdfFilePart(file, uploadedFile));
+        uploaded += 1;
+        continue;
+      } catch (error) {
+        console.warn(`[Gemini Files] No se pudo subir ${file.sourceFileName || "archivo.pdf"}: ${error.message}. Se usa inline_data.`);
+      }
+    }
+    parts.push(pdfInlinePart(file));
+    inlined += 1;
+  }
+  return { parts, uploaded, inlined };
 }
 
 async function callGeminiJson({ apiKey, model, parts, label }) {
-  console.log(`[Gemini ${label}] partes=${parts.length}`);
-  const { GoogleGenAI } = require("@google/genai");
-  const ai = new GoogleGenAI({ apiKey });
+  const inlineCount = parts.filter((part) => part.inline_data || part.inlineData).length;
+  const fileCount = parts.filter((part) => part.file_data || part.fileData).length;
+  console.log(`[Gemini ${label}] files=${fileCount} inline=${inlineCount} partes=${parts.length}`);
   const generationConfig = {
     temperature: 0.08,
     topP: 0.72,
@@ -1136,7 +1221,7 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
   }
 }
 
-async function requestConventionOnceLegacy({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
+async function requestConventionOnceLegacy({ apiKey, model, cctPdf, scalePdf, draftName, notes }) {
   const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
   if (cctPdf?.buffer) {
     parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
@@ -1145,12 +1230,6 @@ async function requestConventionOnceLegacy({ apiKey, model, cctMarkdown, scaleMa
   if (scalePdf?.buffer) {
     parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
     parts.push({ inline_data: { mime_type: scalePdf.mimeType || "application/pdf", data: scalePdf.buffer.toString("base64") } });
-  }
-  if (cctMarkdown) {
-    parts.push({ text: `Texto del CCT extraído en formato Markdown:\n\n${cctMarkdown}` });
-  }
-  if (scaleMarkdown) {
-    parts.push({ text: `Texto de la escala salarial extraída en formato Markdown:\n\n${scaleMarkdown}` });
   }
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -1200,13 +1279,16 @@ async function requestConventionOnceLegacy({ apiKey, model, cctMarkdown, scaleMa
     throw new GeminiConventionError("Gemini no devolvio texto para el convenio.", { status: 502, model });
   }
   const parsed = normalizeConvention(parseGeminiJson(text), { fallbackName: draftName });
-  return enrichExcelConventionWithLocalScale(parsed, { scaleMarkdown, draftName, scalePdf });
+  return parsed;
 }
 
-async function requestConventionStructureOnce({ apiKey, model, cctGeminiFile, draftName, notes }) {
-  const parts = [buildConventionPrompt({ draftName, notes })];
-  if (cctGeminiFile) {
-    parts.push(cctGeminiFile);
+async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes }) {
+  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
+  if (cctPdf?.sourceFileName) {
+    parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+  }
+  if (cctMarkdown) {
+    parts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
   }
   let result;
   try {
@@ -1214,27 +1296,34 @@ async function requestConventionStructureOnce({ apiKey, model, cctGeminiFile, dr
   } catch (error) {
     if (error.code !== "INVALID_JSON") throw error;
     console.warn("[Gemini convenio] JSON invalido. Reintentando extraccion compacta de convenio.");
-    const retryParts = [buildConventionCorePrompt({ draftName, notes })];
-    if (cctGeminiFile) retryParts.push(cctGeminiFile);
+    const retryParts = [{ text: buildConventionCorePrompt({ draftName, notes }) }];
+    if (cctPdf?.sourceFileName) retryParts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+    if (cctMarkdown) retryParts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "convenio-core" });
   }
   return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
 }
 
-async function requestScaleStructureOnce({ apiKey, model, scaleGeminiFile, draftName, notes, baseCategories = [], baseConcepts = [] }) {
-  if (!scaleGeminiFile) {
+async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories = [], baseConcepts = [] }) {
+  if (!scaleMarkdown) {
     return { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
   }
-  const parts = [buildScalePrompt({ draftName, notes, baseCategories, baseConcepts })];
-  parts.push(scaleGeminiFile);
+  const parts = [{ text: buildScalePrompt({ draftName, notes, baseCategories, baseConcepts }) }];
+  if (scalePdf?.sourceFileName) {
+    parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+  }
+  if (scaleMarkdown) {
+    parts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
+  }
   let result;
   try {
     result = await callGeminiJson({ apiKey, model, parts, label: "escala" });
   } catch (error) {
     if (error.code !== "INVALID_JSON") throw error;
     console.warn("[Gemini escala] JSON invalido. Reintentando extraccion compacta de escala.");
-    const retryParts = [buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts })];
-    retryParts.push(scaleGeminiFile);
+    const retryParts = [{ text: buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts }) }];
+    if (scalePdf?.sourceFileName) retryParts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+    retryParts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "escala-core" });
   }
   return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
@@ -1272,16 +1361,16 @@ function mergeTokenUsage(...usages) {
   }), {});
 }
 
-async function requestConventionOnce({ apiKey, model, cctGeminiFile, scaleGeminiFile, draftName, notes }) {
-  const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctGeminiFile, draftName, notes });
+async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
+  const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
   const baseCategories = conventionResult.parsed?.categorias || [];
   const baseConcepts = conventionResult.parsed?.conceptos || [];
-  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleGeminiFile, draftName, notes, baseCategories, baseConcepts });
+  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories, baseConcepts });
   const merged = mergeExcelConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName });
   console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] final: categorias=${merged.categorias?.length || 0} conceptos=${merged.conceptos?.length || 0} escalas=${merged.escalas?.length || 0}`);
-  const parsedConvention = enrichExcelConventionWithLocalScale(merged, { scaleMarkdown: "", draftName });
+  const parsedConvention = enrichExcelConventionWithLocalScale(merged, { scaleMarkdown, draftName, scalePdf });
   console.log(`[CCT merge] enriquecido: categorias=${parsedConvention.categorias?.length || 0} conceptos=${parsedConvention.conceptos?.length || 0} escalas=${parsedConvention.escalas?.length || 0}`);
   if (!hasExtractedConventionStructure(parsedConvention)) {
     throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual.", {
@@ -1312,104 +1401,70 @@ function hasExtractedConventionStructure(convention = {}) {
   );
 }
 
-function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, draftName, scalePdf } = {}) {
-  if (hasExcelSalaryValues(convention)) return convention;
-  const period = periodFromText(scaleMarkdown) || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-  const rows = parseGenericScaleCategories(scaleMarkdown, period);
-  const scaleRows = rows.length ? rows : parseLooseScaleCategories(scaleMarkdown, period);
-  if (!scaleRows.length) return convention;
-  const convenioId = convention.convenio?.convenio_id || normalizeText(draftName || scalePdf?.sourceFileName || "convenio");
-  const categorias = scaleRows.map((row) => ({
-    categoria_id: row.id,
-    convenio_id: convenioId,
-    grupo_nombre: row.group || "",
-    categoria_nombre: row.label,
-    fuente_documento: scalePdf?.sourceFileName || ""
-  })).filter((category) => category.categoria_nombre);
-  const finalCategorias = (convention.categorias || []).length ? convention.categorias : categorias;
-  const categoryByName = new Map(finalCategorias.map((category) => [normalizeText(category.categoria_nombre), category.categoria_id]));
-  const valores = scaleRows.map((row, index) => ({
-    valor_id: `valor-${row.id}-${period}`,
-    escala_id: `escala-${period}`,
-    convenio_id: convenioId,
-    categoria_id: categoryByName.get(normalizeText(row.label)) || row.id,
-    concepto_id: "SUELDO_BASICO",
-    modalidad: row.day ? "daily" : row.hourly ? "hourly" : "monthly",
-    unidad_pago: row.day ? "jornal" : row.hourly ? "hora" : "mensual",
-    periodicidad: "mensual",
-    valor: row.monthly || row.day || row.hourly,
-    moneda: "ARS",
-    vigencia_desde: period,
-    vigencia_hasta: period,
-    fuente_documento: scalePdf?.sourceFileName || "",
-    orden: index + 1
-  })).filter((value) => value.valor !== null && value.valor !== undefined && value.valor !== "");
-  return normalizeConvention({
-    ...convention,
-    convenio: {
-      ...(convention.convenio || {}),
-      convenio_id: convenioId,
-      denominacion: convention.convenio?.denominacion || draftName || scalePdf?.sourceFileName || "Convenio estructurado"
-    },
-    categorias: finalCategorias,
-    escalas: valores.length ? [{
-      escala_id: `escala-${period}`,
-      convenio_id: convenioId,
-      nombre_escala: `Escala ${monthLabel(period) || period}`,
-      periodo_desde: period,
-      periodo_hasta: period,
-      moneda: "ARS",
-      fuente_documento: scalePdf?.sourceFileName || "",
-      valores
-    }] : convention.escalas
-  });
-}
-
 async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes }) {
   const fs = require("fs");
   const path = require("path");
-  const { GoogleGenAI } = require("@google/genai");
 
+  let cctRaw = "";
+  const scaleRawParts = [];
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
 
-  console.log(`[CCT] PDFs recibidos para subir a Gemini: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
-
-  const uploadDir = path.resolve(__dirname, "../uploads");
-  try {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  } catch (e) {}
-
-  const ai = new GoogleGenAI({ apiKey });
-  let cctGeminiFile = null;
-  let scaleGeminiFile = null;
-
-  if (cctPdf?.buffer) {
-    const tmpPath = path.join(uploadDir, `cct-${Date.now()}.pdf`);
-    fs.writeFileSync(tmpPath, cctPdf.buffer);
+  if (cctPdf) {
     try {
-      console.log(`[CCT] Subiendo ${tmpPath} a Gemini File API...`);
-      cctGeminiFile = await ai.files.upload({ file: tmpPath, mimeType: cctPdf.mimeType || "application/pdf" });
+      cctRaw = await extractPdfTextLocal(cctPdf);
     } catch (err) {
-      console.error("Error al subir CCT a Gemini File API:", err.message);
+      console.error("Error al extraer texto local del CCT:", err.message);
+    }
+  }
+  for (const file of allScalePdfs) {
+    try {
+      const raw = await extractPdfTextLocal(file);
+      if (raw) scaleRawParts.push(`## Archivo escala: ${file.sourceFileName || "sin nombre"}\n\n${raw}`);
+    } catch (err) {
+      console.error(`Error al extraer texto local de la escala de CCT (${file.sourceFileName || "sin nombre"}):`, err.message);
     }
   }
 
-  const firstScalePdf = allScalePdfs[0];
-  if (firstScalePdf?.buffer) {
-    const tmpPath = path.join(uploadDir, `escala-${Date.now()}.pdf`);
-    fs.writeFileSync(tmpPath, firstScalePdf.buffer);
-    try {
-      console.log(`[CCT] Subiendo ${tmpPath} a Gemini File API...`);
-      scaleGeminiFile = await ai.files.upload({ file: tmpPath, mimeType: firstScalePdf.mimeType || "application/pdf" });
-    } catch (err) {
-      console.error("Error al subir Escala a Gemini File API:", err.message);
+  const cctMarkdown = convertRawTextToMarkdown(cctRaw);
+  const scaleMarkdown = scaleRawParts.map((raw) => convertRawTextToMarkdown(raw)).filter(Boolean).join("\n\n---\n\n");
+  const cctMarkdownForGemini = useConventionMarkdown ? cctMarkdown : "";
+  const scaleMarkdownForGemini = useConventionMarkdown ? scaleMarkdown : "";
+  console.log(`[CCT] PDFs recibidos para convertir a Markdown: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
+
+  // Debug logging requested by user
+  console.log("\n==================================================");
+  console.log(`[DEBUG] CCT PDF convertido a Markdown (${cctPdf?.sourceFileName || "sin CCT"}):`);
+  console.log("==================================================");
+  console.log(cctMarkdown.slice(0, 1500) + (cctMarkdown.length > 1500 ? "\n... [TRUNCADO PARA CONSOLA]" : ""));
+  console.log("==================================================");
+  console.log(`[DEBUG] Escalas CCT PDF convertidas a Markdown (${allScalePdfs.map((file) => file.sourceFileName).filter(Boolean).join(", ") || "sin escala"}):`);
+  console.log("==================================================");
+  console.log(scaleMarkdown);
+  console.log("==================================================\n");
+
+  // Save to debug files inside uploads
+  try {
+    const uploadDir = path.resolve(__dirname, "../uploads");
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    if (cctMarkdown) {
+      const cctDebugPath = path.join(uploadDir, "debug-cct.md");
+      fs.writeFileSync(cctDebugPath, cctMarkdown, "utf8");
+      console.log(`[DEBUG] Markdown de CCT guardado en: ${cctDebugPath}`);
     }
+    if (scaleMarkdown) {
+      const scaleDebugPath = path.join(uploadDir, "debug-escala-cct.md");
+      fs.writeFileSync(scaleDebugPath, scaleMarkdown, "utf8");
+      console.log(`[DEBUG] Markdown de escala de CCT guardado en: ${scaleDebugPath}`);
+    }
+  } catch (err) {
+    console.error("Error al guardar archivos debug de convenio:", err.message);
   }
 
   const models = geminiModelList(model, fallbackModels);
   const errors = [];
   const tryLocalFallback = (aiError) => {
-    const context = { draftName, notes, cctPdf, scalePdf, aiError };
+    const context = { draftName, notes, cctPdf, scalePdf, cctText: cctMarkdown, scaleText: scaleMarkdown, aiError };
     if (looksLikeHairdressers730(context)) return buildHairdressersConvention(context);
     if (looksLikeCommerce130(context)) return buildCommerceConvention(context);
     if (looksLikePharmacyMendoza(context)) return buildPharmacyConvention(context);
@@ -1421,8 +1476,10 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctGeminiFile,
-        scaleGeminiFile,
+        cctMarkdown: cctMarkdownForGemini,
+        scaleMarkdown: scaleMarkdownForGemini,
+        cctPdf,
+        scalePdf,
         draftName,
         notes
       });
@@ -1440,15 +1497,6 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         code: error.code
       });
       if (!isRetryable(error)) {
-        const localConvention = tryLocalFallback(error.message);
-        if (localConvention) {
-          return {
-            parsedConvention: localConvention,
-            tokenUsage: null,
-            model: localConvention.extraction?.model || "local-pdf-parse",
-            modelsTried: errors.map((item) => item.model)
-          };
-        }
         error.modelsTried = errors.map((item) => item.model);
         throw error;
       }
@@ -1457,7 +1505,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   const last = errors[errors.length - 1] || {};
   if (last.code === "EMPTY_STRUCTURE") {
-    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo.", {
+    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo.", {
       status: 422,
       model: last.model,
       code: "EMPTY_STRUCTURE",
@@ -1485,41 +1533,6 @@ function asciiFold(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase();
-}
-
-async function extractPdfTextLocal(pdfFile) {
-  if (!pdfFile?.buffer) return "";
-  const pdfParse = require("pdf-parse");
-  const data = await pdfParse(pdfFile.buffer);
-  return String(data.text || "");
-}
-
-async function extractPdfLayoutTextLocal(pdfFile) {
-  if (!pdfFile?.buffer) return "";
-  const pdfParse = require("pdf-parse");
-  const data = await pdfParse(pdfFile.buffer, {
-    pagerender: async (pageData) => {
-      const content = await pageData.getTextContent({
-        normalizeWhitespace: false,
-        disableCombineTextItems: false
-      });
-      const rows = [];
-      content.items.forEach((item) => {
-        const y = Math.round(item.transform[5]);
-        let row = rows.find((candidate) => Math.abs(candidate.y - y) <= 1);
-        if (!row) {
-          row = { y, items: [] };
-          rows.push(row);
-        }
-        row.items.push({ x: item.transform[4], text: item.str });
-      });
-      return rows
-        .sort((left, right) => right.y - left.y)
-        .map((row) => row.items.sort((left, right) => left.x - right.x).map((item) => item.text).join(""))
-        .join("\n");
-    }
-  });
-  return String(data.text || "");
 }
 
 function looksLikeCommerce130({ draftName, notes, cctText, scaleText, cctPdf, scalePdf }) {

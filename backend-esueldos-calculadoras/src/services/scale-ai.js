@@ -489,7 +489,7 @@ function buildScalePrompt({ convention, period, periodLabel }) {
     "No devuelvas mas filas de categorias que las categorias conocidas del sistema, salvo que el PDF tenga una categoria nueva realmente distinta.",
     ...automaticZoneLines,
     ...camionerosLines,
-    "Devolve solamente un JSON valido, sin markdown.",
+    "Devolve solamente un JSON valido, sin explicaciones ni bloques de formato.",
     "",
     `Convenio esperado: ${convention.name} (${convention.shortName || convention.id}).`,
     `Fuente/CCT: ${convention.source || "sin fuente cargada"}.`,
@@ -556,7 +556,7 @@ function buildScalePrompt({ convention, period, periodLabel }) {
   ].join("\n");
 }
 
-function convertRawTextToMarkdown(text) {
+function convertRawTextToPlainText(text) {
   if (!text) return "";
   const lines = text.split(/\r?\n/);
   const result = [];
@@ -608,20 +608,17 @@ function convertRawTextToMarkdown(text) {
   return result.join("\n");
 }
 
-async function requestScaleExtractionOnce({ apiKey, model, convention, period, periodLabel, markdownText, pdfBuffer, mimeType, sourceFileName }) {
+async function requestScaleExtractionOnce({ apiKey, model, convention, period, periodLabel, pdfBuffer, mimeType, sourceFileName }) {
   const base64File = Buffer.from(pdfBuffer).toString("base64");
   const parts = [
     { text: buildScalePrompt({ convention, period, periodLabel }) },
     {
-      inlineData: {
-        mimeType: mimeType || "application/pdf",
+      inline_data: {
+        mime_type: mimeType || "application/pdf",
         data: base64File
       }
     }
   ];
-  if (markdownText) {
-    parts.push({ text: `Texto extraido localmente para referencia:\n\n${markdownText}` });
-  }
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
@@ -684,37 +681,7 @@ async function requestScaleExtractionOnce({ apiKey, model, convention, period, p
 }
 
 async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention, period, periodLabel, pdfBuffer, mimeType, sourceFileName }) {
-  const fs = require("fs");
-  const path = require("path");
-
-  let rawText = "";
-  try {
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(pdfBuffer);
-    rawText = String(data.text || "");
-  } catch (err) {
-    console.error("Error al extraer texto del PDF:", err.message);
-  }
-
-  const markdownText = convertRawTextToMarkdown(rawText);
-
-  // Debug output requested by user
-  console.log("\n==================================================");
-  console.log(`[DEBUG] Escala PDF convertida a Markdown (${sourceFileName}):`);
-  console.log("==================================================");
-  console.log(markdownText);
-  console.log("==================================================\n");
-
-  // Save to debug file inside uploads
-  try {
-    const uploadDir = path.resolve(__dirname, "../uploads");
-    fs.mkdirSync(uploadDir, { recursive: true });
-    const debugFilePath = path.join(uploadDir, "debug-escala.md");
-    fs.writeFileSync(debugFilePath, markdownText, "utf8");
-    console.log(`[DEBUG] Markdown de la escala guardado en: ${debugFilePath}`);
-  } catch (err) {
-    console.error("Error al guardar archivo debug de escala:", err.message);
-  }
+  console.log(`[Escala IA] PDF recibido para Gemini: ${sourceFileName || "sin nombre"} (${pdfBuffer?.length || 0} bytes, ${mimeType || "application/pdf"})`);
 
   const models = modelList(model, fallbackModels);
   const errors = [];
@@ -727,7 +694,6 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
         convention,
         period,
         periodLabel,
-        markdownText,
         pdfBuffer,
         mimeType,
         sourceFileName
