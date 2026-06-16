@@ -881,7 +881,9 @@
     if (has("zona", "desfavorable")) return true;
     if (key.includes("agravamiento_indemnizatorio")) return true;
     if (key.includes("total_remunerativo") || key.includes("total_no_remunerativo") || key.includes("total_72_horas") || key.includes("total_horas")) return true;
-    if (key.includes("despido") || key.includes("licencia") || key.includes("vacacion") || key.includes("indemnizacion")) return true;
+    // Solo filtramos conceptos de despido/indemnizacion (no son haberes corrientes)
+    // licencia y vacacion pueden ser haberes del CCT (ej: prima vacacional, adicional por licencia)
+    if (key.includes("despido") || key.includes("indemnizacion_por_despido")) return true;
     if (key.includes("multa") || key.includes("incumplimiento") || key.includes("compensacion_por_interrupcion")) return true;
     if (key === "sac" || key.includes("aguinaldo") || has("sueldo", "anual", "complementario")) return true;
     if (has("aporte", "jubilatorio") || key.includes("sipa") || key.includes("pami") || key.includes("ley_19_032")) return true;
@@ -1206,15 +1208,18 @@
   }
 
   function genericBaseAmount({ concept, basic, remTotal, categoryMonthly, categoryDay, categoryHourly, seniorityBase, noRemScale }) {
-    const base = String(concept.base || "basic");
+    const rawBase = summaryKey(String(concept.base || "basic"));
+    // nonRemunerative scaleValue always uses noRemScale
     if (concept.rowType === "nonRemunerative" && concept.calculation === "scaleValue") return noRemScale;
-    if (base === "remunerative") return remTotal;
-    if (base === "nonRemunerativeScale" || base === "noRemScale") return noRemScale;
-    if (base === "escala_salarial" && concept.rowType === "nonRemunerative") return noRemScale;
-    if (base === "categoryMonthly") return categoryMonthly;
-    if (base === "categoryDay") return categoryDay;
-    if (base === "categoryHourly") return categoryHourly;
-    if (base === "seniorityBase") return seniorityBase;
+    // Base remunerativa total
+    if (["remunerative", "total_remunerativo", "haberes_remunerativos", "remuneracion_sujeta_a_aporte", "total_haberes", "bruto", "gross"].includes(rawBase)) return remTotal;
+    // No remunerativo
+    if (["nonremunerativescale", "noremscale", "no_remunerativo"].includes(rawBase)) return noRemScale;
+    // Escala salarial (basico de categoria)
+    if (["escala_salarial", "sueldo_basico", "basico_de_categoria", "categorymonthly", "basic", "basico", "monto_fijo"].includes(rawBase)) return categoryMonthly || basic;
+    if (rawBase === "categoryday" || rawBase === "valor_dia" || rawBase === "jornal") return categoryDay;
+    if (rawBase === "categoryhourly" || rawBase === "valor_hora") return categoryHourly;
+    if (rawBase === "senioritybase" || rawBase === "basico_con_antiguedad") return seniorityBase;
     return basic;
   }
 
@@ -1237,7 +1242,22 @@
     return Number(fallback || 0) || 0;
   }
 
-  function calcGenericConceptAmount(concept, inputValue, baseValue, period) {
+  function calcGenericConceptAmount(concept, inputValue, baseValue, period, activeCatRow, cat) {
+    const scaleKey = `concept_${concept.id}`;
+    const scaleAmount = firstFinite(
+      periodAmountValue(activeCatRow, period, [scaleKey]),
+      periodAmountValue(cat, period, [scaleKey]),
+      activeCatRow?.[scaleKey],
+      cat?.[scaleKey]
+    );
+
+    if (Number.isFinite(scaleAmount)) {
+      if (conceptUsesQuantity(concept) || concept.calculation === "amountPerUnit") {
+        return scaleAmount * inputValue;
+      }
+      return scaleAmount * inputValue;
+    }
+
     if (conceptUsesQuantity(concept)) {
       const unitAmount = genericConceptUnitAmount(concept, period) || Math.max(0, conceptInputNumber(concept, "_unit", 0));
       return unitAmount * inputValue;
@@ -1380,7 +1400,7 @@
         seniorityBase: basic + seniority,
         noRemScale: noRemScaleBase
       });
-      const amountValue = calcGenericConceptAmount(concept, inputValue, baseValue, period);
+      const amountValue = calcGenericConceptAmount(concept, inputValue, baseValue, period, activeCatRow, cat);
       const rowType = normalizedConceptRowType(concept);
       const target = rowType === "nonRemunerative" ? noRemRows : rowType === "deduction" ? deductionRows : remRows;
       const unitAmount = conceptUsesQuantity(concept)

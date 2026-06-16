@@ -1092,6 +1092,7 @@ function toRuntimeConvention(input = {}) {
       concepts: excel.conceptos.map((concept) => {
         const calculation = runtimeConceptCalculation(concept);
         const amountValue = numericAmount(concept.importe_fijo);
+        const isLiquidable = concept.es_liquidable !== false;
         return {
           id: concept.concepto_id,
           label: concept.nombre,
@@ -1106,6 +1107,7 @@ function toRuntimeConvention(input = {}) {
           unitAmount: calculation === "amountPerUnit" ? amountValue : null,
           percent: numericAmount(concept.porcentaje) || 0,
           base: concept.base_calculo || "requiere_revision_manual",
+          defaultValue: isLiquidable,
           detail: concept.condicion || concept.formula_base || concept.fuente_documento
         };
       }).filter((concept) => concept.id && concept.label)
