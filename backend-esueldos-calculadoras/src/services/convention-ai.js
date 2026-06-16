@@ -1102,9 +1102,9 @@ function convertRawTextToMarkdown(text) {
 }
 
 async function callGeminiJson({ apiKey, model, parts, label }) {
-  const inlineCount = parts.filter((part) => part.inline_data || part.inlineData).length;
-  const markdownCount = parts.filter((part) => /Markdown/i.test(part.text || "")).length;
-  console.log(`[Gemini ${label}] adjuntos=${inlineCount} markdown=${markdownCount} partes=${parts.length}`);
+  console.log(`[Gemini ${label}] partes=${parts.length}`);
+  const { GoogleGenAI } = require("@google/genai");
+  const ai = new GoogleGenAI({ apiKey });
   const generationConfig = {
     temperature: 0.08,
     topP: 0.72,
@@ -1114,33 +1114,26 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
   if (/gemini-2\.5/i.test(model)) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey
-    },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts }],
-      generationConfig
-    })
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new GeminiConventionError(payload?.error?.message || `Gemini respondio HTTP ${response.status}`, {
-      status: response.status,
+  try {
+    const response = await ai.models.generateContent({
       model,
-      code: payload?.error?.status
+      contents: parts,
+      config: generationConfig
+    });
+    const usage = response.usageMetadata || null;
+    if (usage) {
+      console.log(`[Gemini ${label}] modelo=${model} entrada=${usage.promptTokenCount || 0} salida=${usage.candidatesTokenCount || 0}`);
+    }
+    const text = response.text;
+    if (!text) throw new GeminiConventionError(`Gemini no devolvio texto para ${label}.`, { status: 502, model });
+    return { parsed: parseGeminiJson(text), tokenUsage: usage };
+  } catch (error) {
+    throw new GeminiConventionError(error.message, {
+      status: error.status || 502,
+      model,
+      code: error.status
     });
   }
-  const usage = payload?.usageMetadata || null;
-  const finishReason = payload?.candidates?.[0]?.finishReason || "";
-  if (usage) {
-    console.log(`[Gemini ${label}] modelo=${model} entrada=${usage.promptTokenCount || 0} salida=${usage.candidatesTokenCount || usage.outputTokenCount || 0} total=${usage.totalTokenCount || 0} finish=${finishReason || "-"}`);
-  }
-  const text = extractGeminiText(payload);
-  if (!text) throw new GeminiConventionError(`Gemini no devolvio texto para ${label}.`, { status: 502, model });
-  return { parsed: parseGeminiJson(text), tokenUsage: usage };
 }
 
 async function requestConventionOnceLegacy({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
@@ -1210,13 +1203,10 @@ async function requestConventionOnceLegacy({ apiKey, model, cctMarkdown, scaleMa
   return enrichExcelConventionWithLocalScale(parsed, { scaleMarkdown, draftName, scalePdf });
 }
 
-async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes }) {
-  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
-  if (cctPdf?.sourceFileName) {
-    parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
-  }
-  if (cctMarkdown) {
-    parts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
+async function requestConventionStructureOnce({ apiKey, model, cctGeminiFile, draftName, notes }) {
+  const parts = [buildConventionPrompt({ draftName, notes })];
+  if (cctGeminiFile) {
+    parts.push(cctGeminiFile);
   }
   let result;
   try {
@@ -1224,34 +1214,27 @@ async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctP
   } catch (error) {
     if (error.code !== "INVALID_JSON") throw error;
     console.warn("[Gemini convenio] JSON invalido. Reintentando extraccion compacta de convenio.");
-    const retryParts = [{ text: buildConventionCorePrompt({ draftName, notes }) }];
-    if (cctPdf?.sourceFileName) retryParts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
-    if (cctMarkdown) retryParts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
+    const retryParts = [buildConventionCorePrompt({ draftName, notes })];
+    if (cctGeminiFile) retryParts.push(cctGeminiFile);
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "convenio-core" });
   }
   return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
 }
 
-async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories = [], baseConcepts = [] }) {
-  if (!scaleMarkdown) {
+async function requestScaleStructureOnce({ apiKey, model, scaleGeminiFile, draftName, notes, baseCategories = [], baseConcepts = [] }) {
+  if (!scaleGeminiFile) {
     return { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
   }
-  const parts = [{ text: buildScalePrompt({ draftName, notes, baseCategories, baseConcepts }) }];
-  if (scalePdf?.sourceFileName) {
-    parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
-  }
-  if (scaleMarkdown) {
-    parts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
-  }
+  const parts = [buildScalePrompt({ draftName, notes, baseCategories, baseConcepts })];
+  parts.push(scaleGeminiFile);
   let result;
   try {
     result = await callGeminiJson({ apiKey, model, parts, label: "escala" });
   } catch (error) {
     if (error.code !== "INVALID_JSON") throw error;
     console.warn("[Gemini escala] JSON invalido. Reintentando extraccion compacta de escala.");
-    const retryParts = [{ text: buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts }) }];
-    if (scalePdf?.sourceFileName) retryParts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
-    retryParts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
+    const retryParts = [buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts })];
+    retryParts.push(scaleGeminiFile);
     result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "escala-core" });
   }
   return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
@@ -1289,16 +1272,16 @@ function mergeTokenUsage(...usages) {
   }), {});
 }
 
-async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
-  const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
+async function requestConventionOnce({ apiKey, model, cctGeminiFile, scaleGeminiFile, draftName, notes }) {
+  const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctGeminiFile, draftName, notes });
   const baseCategories = conventionResult.parsed?.categorias || [];
   const baseConcepts = conventionResult.parsed?.conceptos || [];
-  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories, baseConcepts });
+  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleGeminiFile, draftName, notes, baseCategories, baseConcepts });
   const merged = mergeExcelConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName });
   console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);
   console.log(`[CCT merge] final: categorias=${merged.categorias?.length || 0} conceptos=${merged.conceptos?.length || 0} escalas=${merged.escalas?.length || 0}`);
-  const parsedConvention = enrichExcelConventionWithLocalScale(merged, { scaleMarkdown, draftName, scalePdf });
+  const parsedConvention = enrichExcelConventionWithLocalScale(merged, { scaleMarkdown: "", draftName });
   console.log(`[CCT merge] enriquecido: categorias=${parsedConvention.categorias?.length || 0} conceptos=${parsedConvention.conceptos?.length || 0} escalas=${parsedConvention.escalas?.length || 0}`);
   if (!hasExtractedConventionStructure(parsedConvention)) {
     throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual.", {
@@ -1385,68 +1368,48 @@ function enrichExcelConventionWithLocalScale(convention = {}, { scaleMarkdown, d
 async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes }) {
   const fs = require("fs");
   const path = require("path");
+  const { GoogleGenAI } = require("@google/genai");
 
-  let cctRaw = "";
-  const scaleRawParts = [];
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
 
-  if (cctPdf) {
-    try {
-      cctRaw = await extractPdfTextLocal(cctPdf);
-    } catch (err) {
-      console.error("Error al extraer texto local del CCT:", err.message);
-    }
-  }
-  for (const file of allScalePdfs) {
-    try {
-      const raw = await extractPdfTextLocal(file);
-      if (raw) scaleRawParts.push(`## Archivo escala: ${file.sourceFileName || "sin nombre"}\n\n${raw}`);
-    } catch (err) {
-      console.error(`Error al extraer texto local de la escala de CCT (${file.sourceFileName || "sin nombre"}):`, err.message);
-    }
-  }
+  console.log(`[CCT] PDFs recibidos para subir a Gemini: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
 
-  const cctMarkdown = convertRawTextToMarkdown(cctRaw);
-  const scaleMarkdown = scaleRawParts.map((raw) => convertRawTextToMarkdown(raw)).filter(Boolean).join("\n\n---\n\n");
-  const cctMarkdownForGemini = useConventionMarkdown ? cctMarkdown : "";
-  const scaleMarkdownForGemini = useConventionMarkdown ? scaleMarkdown : "";
-  console.log(`[CCT] PDFs recibidos para convertir a Markdown: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
-
-  // Debug logging requested by user
-  console.log("\n==================================================");
-  console.log(`[DEBUG] CCT PDF convertido a Markdown (${cctPdf?.sourceFileName || "sin CCT"}):`);
-  console.log("==================================================");
-  console.log(cctMarkdown.slice(0, 1500) + (cctMarkdown.length > 1500 ? "\n... [TRUNCADO PARA CONSOLA]" : ""));
-  console.log("==================================================");
-  console.log(`[DEBUG] Escalas CCT PDF convertidas a Markdown (${allScalePdfs.map((file) => file.sourceFileName).filter(Boolean).join(", ") || "sin escala"}):`);
-  console.log("==================================================");
-  console.log(scaleMarkdown);
-  console.log("==================================================\n");
-
-  // Save to debug files inside uploads
+  const uploadDir = path.resolve(__dirname, "../uploads");
   try {
-    const uploadDir = path.resolve(__dirname, "../uploads");
     fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (e) {}
 
-    if (cctMarkdown) {
-      const cctDebugPath = path.join(uploadDir, "debug-cct.md");
-      fs.writeFileSync(cctDebugPath, cctMarkdown, "utf8");
-      console.log(`[DEBUG] Markdown de CCT guardado en: ${cctDebugPath}`);
+  const ai = new GoogleGenAI({ apiKey });
+  let cctGeminiFile = null;
+  let scaleGeminiFile = null;
+
+  if (cctPdf?.buffer) {
+    const tmpPath = path.join(uploadDir, `cct-${Date.now()}.pdf`);
+    fs.writeFileSync(tmpPath, cctPdf.buffer);
+    try {
+      console.log(`[CCT] Subiendo ${tmpPath} a Gemini File API...`);
+      cctGeminiFile = await ai.files.upload({ file: tmpPath, mimeType: cctPdf.mimeType || "application/pdf" });
+    } catch (err) {
+      console.error("Error al subir CCT a Gemini File API:", err.message);
     }
-    if (scaleMarkdown) {
-      const scaleDebugPath = path.join(uploadDir, "debug-escala-cct.md");
-      fs.writeFileSync(scaleDebugPath, scaleMarkdown, "utf8");
-      console.log(`[DEBUG] Markdown de escala de CCT guardado en: ${scaleDebugPath}`);
+  }
+
+  const firstScalePdf = allScalePdfs[0];
+  if (firstScalePdf?.buffer) {
+    const tmpPath = path.join(uploadDir, `escala-${Date.now()}.pdf`);
+    fs.writeFileSync(tmpPath, firstScalePdf.buffer);
+    try {
+      console.log(`[CCT] Subiendo ${tmpPath} a Gemini File API...`);
+      scaleGeminiFile = await ai.files.upload({ file: tmpPath, mimeType: firstScalePdf.mimeType || "application/pdf" });
+    } catch (err) {
+      console.error("Error al subir Escala a Gemini File API:", err.message);
     }
-  } catch (err) {
-    console.error("Error al guardar archivos debug de convenio:", err.message);
   }
 
   const models = geminiModelList(model, fallbackModels);
-  console.log(`[CCT] CONVENTION_USE_MARKDOWN=${useConventionMarkdown ? "true" : "false"} (${useConventionMarkdown ? "solo Markdown para Gemini" : "sin texto Markdown para Gemini"})`);
   const errors = [];
   const tryLocalFallback = (aiError) => {
-    const context = { draftName, notes, cctPdf, scalePdf, cctText: cctMarkdown, scaleText: scaleMarkdown, aiError };
+    const context = { draftName, notes, cctPdf, scalePdf, aiError };
     if (looksLikeHairdressers730(context)) return buildHairdressersConvention(context);
     if (looksLikeCommerce130(context)) return buildCommerceConvention(context);
     if (looksLikePharmacyMendoza(context)) return buildPharmacyConvention(context);
@@ -1458,10 +1421,8 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctMarkdown: cctMarkdownForGemini,
-        scaleMarkdown: scaleMarkdownForGemini,
-        cctPdf,
-        scalePdf,
+        cctGeminiFile,
+        scaleGeminiFile,
         draftName,
         notes
       });

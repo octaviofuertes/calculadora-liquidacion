@@ -443,7 +443,14 @@ function buildScalePrompt({ convention, period, periodLabel }) {
   const categories = (convention.categories || []).map((cat) => `${cat.id}: ${cat.label}`).join("; ");
   const zones = (convention.zones || []).map((zone) => `${zone.id}: ${zone.label}${zone.coef ? ` coef ${zone.coef}` : ""}`).join("; ");
   const periods = (convention.periods || []).map((item) => item.label || item.id).join(", ");
-  const itemKeys = convention.items ? Object.keys(convention.items).join(", ") : "";
+  const knownConcepts = [
+    ...(convention.liquidationModel?.concepts || []),
+    ...(convention.liquidationModel?.deductions || []),
+    ...(convention.liquidationModel?.retentions || [])
+  ];
+  const itemKeys = knownConcepts.length 
+    ? knownConcepts.map(c => `${c.id}: ${c.label}`).join("; ") 
+    : (convention.items ? Object.keys(convention.items).join(", ") : "");
   const hasAutomaticZoneCoef = (convention.zones || []).some((zone) => Number(zone.coef) && Number(zone.coef) !== 1);
   const automaticZoneLines = hasAutomaticZoneCoef
     ? [
@@ -462,7 +469,8 @@ function buildScalePrompt({ convention, period, periodLabel }) {
     : [];
 
   return [
-    "Sos leIA, asistente de auditoria de escalas salariales de eSueldos.",
+    "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos, extrayendo haberes remunerativos, no remunerativos, retenciones, licencias y las escalas salariales.",
+    "Debe estar sí o sí el cálculo para cada concepto. Si el valor es extraído de una tabla, indícalo explícitamente en los detalles o notas. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos y poder calcular cada haber.",
     "Lee el documento o imagen adjunta e interpreta directamente su contenido como agente IA multimodal para extraer importes de escala salarial para revision humana.",
     "La unica fuente factual de importes es el archivo adjunto. El convenio seleccionado y sus categorias conocidas son una ayuda para vincular ids, no una fuente de valores. No copies importes anteriores ni completes filas por analogia.",
     "Si el adjunto es una imagen o contiene tablas representadas visualmente, analiza encabezados, filas, columnas y relaciones espaciales directamente como agente IA multimodal.",
@@ -472,9 +480,9 @@ function buildScalePrompt({ convention, period, periodLabel }) {
     "No inventes importes. Si un dato no esta claro, usa null y agregalo en warnings.",
     "El campo confidence debe medir la confianza de extraccion de datos: usa 85 a 95 si detectaste la mayoria de categorias conocidas con importes claros; usa menos de 50 solo si faltan importes o hay dudas importantes.",
     "Para planillas extensas, prioriza una fila por categoria conocida y una fila por adicional/concepto salarial conocido. Evita duplicados y manten notes vacio salvo que sea necesario.",
-    "Si el documento contiene una tabla separada titulada ADICIONALES, PLUS, VIATICOS u OTROS CONCEPTOS, carga esas filas exclusivamente en additionals. No mezcles adicionales con categories aunque tengan importes monetarios.",
-    "Trata como adicionales los importes por kilometro, viaticos, comida, pernoctada, premios, titulos, plus, quebranto de caja, movilidad y conceptos similares. Categories debe contener solamente categorias laborales de la escala basica.",
+    "REGLA DE ADICIONALES: Si el archivo de escala cuenta con haberes o adicionales (ya sea en cuadros separados o junto a las escalas), relacionalos con los haberes/adicionales ya extraídos del CCT conocidos del sistema. Si hay un valor nuevo para haberes, actualízalo al nuevo valor en el array 'additionals'. NO extraigas estas tablas de adicionales o haberes como categorías laborales en 'categories', y no los dupliques.",
     "REGLA CRITICA DE MONTOS: Extrae unicamente valores monetarios fijos. Si un adicional o concepto se define como un porcentaje (ej. 10%, 1%, etc.), cargalo como null en los importes y si es necesario indicalo en notes. NUNCA extraigas un porcentaje como si fuera un monto en pesos (ej. NO extraigas 10% como 10).",
+    "REGLA CRITICA DE COLUMNAS NO REMUNERATIVAS: extrae siempre los importes de sumas no remunerativas, incrementos solidarios o asignaciones no remunerativas DIRECTAMENTE en la propiedad 'nonRemunerative' de la categoria correspondiente dentro del array 'categories'. NO los extraigas en 'additionals'.",
     "REGLA CRITICA DE NO REMUNERATIVOS: si la escala indica que la suma no remunerativa genera antiguedad no remunerativa o presentismo no remunerativo, extrae esas reglas separadas en nonRemunerativeRules con seniorityEnabled, seniorityPercentPerYear, seniorityCapYears, presentismEnabled, presentismPercent y presentismRequiresNoUnjustifiedAbsence. Esos porcentajes son reglas, no importes monetarios.",
     "Si el convenio usa zonas con coeficientes ya cargados en el sistema, no repitas la misma categoria por cada zona: carga la categoria base/general una sola vez y registra las zonas en zones con coefficient.",
     "REGLA CRITICA DE ZONA GENERAL: si la tabla muestra una columna General, Base, Zona general, Zona base o Sin adicional zonal, incluila siempre en zones como { id: \"general\", label: \"General\", coefficient: 1 }. No la omitas aunque el coeficiente 1 sea implicito. Marca las filas de esa columna con zone: \"general\".",
