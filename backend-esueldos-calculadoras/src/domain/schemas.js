@@ -223,6 +223,7 @@ module.exports = {
   liquidationResultSchema,
   savedLiquidationSchema,
   conventionSchema,
+  legacyConventionSchema,
   userCreateSchema,
   userUpdateSchema,
   parseOrThrow

@@ -165,16 +165,20 @@ async function getAdditionals(db, convenioId) {
 }
 
 async function getScaleValues(db, convenioId, filters = {}) {
+  const { canonCategoryId, canonConceptId } = require("../models/convenio.model");
   const scales = await getScales(db, convenioId);
   return scales
     .flatMap((scale) => (scale.valores || []).map((value) => ({ ...value, escala_id: value.escala_id || scale.escala_id, nombre_escala: scale.nombre_escala || "" })))
     .filter((value) => {
       if (filters.escala_id && value.escala_id !== filters.escala_id) return false;
       if (filters.scaleId && value.escala_id !== filters.scaleId) return false;
-      if (filters.categoria_id && value.categoria_id !== filters.categoria_id) return false;
-      if (filters.categoryId && value.categoria_id !== filters.categoryId) return false;
-      if (filters.concepto_id && value.concepto_id !== filters.concepto_id) return false;
-      if (filters.conceptId && value.concepto_id !== filters.conceptId) return false;
+      
+      const filterCat = filters.categoria_id || filters.categoryId;
+      if (filterCat && value.categoria_id !== canonCategoryId(filterCat)) return false;
+      
+      const filterConcept = filters.concepto_id || filters.conceptId;
+      if (filterConcept && value.concepto_id !== canonConceptId(filterConcept)) return false;
+      
       if (filters.zona && value.zona !== filters.zona) return false;
       if (filters.zone && value.zona !== filters.zone) return false;
       return true;

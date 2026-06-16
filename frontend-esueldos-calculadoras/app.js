@@ -137,7 +137,7 @@
 
   async function fetchCatalog() {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     try {
       return await fetch(apiUrl("/api/catalog"), {
         cache: "no-store",
@@ -4065,7 +4065,7 @@
           </span>
           <em class="${statusClass}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</em>
         </button>
-        ${canDelete ? `<button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(convName)}">
+        <button class="convention-draft-trash" type="button" data-delete-convention-draft-id="${escapeHtml(draft.id)}" aria-label="Eliminar borrador ${escapeHtml(convName)}">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 6h18"></path>
             <path d="M8 6V4h8v2"></path>
@@ -4073,7 +4073,7 @@
             <path d="M10 11v5"></path>
             <path d="M14 11v5"></path>
           </svg>
-        </button>` : ""}
+        </button>
       </div>`;
     }).join("");
     if (!conventionBuilderState.selected || !items.some((item) => item.id === conventionBuilderState.selected.id)) {

@@ -1353,6 +1353,12 @@ function validateConvenioBusinessRules(convenio) {
 }
 
 function parseConvenio(input) {
+  if (input && typeof input === "object") {
+    assertNoDuplicates(input.categorias, "categoria_id", "categorias");
+    assertNoDuplicates(input.conceptos, "concepto_id", "conceptos");
+    assertNoDuplicates(input.adicionales, "adicional_id", "adicionales");
+    assertNoDuplicates(input.escalas, "escala_id", "escalas");
+  }
   const result = convenioSchema.safeParse(input);
   if (!result.success) {
     throw validationError("Convenio Excel invalido", result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })));
@@ -1415,5 +1421,7 @@ module.exports = {
   validateConvenioResult,
   toRuntimeConvention,
   parseConvenio,
-  parseEscala
+  parseEscala,
+  canonCategoryId,
+  canonConceptId
 };

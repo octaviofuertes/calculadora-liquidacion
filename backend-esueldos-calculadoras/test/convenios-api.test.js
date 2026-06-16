@@ -177,10 +177,10 @@ test("API convenios guarda estructura, escala y consultas para calculadora", asy
     assert.equal(list.length, 1);
 
     const categorias = await fetch(`${baseUrl}/api/convenios/cct-prueba-001/categorias`).then((res) => res.json());
-    assert.deepEqual(categorias.map((item) => item.categoria_id), ["cat-a"]);
+    assert.deepEqual(categorias.map((item) => item.categoria_id), ["CAT_A"]);
 
     const conceptos = await fetch(`${baseUrl}/api/convenios/cct-prueba-001/conceptos`).then((res) => res.json());
-    assert.deepEqual(conceptos.map((item) => item.concepto_id), ["basico"]);
+    assert.deepEqual(conceptos.map((item) => item.concepto_id), ["SUELDO_BASICO"]);
 
     const escalaResponse = await fetch(`${baseUrl}/api/convenios/cct-prueba-001/escalas`, {
       method: "POST",

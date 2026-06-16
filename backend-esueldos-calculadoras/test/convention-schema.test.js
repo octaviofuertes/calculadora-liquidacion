@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadCatalogFromBackend, normalizeCatalog } = require("../src/catalog-loader");
-const { conventionSchema } = require("../src/domain/schemas");
+const { legacyConventionSchema: conventionSchema } = require("../src/domain/schemas");
 
 test("todos los convenios del catalogo cumplen el schema declarativo", () => {
   const catalog = normalizeCatalog(loadCatalogFromBackend());
