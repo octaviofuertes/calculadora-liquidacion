@@ -765,7 +765,7 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
     if (!hasExtractedStructure) {
       res.status(422).json({
         ok: false,
-        errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar lectura Markdown/modelo." }],
+        errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo." }],
         data: null
       });
       return;
