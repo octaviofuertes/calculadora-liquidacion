@@ -290,6 +290,80 @@ function updatedDocument(result) {
   return Object.prototype.hasOwnProperty.call(result, "value") ? result.value : result;
 }
 
+async function updateApprovedConventionFromDraft(draft, convention, now = new Date()) {
+  const conventionId = draft.approvedConventionId || convention.convenio?.convenio_id || convention.convenio?.denominacion || draft._id.toString();
+  convention.convenio.convenio_id = conventionId;
+  const existing = await db.collection("conventions").findOne({ id: conventionId });
+  if (!existing) return;
+  await db.collection("conventions").replaceOne(
+    { id: conventionId },
+    {
+      _id: existing._id,
+      order: existing.order,
+      id: conventionId,
+      ...convention,
+      sourceDraftId: draft._id.toString(),
+      approvedAt: existing.approvedAt || draft.reviewedAt || now,
+      updatedAt: now
+    }
+  );
+}
+
+function conventionToEditableDraft(convention) {
+  if (convention.schemaVersion === EXCEL_SCHEMA_VERSION) return convention;
+  const periods = Array.isArray(convention.periods) && convention.periods.length ? convention.periods : [{ id: "", label: "" }];
+  return normalizeConvention({
+    schemaVersion: EXCEL_SCHEMA_VERSION,
+    convenio: {
+      convenio_id: convention.id,
+      denominacion: convention.name || convention.shortName || convention.id,
+      fuente_documento: convention.source || ""
+    },
+    ambitos: (convention.zones || []).map((zone, index) => ({
+      ambito_id: zone.id || `ambito-${index + 1}`,
+      tipo_ambito: "zona",
+      descripcion: zone.label || zone.id || ""
+    })),
+    categorias: (convention.categories || []).map((category) => ({
+      categoria_id: category.id,
+      categoria_nombre: category.label || category.name || category.id,
+      grupo_nombre: category.group || "",
+      descripcion: category.description || "",
+      modalidad_aplicable: category.salaryType || convention.type || ""
+    })),
+    conceptos: ((convention.liquidationModel || {}).concepts || []).map((concept) => ({
+      concepto_id: concept.id,
+      nombre: concept.label || concept.id,
+      tipo_concepto: "haber",
+      naturaleza: concept.rowType === "nonRemunerative" ? "no_remunerativo" : concept.rowType === "deduction" ? "retencion" : "remunerativo",
+      unidad_calculo: concept.inputType || "",
+      formula_base: concept.detail || concept.calculation || "",
+      base_calculo: concept.base || "",
+      porcentaje: concept.percent || "",
+      importe_fijo: concept.amount || concept.unitAmount || "",
+      condicion: concept.detail || ""
+    })),
+    escalas: periods.map((period, index) => ({
+      escala_id: `escala-${index + 1}`,
+      nombre_escala: period.label || period.id || `Periodo ${index + 1}`,
+      periodo_desde: period.id || "",
+      moneda: "ARS",
+      valores: (convention.categories || []).flatMap((category) => {
+        const periodId = period.id || "";
+        const monthly = category.monthlyByPeriod?.[periodId] ?? category.monthly;
+        const day = category.dayByPeriod?.[periodId] ?? category.day;
+        const hourly = category.hourlyByPeriod?.[periodId] ?? category.hourly;
+        const values = [];
+        if (monthly !== undefined && monthly !== null && monthly !== "") values.push({ concepto_id: "SUELDO_BASICO", categoria_id: category.id, unidad_pago: "mensual", periodicidad: periodId, valor: monthly });
+        if (day !== undefined && day !== null && day !== "") values.push({ concepto_id: "VALOR_JORNAL", categoria_id: category.id, unidad_pago: "jornal", periodicidad: periodId, valor: day });
+        if (hourly !== undefined && hourly !== null && hourly !== "") values.push({ concepto_id: "VALOR_HORA", categoria_id: category.id, unidad_pago: "hora", periodicidad: periodId, valor: hourly });
+        return values;
+      }).map((value, valueIndex) => ({ valor_id: `valor-${index + 1}-${valueIndex + 1}`, escala_id: `escala-${index + 1}`, ...value }))
+    })),
+    adicionales: []
+  }, { fallbackName: convention.name || convention.id, useFallbackDefaults: false });
+}
+
 async function getConventionOr404(conventionId) {
   return catalogService.getConventionOrThrow(db, conventionId);
 }
@@ -731,6 +805,9 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
         aiModelsTried = error.modelsTried || [];
         console.error("[CCT] Error estructurando con Gemini:", aiError);
         parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), aiError]));
+        if (/alta demanda|overloaded|unavailable|try again later|503/i.test(aiError)) {
+          aiStatus = "PENDIENTE_IA";
+        }
       }
     }
 
@@ -763,12 +840,16 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       || parsedConvention.adicionales.length
       || parsedConvention.ambitos.length;
     if (!hasExtractedStructure) {
-      res.status(422).json({
-        ok: false,
-        errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo." }],
-        data: null
-      });
-      return;
+      if (aiStatus === "PENDIENTE_IA") {
+        parsedConvention.convenio.fuente_documento = parsedConvention.convenio.fuente_documento || "Pendiente de lectura por Gemini.";
+      } else {
+        res.status(422).json({
+          ok: false,
+          errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo." }],
+          data: null
+        });
+        return;
+      }
     }
 
     const files = [cctFile, ...scaleFiles].filter(Boolean).map((file) => ({
@@ -831,10 +912,14 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
       { $set: update },
       { returnDocument: "after" }
     );
-    const updatedDraft = updatedDocument(result);
+    let updatedDraft = updatedDocument(result);
+    if (updatedDraft && update.parsedConvention) updatedDraft = { ...updatedDraft, parsedConvention: update.parsedConvention };
     if (!updatedDraft) {
       res.status(404).json({ error: "Borrador no encontrado" });
       return;
+    }
+    if (updatedDraft.status === "APROBADO" && update.parsedConvention) {
+      await updateApprovedConventionFromDraft(updatedDraft, update.parsedConvention, update.updatedAt);
     }
     res.json(serializeConventionDraft(updatedDraft));
   } catch (error) {
@@ -1415,6 +1500,50 @@ app.get("/api/conventions/:id", async (req, res, next) => {
     }
     const { _id, order, updatedAt, ...payload } = convention;
     res.json(payload.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(payload) : payload);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/conventions/:id/edit-draft", async (req, res, next) => {
+  try {
+    const convention = await db.collection("conventions").findOne({ id: req.params.id });
+    if (!convention) {
+      res.status(404).json({ error: "Convenio no encontrado" });
+      return;
+    }
+    const existingDraft = await db.collection("conventionDrafts").findOne({
+      status: "APROBADO",
+      approvedConventionId: convention.id
+    });
+    if (existingDraft) {
+      res.json(serializeConventionDraft(existingDraft));
+      return;
+    }
+    const { _id, order, updatedAt, approvedAt, sourceDraftId, ...rawConvention } = convention;
+    const parsedConvention = conventionToEditableDraft(rawConvention);
+    const now = new Date();
+    const doc = {
+      name: parsedConvention.convenio?.denominacion || parsedConvention.name || convention.id,
+      status: "APROBADO",
+      aiStatus: "EDITABLE_DESDE_CONVENIO",
+      aiError: null,
+      aiModel: null,
+      aiModelsTried: [],
+      parsedConvention,
+      approvedConventionId: convention.id,
+      processingPipeline: null,
+      tokenUsage: null,
+      auditNote: "",
+      files: [],
+      reviewedAt: approvedAt || now,
+      reviewedBy: "Convenio cargado",
+      reviewNote: "Borrador editable creado desde convenio activo.",
+      createdAt: now,
+      updatedAt: now
+    };
+    const insertResult = await db.collection("conventionDrafts").insertOne(doc);
+    res.status(201).json(serializeConventionDraft({ _id: insertResult.insertedId, ...doc }));
   } catch (error) {
     next(error);
   }

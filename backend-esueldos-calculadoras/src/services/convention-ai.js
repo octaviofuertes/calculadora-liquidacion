@@ -1,5 +1,6 @@
 const { geminiModelList } = require("../gemini-config");
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
+const pdfParse = require("pdf-parse");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
 const useGeminiFilesApi = String(process.env.GEMINI_USE_FILES_API || "true").toLowerCase() !== "false";
 const GEMINI_API_BASE_URL = process.env.GEMINI_API_BASE_URL || "https://generativelanguage.googleapis.com";
@@ -1074,6 +1075,17 @@ function pdfFilePart(file, uploadedFile) {
   };
 }
 
+async function extractPdfText(file) {
+  if (!file?.buffer || !String(file.mimeType || "").includes("pdf")) return "";
+  try {
+    const result = await pdfParse(file.buffer);
+    return String(result?.text || "").trim();
+  } catch (error) {
+    console.warn(`[PDF texto] No se pudo leer ${file.sourceFileName || "archivo.pdf"}: ${error.message}`);
+    return "";
+  }
+}
+
 async function getGeminiFile({ apiKey, name }) {
   const { GoogleGenAI } = require("@google/genai");
   const ai = new GoogleGenAI({ apiKey });
@@ -1384,8 +1396,8 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
 
   // Markdown text extraction removed — Gemini reads PDFs directly via multimodal
-  const cctMarkdown = "";
-  const scaleMarkdown = "";
+  const cctMarkdown = await extractPdfText(cctPdf);
+  const scaleMarkdown = (await Promise.all(allScalePdfs.map(extractPdfText))).filter(Boolean).join("\n\n");
 
   console.log(`[CCT] PDFs recibidos: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
 
@@ -1404,8 +1416,8 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctMarkdown: "",
-        scaleMarkdown: "",
+        cctMarkdown,
+        scaleMarkdown,
         cctPdf,
         scalePdf,
         draftName,
@@ -1425,6 +1437,15 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         code: error.code
       });
       if (!isRetryable(error)) {
+        const localFallback = tryLocalFallback(error.message);
+        if (localFallback && hasExtractedConventionStructure(localFallback)) {
+          return {
+            parsedConvention: localFallback,
+            tokenUsage: null,
+            model: localFallback.extraction?.model || "local-pdf-parse",
+            modelsTried: errors.map((item) => item.model)
+          };
+        }
         error.modelsTried = errors.map((item) => item.model);
         throw error;
       }
@@ -1432,6 +1453,15 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   }
 
   const last = errors[errors.length - 1] || {};
+  const localFallback = tryLocalFallback(last.message);
+  if (localFallback && hasExtractedConventionStructure(localFallback)) {
+    return {
+      parsedConvention: localFallback,
+      tokenUsage: null,
+      model: localFallback.extraction?.model || "local-pdf-parse",
+      modelsTried: errors.map((item) => item.model)
+    };
+  }
   if (last.code === "EMPTY_STRUCTURE") {
     throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo.", {
       status: 422,
