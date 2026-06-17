@@ -1161,6 +1161,27 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
   if (/gemini-2\.5/i.test(model)) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
+
+  // --- RAG: integrar base de conocimiento si está configurada ---
+  const ragStoreName = process.env.GEMINI_RAG_STORE_NAME;
+  if (ragStoreName) {
+    const fileSearchTool = {
+      fileSearch: {
+        fileSearchStoreNames: [ragStoreName],
+        topK: Number(process.env.GEMINI_RAG_TOP_K || 5)
+      }
+    };
+    const metadataFilter = process.env.GEMINI_RAG_METADATA_FILTER;
+    if (metadataFilter) {
+      fileSearchTool.fileSearch.metadataFilter = metadataFilter;
+    }
+    generationConfig.tools = [fileSearchTool];
+    // IMPORTANTE: responseMimeType:"application/json" es incompatible con tools (fileSearch).
+    // Cuando RAG está activo, se elimina el modo JSON forzado y se parsea el texto libre.
+    delete generationConfig.responseMimeType;
+    console.log(`[Gemini ${label}] RAG store=${ragStoreName} topK=${fileSearchTool.fileSearch.topK}${metadataFilter ? ` filtro="${metadataFilter}"` : ""} [modo texto libre]`);
+  }
+
   try {
     const response = await ai.models.generateContent({
       model,
