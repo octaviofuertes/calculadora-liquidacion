@@ -3602,7 +3602,6 @@
       </div>
       <div class="scale-mini-grid">
         <div><span>Lectura IA</span><strong>${escapeHtml(scale.aiStatus || "-")}</strong></div>
-        <div><span>Confianza</span><strong>${Number(parsed.confidence || 0)}%</strong></div>
         <div><span>Aprobada</span><strong>${escapeHtml(shortDate(scale.approvedAt))}</strong></div>
   
       </div>
@@ -4124,7 +4123,6 @@
     const conceptCount = (conv.conceptos || conv.liquidationModel?.concepts || []).length;
     const scaleValueCount = (conv.escalas || []).reduce((total, scale) => total + (scale.valores || []).length, 0);
     return `<div class="scale-mini-grid">
-      <div><span>Confianza</span><strong>${Number(conv.confidence || 0)}%</strong></div>
       <div><span>Categorias</span><strong>${categoryCount}</strong></div>
       <div><span>Conceptos</span><strong>${conceptCount}</strong></div>
       <div><span>Valores escala</span><strong>${scaleValueCount}</strong></div>

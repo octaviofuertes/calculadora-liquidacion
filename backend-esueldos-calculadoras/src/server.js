@@ -805,6 +805,9 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
         aiModelsTried = error.modelsTried || [];
         console.error("[CCT] Error estructurando con Gemini:", aiError);
         parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), aiError]));
+        if (/alta demanda|overloaded|unavailable|try again later|503/i.test(aiError)) {
+          aiStatus = "PENDIENTE_IA";
+        }
       }
     }
 
@@ -837,12 +840,16 @@ app.post("/api/convention-drafts/upload", conventionUpload.fields([
       || parsedConvention.adicionales.length
       || parsedConvention.ambitos.length;
     if (!hasExtractedStructure) {
-      res.status(422).json({
-        ok: false,
-        errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo." }],
-        data: null
-      });
-      return;
+      if (aiStatus === "PENDIENTE_IA") {
+        parsedConvention.convenio.fuente_documento = parsedConvention.convenio.fuente_documento || "Pendiente de lectura por Gemini.";
+      } else {
+        res.status(422).json({
+          ok: false,
+          errores: [{ path: "estructura", message: "Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo." }],
+          data: null
+        });
+        return;
+      }
     }
 
     const files = [cctFile, ...scaleFiles].filter(Boolean).map((file) => ({
