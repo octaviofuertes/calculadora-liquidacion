@@ -887,7 +887,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "Soportar tablas con categorias en filas y periodos en columnas, periodos en filas y categorias en paginas separadas, grupos/ramas como encabezados intermedios, zonas/regiones como subtitulos, y columnas de basico/no remunerativo/total.",
     "categorias debe contener solo puestos/cargos/clases/grupos laborales reales. No crear categorias con modalidades puras como con retiro, sin retiro, mismo empleador, distintos empleadores, jornada completa, media jornada, mensualizado o jornalizado; esas van en modalidad_aplicable o escalas[].valores[].modalidad.",
     "No uses salaryType monthly por defecto. Si el CCT o la escala habla de jornal, dia, changa, valor dia o pago por dia, usa daily y completa day/dayByPeriod. Si habla de hora o valor hora, usa hourly y completa hourly/hourlyByPeriod. Usa monthly solo cuando el basico sea mensual.",
-    "Toda formula encontrada debe quedar estructurada, por ejemplo antiguedad = sueldo basico x porcentaje x anios; hora extra 50 = valor hora x 1.5 x horas; hora extra 100 = valor hora x 2 x horas.",
+    "Toda formula encontrada debe quedar estructurada en sintaxis matematica clara para que la calculadora pueda leerla, por ejemplo: (sueldo_basico * 0.02) o (valor_hora * 1.5 * horas). No uses 'por ciento' ni 'x', usa '*', '/', '+' y '-'.",
     "Antes de finalizar verificar categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, retenciones, aportes patronales, licencias, jornada laboral, horas extras, formulas de calculo y reglas de liquidacion. Si falta alguno, indicar: Informacion no encontrada en la documentacion analizada.",
     "REGLA CRITICA: devolve un JSON plano con EXACTAMENTE estas claves raiz: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales. No agregues ningun otro campo raiz.",
     "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
@@ -940,9 +940,10 @@ function buildConventionCorePrompt({ draftName, notes }) {
     "LICENCIAS: Dentro de la clave raíz 'rules', extrae un arreglo 'licenses' donde cada objeto tenga { name: 'string', rule: 'regla extraída', evidence: 'texto de evidencia' }. Incluye aquí licencias, vacaciones, maternidad, etc.",
     
     // 5 y 6. ADICIONALES FIJOS Y REGLAS DE LIQUIDACIÓN
-    "Antigüedad: Determina la base de cálculo y la regla (ej: 1% por año de servicio) y estructurala en 'formula_base'.",
-    "Presentismo: Identifica si es un porcentaje (ej: 8.33% o doceava parte) o suma fija, y las causales de pérdida.",
+    "Antigüedad: Determina la base de cálculo y la regla y estructurala en 'formula_base' con sintaxis matematica clara (ej: sueldo_basico * 0.01 * anios).",
+    "Presentismo: Identifica si es un porcentaje (ej: 8.33% o doceava parte) o suma fija, y las causales de pérdida. Escribir formulas matematicas claras (ej: sueldo_basico * 0.0833).",
     "Si el CCT define divisores explícitos (ej: divisor vacacional 25, divisor hora 200), regístralo en las condiciones del concepto. Si no figura, coloca 'requiere_revision_manual'.",
+    "Asegurate de que TODAS las formulas esten en formato matematico (ej: sueldo_basico * 0.020) para que la calculadora pueda interpretarlas directamente.",
     
     draftName ? `Etiqueta usuario: ${draftName}.` : "Etiqueta usuario: sin etiqueta.",
     notes ? `Notas usuario: ${notes}.` : "Notas usuario: sin notas."
