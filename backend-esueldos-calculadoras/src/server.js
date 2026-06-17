@@ -31,8 +31,11 @@ const { createAiRouter } = require("./routes/ai.routes");
 const { createCatalogRouter } = require("./routes/catalog.routes");
 const { createHealthRouter } = require("./routes/health.routes");
 const { createConveniosRouter } = require("./routes/convenios.routes");
+const { createConventionIngestionRouter } = require("./routes/convention-ingestion.routes");
+const { createEmployeesRouter } = require("./routes/employees.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
 const { createScalesRouter } = require("./routes/scales.routes");
+const logger = require("./shared/logger");
 const { parseOrThrow, calculationInputSchema, employeeWriteSchema, liquidationResultSchema, savedLiquidationSchema } = require("./domain/schemas");
 
 const app = express();
@@ -658,6 +661,8 @@ function fallbackAuditFromPrecheck(precheck, aiError = null) {
 app.use(createHealthRouter({ getDb: getDbInstance }));
 app.use(createCatalogRouter({ getDb: getDbInstance }));
 app.use(createConveniosRouter({ getDb: getDbInstance }));
+app.use(createConventionIngestionRouter({ backendRoot }));
+app.use(createEmployeesRouter({ getDb: getDbInstance }));
 app.use(createScalesRouter({
   getDb: getDbInstance,
   scaleUpload,
@@ -673,6 +678,11 @@ app.use(createScalesRouter({
   monthLabel,
   serializeScale,
   safeFileName
+}));
+app.use(createLiquidationsRouter({
+  getDb: getDbInstance,
+  calculateLiquidation,
+  serializeScale
 }));
 app.use(createAiRouter({ getDb: getDbInstance }));
 
@@ -1670,7 +1680,7 @@ app.get("*", (req, res) => {
 });
 
 app.use((error, req, res, next) => {
-  console.error(error);
+  logger.error(error);
   if (error instanceof multer.MulterError) {
     const message = error.code === "LIMIT_FILE_COUNT"
       ? "Podés subir 1 archivo CCT y hasta 5 archivos de escala salarial."
@@ -1678,7 +1688,7 @@ app.use((error, req, res, next) => {
     res.status(400).json({ error: message });
     return;
   }
-  if (error instanceof ScaleAIError) {
+  if (error instanceof GeminiScaleError) {
     res.status(error.status || 502).json({
       error: error.message,
       code: error.code,
@@ -1708,8 +1718,8 @@ async function start() {
   await ensureScaleIndexes();
 
   app.listen(port, () => {
-    console.log(`eSueldos API listo en http://localhost:${port}`);
-    console.log(`MongoDB: ${db.databaseName}`);
+    logger.info(`eSueldos API listo en http://localhost:${port}`);
+    logger.info(`MongoDB: ${db.databaseName}`);
   });
 }
 
