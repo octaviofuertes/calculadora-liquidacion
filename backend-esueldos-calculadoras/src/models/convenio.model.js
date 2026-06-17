@@ -133,6 +133,7 @@ function categoryVariantLabelFromId(categoryId = "") {
 
 function categoryRuntimeLabel(category = {}) {
   const base = text(category.categoria_nombre || category.categoria_id);
+  if (text(category.categoria_nombre).trim()) return base;
   const variant = text(category.modalidad_aplicable) || categoryVariantLabelFromId(category.categoria_id);
   if (!variant || new RegExp(variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(base)) return base;
   return `${base} - ${variant}`;

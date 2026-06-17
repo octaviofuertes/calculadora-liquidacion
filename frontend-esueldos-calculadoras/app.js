@@ -462,6 +462,7 @@
             <div class="convention-visual">
               <span class="convention-mark" aria-hidden="true">${conventionIcon(conv.id, "convention-icon")}</span>
               <span class="selection-check" aria-hidden="true"></span>
+              <button class="convention-edit-btn" type="button" data-edit-convention-id="${escapeHtml(conv.id)}" aria-label="Editar convenio ${escapeHtml(meta.title)}">✎</button>
             </div>
             <h3 class="convention-title">${escapeHtml(meta.title)}</h3>
             <div class="convention-code">${escapeHtml(meta.code)}</div>
@@ -500,6 +501,13 @@
         e.preventDefault();
         e.stopPropagation();
         deleteConvention(deleteButton.dataset.deleteConventionId);
+        return;
+      }
+      const editButton = e.target.closest("[data-edit-convention-id]");
+      if (editButton) {
+        e.preventDefault();
+        e.stopPropagation();
+        openConventionEditorFromCard(editButton.dataset.editConventionId);
         return;
       }
       const card = e.target.closest(".convention-card");
@@ -3594,7 +3602,6 @@
       </div>
       <div class="scale-mini-grid">
         <div><span>Lectura IA</span><strong>${escapeHtml(scale.aiStatus || "-")}</strong></div>
-        <div><span>Confianza</span><strong>${Number(parsed.confidence || 0)}%</strong></div>
         <div><span>Aprobada</span><strong>${escapeHtml(shortDate(scale.approvedAt))}</strong></div>
   
       </div>
@@ -4116,7 +4123,6 @@
     const conceptCount = (conv.conceptos || conv.liquidationModel?.concepts || []).length;
     const scaleValueCount = (conv.escalas || []).reduce((total, scale) => total + (scale.valores || []).length, 0);
     return `<div class="scale-mini-grid">
-      <div><span>Confianza</span><strong>${Number(conv.confidence || 0)}%</strong></div>
       <div><span>Categorias</span><strong>${categoryCount}</strong></div>
       <div><span>Conceptos</span><strong>${conceptCount}</strong></div>
       <div><span>Valores escala</span><strong>${scaleValueCount}</strong></div>
@@ -4314,7 +4320,7 @@
       const name = String(category.categoria_nombre || category.nombre || "");
       return {
         ...category,
-        categoria_nombre: variant && !name.toLowerCase().includes(variant.toLowerCase()) ? `${name} - ${variant}` : name,
+        categoria_nombre: name,
         modalidad_aplicable: category.modalidad_aplicable || variant
       };
     });
@@ -4481,12 +4487,12 @@
       <span class="status-pill ${draft.status === "APROBADO" ? "ok" : draft.status === "RECHAZADO" ? "bad" : ""}">${escapeHtml(conventionDraftStatusLabel(draft.status))}</span>
     </div>
     <div class="convention-audit-editor">
-      ${conventionGeneralEditor(conv, isApproved)}
+      ${conventionGeneralEditor(conv, false)}
     </div>
     <div class="scale-preview">${conventionQualityHtml(conv)}</div>`;
     const auditActions = `<div class="scale-editor-actions convention-audit-bottom-actions">
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar respaldo</button>
-      <button class="icon-btn" id="saveConventionJsonBtn" type="button" ${isApproved ? "disabled" : ""}>Guardar revisión</button>
+      <button class="icon-btn" id="saveConventionJsonBtn" type="button">Guardar revisión</button>
       ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
       <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
       <button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
@@ -4501,7 +4507,7 @@
       </button>
     </div>`;
     if (tablesArea) {
-      tablesArea.innerHTML = `<div class="convention-audit-table-stack">${conventionAuditTablesHtml(conv, isApproved, { includeGeneral: false })}${auditActions}</div>`;
+      tablesArea.innerHTML = `<div class="convention-audit-table-stack">${conventionAuditTablesHtml(conv, false, { includeGeneral: false })}${auditActions}</div>`;
     }
 
     tablesArea?.querySelector("#downloadConventionJsonBtn")?.addEventListener("click", () => downloadConventionJson(draft));
@@ -4624,7 +4630,7 @@
   }
 
   function addConventionAuditRow(section) {
-    if (!conventionBuilderState.selected || conventionBuilderState.selected.status === "APROBADO") return;
+    if (!conventionBuilderState.selected) return;
     const parsed = parseConventionJsonEditor();
     const nextIndex = (items) => (Array.isArray(items) ? items.length + 1 : 1);
     if (section === "ambitos") parsed.ambitos = [...(parsed.ambitos || []), { ambito_id: `ambito-${nextIndex(parsed.ambitos)}`, nombre: "", tipo: "", descripcion: "" }];
@@ -4639,7 +4645,7 @@
   }
 
   function deleteConventionAuditRows(section) {
-    if (!conventionBuilderState.selected || conventionBuilderState.selected.status === "APROBADO") return;
+    if (!conventionBuilderState.selected) return;
     const tablesArea = $("conventionAuditTablesArea");
     const checkedRows = Array.from(tablesArea?.querySelectorAll(`[data-audit-row-check="${section}"]:checked`) || []);
     if (!checkedRows.length) {
@@ -4785,6 +4791,19 @@
     }
   }
 
+  async function openConventionEditorFromCard(id) {
+    try {
+      document.querySelector('.nav-link[href="#conventionsPanel"]')?.click();
+      setConventionBuilderStatus("Abriendo convenio para edición...", "");
+      const draft = await fetchJson(`/api/conventions/${encodeURIComponent(id)}/edit-draft`, { method: "POST" });
+      await loadConventionDrafts();
+      await selectConventionDraft(draft.id);
+      setConventionBuilderStatus("Convenio listo para editar.", "ok");
+    } catch (error) {
+      setConventionBuilderStatus(error.message, "bad");
+    }
+  }
+
   async function saveConventionDraftJson() {
     if (!conventionBuilderState.selected) return;
     try {
@@ -4794,6 +4813,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parsedConvention })
       });
+      if (conventionBuilderState.selected.status === "APROBADO") {
+        await loadCatalog();
+        syncScaleConvention();
+        updateConventionSelectsAfterCatalogReload(conventionBuilderState.selected.approvedConventionId);
+      }
       await loadConventionDrafts();
       await selectConventionDraft(conventionBuilderState.selected.id);
       setConventionBuilderStatus("Revisión guardada y normalizada para liquidar.", "ok");
