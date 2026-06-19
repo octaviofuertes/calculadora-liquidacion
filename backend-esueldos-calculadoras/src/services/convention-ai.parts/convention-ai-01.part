@@ -5,6 +5,7 @@ const {
   parseGeminiJson,
   extractGeminiText,
   extractPdfText,
+  pdfInlinePart,
   buildPdfPartsForGemini,
   callGeminiJson
 } = require("./convention-gemini");

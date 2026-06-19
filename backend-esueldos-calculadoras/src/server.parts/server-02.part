@@ -122,10 +122,18 @@
     });
     const validation = normalizeAndValidateCCTJson(parsedConvention);
     if (!validation.ok) {
-      res.status(422).json(validation);
-      return;
+      const onlyMissingScalePeriods = validation.errores?.length
+        && validation.errores.every((item) => item.message === "Escala con importes pero sin periodo detectable");
+      if (!onlyMissingScalePeriods) {
+        res.status(422).json(validation);
+        return;
+      }
+      parsedConvention = validation.data;
+      aiStatus = "ESTRUCTURADO_CON_ADVERTENCIAS";
+      aiError = "Las escalas fueron extraidas, pero falta confirmar su periodo de vigencia antes de aprobar.";
+    } else {
+      parsedConvention = validation.data;
     }
-    parsedConvention = validation.data;
     console.log(`[CCT final] categorias=${parsedConvention.categorias.length} conceptos=${parsedConvention.conceptos.length} escalas=${parsedConvention.escalas.length} adicionales=${parsedConvention.adicionales.length} ambitos=${parsedConvention.ambitos.length}`);
     const hasExtractedStructure = parsedConvention.categorias.length
       || parsedConvention.escalas.some((scale) => (scale.valores || []).length)
@@ -334,12 +342,12 @@ app.delete("/api/convention-drafts/:id", async (req, res, next) => {
       return;
     }
     const id = new ObjectId(req.params.id);
-    const draft = await db.collection("conventionDrafts").findOne({ _id: id });
+    const result = await db.collection("conventionDrafts").findOneAndDelete({ _id: id });
+    const draft = updatedDocument(result);
     if (!draft) {
       res.status(404).json({ error: "Borrador no encontrado" });
       return;
     }
-    await db.collection("conventionDrafts").deleteOne({ _id: id });
     res.json({ ok: true, id: req.params.id, status: draft.status });
   } catch (error) {
     next(error);

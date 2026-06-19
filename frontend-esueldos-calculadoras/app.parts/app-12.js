@@ -30,7 +30,7 @@
       if ($("builderScalePdf")) $("builderScalePdf").value = "";
       await loadConventionDrafts();
       await selectConventionDraft(payload.id);
-      setConventionBuilderStatus(payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "Convenio estructurado. Revisalo y aprobá cuando esté perfecto." : "Borrador creado con advertencias. Revisar datos extraídos.", payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "ok" : "bad");
+      setConventionBuilderStatus(payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "Convenio estructurado. Revisalo y aprobá cuando esté perfecto." : "Convenio estructurado con advertencias. Confirmá el período de las escalas antes de aprobar.", payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "ok" : "");
     } catch (error) {
       setConventionBuilderStatus(error.message, "bad");
     } finally {
@@ -41,7 +41,7 @@
   function setupConventionBuilder() {
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
-    $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("APROBADO"));
+    $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("TODOS"));
     $("deleteRejectedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("RECHAZADO"));
     $("conventionDraftList")?.addEventListener("click", (event) => {
       const deleteButton = event.target.closest("[data-delete-convention-draft-id]");

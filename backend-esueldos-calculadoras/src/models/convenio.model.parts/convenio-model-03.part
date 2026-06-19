@@ -350,7 +350,7 @@ function normalizeAndValidateCCTJson(input) {
     return {
       ok: false,
       errores: error.details || [{ message: error.message }],
-      data: null
+      data: json_parcial
     };
   }
 }

@@ -389,13 +389,16 @@
 
   async function deleteConventionDraftsByStatus(status) {
     const allowedStatuses = {
+      TODOS: "borradores",
       APROBADO: "aprobados",
       RECHAZADO: "rechazados"
     };
     const label = allowedStatuses[status];
     if (!label) return;
 
-    const drafts = conventionBuilderState.drafts.filter((draft) => draft.status === status);
+    const drafts = status === "TODOS"
+      ? conventionBuilderState.drafts
+      : conventionBuilderState.drafts.filter((draft) => draft.status === status);
     if (!drafts.length) {
       setConventionBuilderStatus(`No hay borradores ${label} para eliminar.`, "bad");
       return;

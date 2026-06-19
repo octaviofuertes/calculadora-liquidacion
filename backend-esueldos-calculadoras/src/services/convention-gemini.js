@@ -176,7 +176,7 @@ async function waitGeminiFileActive({ apiKey, file }) {
     console.log(`[Gemini Files] current file status: ${current.state}`);
     console.log('File is still processing, retrying in 5 seconds');
     await sleep(pollMs);
-    current = await ai.files.get({ name: current.name });
+    current = await getGeminiFile({ apiKey, name: current.name });
   }
   throw new GeminiConventionError(`Gemini tardo demasiado en procesar el archivo ${file.displayName || file.name}.`, {
     status: 504,
@@ -278,6 +278,7 @@ module.exports = {
   parseGeminiJson,
   extractGeminiText,
   extractPdfText,
+  pdfInlinePart,
   buildPdfPartsForGemini,
   callGeminiJson
 };
