@@ -1,0 +1,440 @@
+@media screen and (min-width: 1181px) {
+  .topbar-inner {
+    width: min(1880px, 100%) !important;
+    max-width: 1880px !important;
+    padding-inline: 42px !important;
+  }
+
+  .page-shell {
+    width: min(1888px, 100%) !important;
+    max-width: 1888px !important;
+    padding: 16px 18px 20px !important;
+  }
+
+  .app-shell {
+    grid-template-columns: 660px minmax(0, 1fr) !important;
+    gap: 24px !important;
+  }
+
+  .form-panel {
+    width: 660px !important;
+    max-width: 660px !important;
+    padding: 30px !important;
+  }
+
+  .payroll-head {
+    gap: 18px !important;
+    margin-bottom: 34px !important;
+  }
+
+  .payroll-head::before {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .payroll-head h1 {
+    font-size: 27px !important;
+  }
+
+  .payroll-head p {
+    font-size: 13px !important;
+  }
+
+  .steps {
+    height: 58px !important;
+    margin-bottom: 28px !important;
+  }
+
+  .step {
+    font-size: 12px !important;
+  }
+
+  .step-dot {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 14px !important;
+  }
+
+  .step-intro {
+    min-height: 86px !important;
+    margin-bottom: 22px !important;
+    padding: 20px 22px !important;
+  }
+
+  .step-intro strong {
+    font-size: 18px !important;
+  }
+
+  .step-intro p {
+    max-width: 520px !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+  }
+
+  .form-panel .convention-grid {
+    gap: 18px !important;
+  }
+
+  .form-panel .convention-card {
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
+  }
+
+  .convention-content {
+    min-height: 98px !important;
+    height: 98px !important;
+    padding: 20px !important;
+  }
+
+  .convention-mark {
+    width: 58px !important;
+    height: 58px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .convention-title {
+    font-size: 23px !important;
+    line-height: 0.95 !important;
+  }
+
+  .convention-code {
+    font-size: 14px !important;
+  }
+
+  .convention-copy {
+    font-size: 13.4px !important;
+    line-height: 1.43 !important;
+  }
+
+  .convention-support {
+    min-height: 42px !important;
+    margin-top: 18px !important;
+    padding: 8px 12px !important;
+  }
+
+  .results {
+    padding: 20px 22px 22px !important;
+  }
+
+  .summary-grid {
+    gap: 22px !important;
+  }
+
+  .metric {
+    height: 132px !important;
+    min-height: 132px !important;
+  }
+
+  .result-actions {
+    grid-template-columns: 156px 196px 156px minmax(420px, 1fr) !important;
+    gap: 18px !important;
+  }
+
+  .result-actions .icon-btn,
+  .result-actions .audit-action {
+    min-height: 54px !important;
+  }
+
+  .tabs {
+    height: 64px !important;
+  }
+
+  .tab {
+    min-width: 136px !important;
+  }
+
+  .empty-state,
+  .audit-empty {
+    height: 320px !important;
+    min-height: 320px !important;
+  }
+}
+
+/* Final action buttons polish: match the compact white buttons from the target. */
+@media screen and (min-width: 1181px) {
+  .result-actions {
+    grid-template-columns: 112px 152px 112px minmax(420px, 1fr) !important;
+    gap: 16px !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+  }
+
+  .result-actions .icon-btn {
+    min-width: 0 !important;
+    min-height: 41px !important;
+    height: 41px !important;
+    padding: 0 16px !important;
+    justify-content: center !important;
+    gap: 9px !important;
+    border: 1px solid #eef3ff !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    color: #2f4170 !important;
+    font-size: 12px !important;
+    font-weight: 850 !important;
+    letter-spacing: 0 !important;
+    box-shadow:
+      0 12px 26px rgba(40, 62, 118, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+    opacity: 1 !important;
+  }
+
+  .result-actions .icon-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+    flex: 0 0 16px !important;
+    fill: none !important;
+    color: #316cff !important;
+    stroke: currentColor !important;
+    stroke-width: 2 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+  }
+
+  .result-actions .icon-btn::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .result-actions .icon-btn:hover {
+    border-color: #dfe9ff !important;
+    background: #ffffff !important;
+    color: #245dff !important;
+    transform: translateY(-1px) !important;
+    box-shadow:
+      0 16px 30px rgba(40, 78, 160, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
+  }
+
+  .result-actions .icon-btn:disabled {
+    color: #2f4170 !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
+  }
+
+  .result-actions .audit-action {
+    min-height: 41px !important;
+    height: 41px !important;
+  }
+}
+
+/* Final navbar scale: keep the same layout, but make the header readable. */
+@media screen and (min-width: 1181px) {
+  .topbar {
+    height: 72px !important;
+    min-height: 72px !important;
+  }
+
+  .topbar-inner {
+    height: 72px !important;
+    grid-template-columns: 360px minmax(0, 1fr) 300px !important;
+    padding-inline: 52px !important;
+  }
+
+  .brand {
+    height: 52px !important;
+  }
+
+  .brand-logo-img {
+    width: 190px !important;
+    max-height: 46px !important;
+  }
+
+  .main-nav {
+    gap: 34px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .nav-link {
+    min-width: 132px !important;
+    min-height: 44px !important;
+    padding: 0 20px !important;
+    gap: 11px !important;
+    border: 1px solid transparent !important;
+    border-radius: 13px !important;
+    color: rgba(232, 240, 255, 0.78) !important;
+    font-size: 14px !important;
+    font-weight: 850 !important;
+    letter-spacing: 0 !important;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12) !important;
+    transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
+  }
+
+  .nav-link svg {
+    width: 18px !important;
+    height: 18px !important;
+    stroke-width: 2 !important;
+    opacity: 0.9 !important;
+  }
+
+  .nav-link:hover {
+    color: #ffffff !important;
+    border-color: rgba(149, 183, 255, 0.14) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: none !important;
+  }
+
+  .nav-link.active {
+    color: #ffffff !important;
+    border-color: rgba(157, 197, 255, 0.48) !important;
+    background:
+      linear-gradient(135deg, rgba(93, 157, 255, 0.98) 0%, rgba(43, 101, 233, 0.98) 58%, rgba(84, 78, 245, 0.98) 100%) !important;
+    box-shadow:
+      0 14px 34px rgba(48, 105, 245, 0.34),
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+      0 1px 0 rgba(255, 255, 255, 0.28) inset !important;
+  }
+
+  .nav-link.active svg {
+    opacity: 1 !important;
+    filter: drop-shadow(0 2px 5px rgba(255, 255, 255, 0.18)) !important;
+  }
+
+  .nav-link svg path,
+  .nav-link svg circle {
+    vector-effect: non-scaling-stroke !important;
+  }
+
+  .topbar-tools {
+    gap: 16px !important;
+  }
+
+  .top-icon-btn {
+    width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+  }
+
+  .top-icon-btn svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .top-icon-btn span {
+    top: 1px !important;
+    right: 2px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    font-size: 11px !important;
+  }
+
+}
+
+/* Animated blue-to-sky page background like the target mockup. */
+html {
+  background: #eaf6ff !important;
+}
+
+body {
+  position: relative !important;
+  min-height: 100vh !important;
+  overflow-x: hidden !important;
+  background:
+    linear-gradient(180deg,
+      #061657 0px,
+      #0a277b 86px,
+      #236dd5 172px,
+      #a8d8ff 330px,
+      #eaf5ff 560px,
+      #eef6ff 100%) !important;
+}
+
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background:
+    radial-gradient(circle at 11% 8%, rgba(54, 133, 255, 0.58), transparent 22%),
+    radial-gradient(circle at 90% 10%, rgba(107, 92, 255, 0.30), transparent 28%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.20), transparent 24%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.18) 0 8%, transparent 9% 42%, rgba(77, 183, 255, 0.12) 43% 47%, transparent 48% 100%) !important;
+  background-size: 135% 135%, 140% 140%, 120% 120%, 180% 180% !important;
+  opacity: 0.88 !important;
+  transform: translate3d(0, 0, 0) scale(1.02) !important;
+  animation: esueldosBgDrift 18s ease-in-out infinite alternate !important;
+}
+
+body::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 72px 0 auto 0 !important;
+  z-index: 0 !important;
+  height: 290px !important;
+  pointer-events: none !important;
+  background:
+    linear-gradient(180deg, rgba(6, 22, 87, 0.68) 0%, rgba(31, 113, 223, 0.24) 38%, transparent 100%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.30), transparent 58%) !important;
+  opacity: 0.72 !important;
+  animation: esueldosTopGlow 12s ease-in-out infinite alternate !important;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+.topbar {
+  z-index: 30 !important;
+}
+
+@keyframes esueldosBgDrift {
+  0% {
+    background-position: 0% 0%, 100% 0%, 50% 0%, 0% 0%;
+    filter: saturate(1);
+  }
+
+  100% {
+    background-position: 8% 10%, 88% 14%, 50% 8%, 72% 24%;
+    filter: saturate(1.08);
+  }
+}
+
+@keyframes esueldosTopGlow {
+  0% {
+    opacity: 0.56;
+    transform: translateY(-10px);
+  }
+
+  100% {
+    opacity: 0.84;
+    transform: translateY(18px);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  body::before {
+    animation-name: esueldosBgScroll !important;
+    animation-duration: 1ms !important;
+    animation-timeline: scroll(root) !important;
+    animation-range: 0 900px !important;
+    animation-fill-mode: both !important;
+  }
+
+  body::after {
+    animation-name: esueldosTopGlowScroll !important;
+    animation-duration: 1ms !important;
+    animation-timeline: scroll(root) !important;
+    animation-range: 0 760px !important;
+    animation-fill-mode: both !important;
+  }
+}
+
+@keyframes esueldosBgScroll {
+  from {
+    background-position: 0% 0%, 100% 0%, 50% 0%, 0% 0%;
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+
+  to {
+    background-position: 12% 18%, 82% 22%, 50% 16%, 82% 36%;
+    transform: translate3d(0, -42px, 0) scale(1.05);
+  }
+}

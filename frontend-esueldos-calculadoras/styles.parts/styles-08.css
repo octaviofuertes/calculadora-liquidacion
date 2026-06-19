@@ -1,0 +1,448 @@
+.leia-hair {
+  top: 28%;
+  z-index: 6;
+  width: 22%;
+  height: 27%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 28%, #9c644b, #5d2b20 70%),
+    #5d2b20;
+  box-shadow: inset -3px -4px 9px rgba(31, 11, 8, 0.22);
+}
+
+.leia-hair--left {
+  left: 25%;
+}
+
+.leia-hair--right {
+  right: 25%;
+}
+
+.leia-eyes::before,
+.leia-eyes::after {
+  top: 39%;
+  width: 10%;
+  height: 10%;
+  background: #152650;
+}
+
+.leia-eyes::before {
+  left: 28%;
+}
+
+.leia-eyes::after {
+  right: 28%;
+}
+
+.leia-smile {
+  position: absolute;
+  left: 50%;
+  top: 61%;
+  width: 28%;
+  height: 12%;
+  border-bottom: 1.5px solid rgba(68, 38, 48, 0.56);
+  border-radius: 0 0 999px 999px;
+  transform: translateX(-50%);
+}
+
+.leia-suit {
+  position: absolute;
+  left: 50%;
+  bottom: 13%;
+  z-index: 5;
+  width: 48%;
+  height: 31%;
+  border: 1px solid rgba(112, 195, 255, 0.55);
+  border-radius: 16px 16px 10px 10px;
+  background:
+    linear-gradient(90deg, rgba(67, 189, 251, 0.38) 0 2px, transparent 2px calc(100% - 2px), rgba(67, 189, 251, 0.38) calc(100% - 2px)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(216, 239, 255, 0.84));
+  box-shadow: inset 0 0 12px rgba(67, 189, 251, 0.18);
+  transform: translateX(-50%);
+}
+
+.leia-core {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 12%;
+  height: 12%;
+  border-radius: 50%;
+  background: #43bdfb;
+  box-shadow: 0 0 0 4px rgba(67, 189, 251, 0.13), 0 0 16px rgba(67, 189, 251, 0.72);
+  transform: translate(-50%, -50%);
+  animation: leiaCore 1.7s ease-in-out infinite;
+}
+
+.leia-plate {
+  right: 9%;
+  bottom: 8%;
+  z-index: 10;
+  min-width: 42%;
+  padding: 2px 8%;
+  border-color: rgba(139, 213, 255, 0.78);
+  background: rgba(255, 255, 255, 0.82);
+  color: #235a92;
+  font-size: calc(var(--logo-size) * 0.14);
+  box-shadow: 0 0 14px rgba(80, 195, 255, 0.22);
+}
+
+.leia-launcher:hover .leia-logo,
+.leia-widget.open .leia-logo {
+  animation-play-state: paused;
+}
+
+.leia-launcher:hover .leia-avatar,
+.leia-widget.open .leia-avatar {
+  transform: translateY(-3px) scale(1.03);
+}
+
+.leia-launcher:hover .leia-face,
+.leia-widget.open .leia-face {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.leia-launcher:hover .leia-orbit--one,
+.leia-widget.open .leia-orbit--one {
+  transform: rotate(18deg) scaleX(1.2);
+}
+
+.leia-launcher:hover .leia-orbit--two,
+.leia-widget.open .leia-orbit--two {
+  transform: rotate(-20deg) scaleX(0.92);
+}
+
+.leia-panel {
+  position: absolute;
+  right: 0;
+  bottom: 88px;
+  display: flex;
+  width: min(390px, calc(100vw - 28px));
+  max-height: min(620px, calc(100vh - 130px));
+  flex-direction: column;
+  border: 1px solid rgba(190, 214, 246, 0.94);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 28px 70px rgba(33, 53, 89, 0.26);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  animation: leiaPanelIn 0.18s ease;
+}
+
+.leia-panel[hidden] {
+  display: none;
+}
+
+.leia-panel-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(135deg, rgba(223, 243, 255, 0.92), rgba(255, 255, 255, 0.92)),
+    #fff;
+}
+
+.leia-panel-head strong,
+.leia-panel-head span {
+  display: block;
+}
+
+.leia-panel-head strong {
+  color: #14224f;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.leia-panel-head span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leia-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.leia-close:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.leia-messages {
+  display: grid;
+  max-height: 390px;
+  gap: 10px;
+  padding: 14px;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 95% 5%, rgba(67, 189, 251, 0.12), transparent 120px),
+    #fbfdff;
+}
+
+.leia-message {
+  max-width: 88%;
+  padding: 10px 11px;
+  border-radius: 13px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.leia-message.is-leia {
+  justify-self: start;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.leia-message.is-user {
+  justify-self: end;
+  background: var(--blue);
+  color: #fff;
+}
+
+.leia-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+.leia-form input {
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  outline: none;
+}
+
+.leia-form input:focus {
+  border-color: rgba(36, 88, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(36, 88, 255, 0.08);
+}
+
+.leia-form button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--blue);
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.leia-form.is-loading button,
+.leia-form.is-loading input {
+  opacity: 0.62;
+}
+
+@keyframes leiaBlink {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  35% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+@keyframes leiaFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes leiaSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes leiaAura {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes leiaCore {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+}
+
+@keyframes leiaPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Visual refresh */
+body {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(51, 111, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 92% 8%, rgba(104, 91, 255, 0.16), transparent 32%),
+    linear-gradient(180deg, #eef5ff 0%, #f6f9ff 48%, #eef5ff 100%);
+}
+
+.topbar {
+  height: 58px;
+  min-height: 58px;
+  border-bottom: 1px solid rgba(89, 121, 255, 0.28);
+  background:
+    linear-gradient(180deg, rgba(12, 30, 111, 0.98), rgba(6, 20, 82, 0.98)),
+    #07164f;
+  box-shadow: 0 14px 34px rgba(4, 14, 58, 0.28);
+}
+
+.topbar-inner {
+  width: 100%;
+  padding: 0 28px;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+}
+
+.brand {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.brand-logo-img {
+  width: 150px;
+  max-height: 34px;
+  filter: drop-shadow(0 5px 12px rgba(0,0,0,0.28));
+}
+
+.main-nav {
+  grid-column: 2;
+  justify-self: center;
+  gap: 22px;
+  height: 100%;
+}
+
+.nav-link {
+  min-height: 36px;
+  padding: 0 18px;
+  border-color: transparent;
+  border-radius: 10px;
+  color: rgba(232, 239, 255, 0.78);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.nav-link svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-link.active {
+  border-color: rgba(98, 145, 255, 0.5);
+  background: linear-gradient(135deg, #2f7cff, #3954d8);
+  box-shadow: 0 10px 24px rgba(47, 124, 255, 0.34), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+
+.topbar-tools {
+  display: flex;
+  grid-column: 3;
+  align-items: center;
+  justify-self: end;
+  gap: 10px;
+}
+
+.top-icon-btn {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #eaf1ff;
+  cursor: pointer;
+}
+
+.top-icon-btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+}
+
+.top-icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.top-icon-btn span {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 999px;
+  background: #2f7cff;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.page-shell {
+  width: min(1510px, 100%);
+  padding: 14px 22px 24px;
+}
+
+.app-shell {
+  grid-template-columns: minmax(430px, 565px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.panel,

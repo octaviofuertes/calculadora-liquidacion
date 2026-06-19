@@ -1,0 +1,417 @@
+@media screen and (min-width: 1181px) {
+  .audit-empty {
+    height: 220px !important;
+    min-height: 220px !important;
+    padding: 26px !important;
+    border: 1.5px dashed #c8d7f0 !important;
+    border-radius: 13px !important;
+    background: #f8fbff !important;
+  }
+
+  .audit-empty {
+    display: grid !important;
+    place-items: center !important;
+    align-content: center !important;
+    gap: 7px !important;
+  }
+
+  .audit-inline-action,
+  .audit-inline-action:disabled {
+    min-width: 145px !important;
+    min-height: 34px !important;
+    opacity: 1 !important;
+    color: #fff !important;
+    background: linear-gradient(135deg, var(--target-blue), var(--target-violet)) !important;
+    box-shadow: 0 10px 22px rgba(79, 96, 240, 0.24) !important;
+  }
+
+  .leia-widget {
+    position: absolute !important;
+    right: 20px !important;
+    top: auto !important;
+    bottom: 18px !important;
+    z-index: 8 !important;
+  }
+
+  .leia-launcher {
+    width: 260px !important;
+    min-width: 260px !important;
+    height: 135px !important;
+    min-height: 135px !important;
+    padding: 12px 14px 12px 108px !important;
+    align-items: center !important;
+    gap: 0 !important;
+    border: 1px solid #9ccfff !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: 0 18px 38px rgba(20, 40, 80, 0.16) !important;
+    backdrop-filter: blur(12px);
+  }
+
+  .leia-launcher > .leia-logo {
+    display: none !important;
+  }
+
+  .leia-character {
+    position: absolute;
+    display: block !important;
+    left: 12px;
+    bottom: 12px;
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    filter: drop-shadow(0 12px 18px rgba(47, 111, 232, 0.22));
+  }
+
+  .leia-launch-text {
+    min-width: 0 !important;
+    padding: 0 0 30px !important;
+    text-align: left !important;
+  }
+
+  .leia-launch-text strong {
+    font-size: 22px !important;
+    color: #2f73ff !important;
+  }
+
+  .leia-launch-text small {
+    max-width: 120px !important;
+    margin-top: 4px !important;
+    color: #64708a !important;
+    font-size: 10px !important;
+    line-height: 1.18 !important;
+  }
+
+  .leia-launch-text em {
+    margin-top: 7px !important;
+    font-size: 9px !important;
+  }
+
+  .leia-launch-prompt {
+    left: 116px !important;
+    right: 13px !important;
+    bottom: 12px !important;
+    height: 27px !important;
+    padding: 0 10px !important;
+    border-color: #a9cdfd !important;
+    border-radius: 8px !important;
+    color: #2f62d7 !important;
+    font-size: 9px !important;
+  }
+}
+
+/* Final card fit pass */
+@media screen and (min-width: 1181px) {
+  .form-panel .convention-card {
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
+  }
+
+  .convention-content {
+    min-height: 98px !important;
+    height: 98px !important;
+    padding: 12px !important;
+  }
+
+  .convention-visual {
+    margin-bottom: 7px !important;
+  }
+
+  .convention-mark {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .convention-icon {
+    width: 21px !important;
+    height: 21px !important;
+  }
+
+  .convention-title {
+    font-size: 14.5px !important;
+    line-height: 1.03 !important;
+  }
+
+  .convention-code {
+    margin-top: 5px !important;
+    font-size: 10px !important;
+  }
+
+  .convention-copy {
+    margin-top: 8px !important;
+    font-size: 8.3px !important;
+    line-height: 1.2 !important;
+  }
+
+  .convention-meta {
+    gap: 4px !important;
+    padding-top: 8px !important;
+  }
+
+  .convention-meta span {
+    min-height: 16px !important;
+    padding: 2px 5px !important;
+    font-size: 6.9px !important;
+  }
+}
+
+/* Final metric and leIA placement correction */
+@media screen and (min-width: 1181px) {
+  .metric {
+    padding-left: 58px !important;
+    padding-right: 10px !important;
+  }
+
+  .metric::before {
+    left: 14px !important;
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .metric::after {
+    right: 12px !important;
+    bottom: 8px !important;
+    width: 70px !important;
+    height: 15px !important;
+    opacity: 0.75 !important;
+  }
+
+  .metric strong {
+    position: relative;
+    z-index: 2;
+    font-size: 15.5px !important;
+    white-space: nowrap;
+  }
+
+  .metric span {
+    position: relative;
+    z-index: 2;
+  }
+
+  .leia-widget {
+    position: fixed !important;
+    top: 410px !important;
+    right: max(48px, calc((100vw - 1500px) / 2 + 48px)) !important;
+    bottom: auto !important;
+  }
+}
+
+@media screen and (min-width: 1181px) and (max-width: 1500px) {
+  .audit-empty {
+    padding-right: 282px !important;
+  }
+}
+
+/* Metric cards exact visual correction */
+@media screen and (min-width: 1181px) {
+  .summary-grid {
+    gap: 18px !important;
+  }
+
+  .metric {
+    --metric-color: #2f6fe8;
+    --metric-soft: #eaf2ff;
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 60px 1fr !important;
+    grid-template-rows: 22px 34px 28px !important;
+    align-items: start !important;
+    height: 118px !important;
+    min-height: 118px !important;
+    padding: 18px 18px 12px 16px !important;
+    overflow: hidden !important;
+    border: 1px solid color-mix(in srgb, var(--metric-color) 14%, #dbe7f8) !important;
+    border-radius: 16px !important;
+    background:
+      radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--metric-color) 14%, transparent), transparent 46%),
+      linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--metric-soft) 62%, #ffffff) 100%) !important;
+    box-shadow: 0 18px 36px rgba(25, 45, 95, 0.08) !important;
+  }
+
+  .metric:nth-child(2) {
+    --metric-color: #8b5cf6;
+    --metric-soft: #f2eaff;
+  }
+
+  .metric.danger {
+    --metric-color: #ef3f63;
+    --metric-soft: #fff1f3;
+    border-color: #ffd9df !important;
+  }
+
+  .metric.accent {
+    --metric-color: #17ad82;
+    --metric-soft: #e9fbf5;
+    border-color: #c9f1e4 !important;
+  }
+
+  .metric::before,
+  .metric::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .metric-icon {
+    display: grid !important;
+    grid-row: 1 / 4;
+    grid-column: 1;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    align-self: start;
+    border-radius: 15px;
+    background: color-mix(in srgb, var(--metric-color) 13%, #ffffff);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  }
+
+  .metric-icon svg {
+    width: 34px;
+    height: 34px;
+    fill: none;
+    stroke: var(--metric-color);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .metric-label {
+    grid-column: 2;
+    grid-row: 1;
+    display: block !important;
+    margin: 0 !important;
+    color: #7b87a4 !important;
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    letter-spacing: 0.02em !important;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .metric strong {
+    grid-column: 2;
+    grid-row: 2;
+    display: block !important;
+    color: var(--metric-color) !important;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    font-size: 25px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .metric-spark {
+    grid-column: 2;
+    grid-row: 3;
+    width: min(142px, 100%);
+    height: 28px;
+    align-self: end;
+    justify-self: end;
+    overflow: visible;
+  }
+
+  .metric-spark path {
+    fill: none;
+    stroke: var(--metric-color);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.72;
+  }
+}
+
+/* Final metric fit: match the soft target cards without clipping on desktop. */
+@media screen and (min-width: 1181px) {
+  .summary-grid {
+    gap: 18px !important;
+  }
+
+  .metric {
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    grid-template-rows: 24px 32px 30px !important;
+    height: 118px !important;
+    min-height: 118px !important;
+    padding: 17px 10px 12px 14px !important;
+    column-gap: 8px !important;
+    border-radius: 16px !important;
+  }
+
+  .metric-icon {
+    width: 44px !important;
+    height: 58px !important;
+    border-radius: 15px !important;
+  }
+
+  .metric-icon svg {
+    width: 30px !important;
+    height: 30px !important;
+    stroke-width: 2.8 !important;
+  }
+
+  .metric-label {
+    font-size: 8.3px !important;
+    transform: scaleX(0.9);
+    transform-origin: left center;
+    width: max-content;
+    max-width: none;
+  }
+
+  .metric strong {
+    font-size: 19px !important;
+    transform: scaleX(0.76);
+    transform-origin: left center;
+    width: max-content;
+    max-width: none;
+  }
+
+  .metric:nth-child(2) strong {
+    transform: none;
+  }
+
+  .metric-spark {
+    width: min(108px, 100%) !important;
+    height: 27px !important;
+    justify-self: end !important;
+  }
+}
+
+@media screen and (min-width: 1367px) {
+  .metric {
+    grid-template-columns: 50px minmax(0, 1fr) !important;
+    grid-template-rows: 23px 34px 30px !important;
+    height: 118px !important;
+    min-height: 118px !important;
+    padding: 18px 13px 12px 15px !important;
+    column-gap: 9px !important;
+  }
+
+  .metric-icon {
+    width: 50px !important;
+    height: 58px !important;
+  }
+
+  .metric-icon svg {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .metric-label {
+    font-size: 8.8px !important;
+    transform: scaleX(0.94);
+  }
+
+  .metric strong {
+    font-size: 21px !important;
+    transform: scaleX(0.86);
+  }
+
+  .metric:nth-child(2) strong {
+    transform: none;
+  }
+
+  .metric-spark {
+    width: min(124px, 100%) !important;
+  }
+}

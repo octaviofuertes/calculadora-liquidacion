@@ -1,0 +1,450 @@
+﻿const { geminiModelList } = require("../gemini-config");
+const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
+const {
+  GeminiConventionError,
+  parseGeminiJson,
+  extractGeminiText,
+  extractPdfText,
+  buildPdfPartsForGemini,
+  callGeminiJson
+} = require("./convention-gemini");
+const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
+
+const UNIVERSAL_CONVENTION_TEMPLATE = require("../../convenio-universal-template.json");
+
+function isRetryable(error) {
+  const message = String(error.message || "").toLowerCase();
+  return error.code === "EMPTY_STRUCTURE"
+    || error.code === "INVALID_JSON"
+    || error.status === 429
+    || error.status === 404
+    || error.status === 503
+    || message.includes("high demand")
+    || message.includes("overloaded")
+    || message.includes("not found")
+    || message.includes("not supported")
+    || message.includes("generatecontent")
+    || message.includes("unavailable")
+    || message.includes("try again later");
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 70);
+}
+
+function isGeneralZone(value) {
+  const normalized = normalizeText(value);
+  return [
+    "general",
+    "base",
+    "zona-general",
+    "zona-base",
+    "base-general",
+    "general-base",
+    "sin-adicional",
+    "sin-adicional-zonal",
+    "sin-adicional-de-zona"
+  ].includes(normalized);
+}
+
+function normalizeZoneId(value) {
+  const normalized = normalizeText(value);
+  return isGeneralZone(normalized) ? "general" : normalized;
+}
+
+function normalizeConventionZones(rawZones, categories, { useFallbackDefaults = true } = {}) {
+  const byId = new Map();
+  (Array.isArray(rawZones) ? rawZones : []).forEach((zone, index) => {
+    const rawId = zone.id || zone.label || zone.name || zone.zona || `zona-${index + 1}`;
+    const id = normalizeZoneId(rawId);
+    const general = id === "general" || isGeneralZone(zone.label || zone.name || zone.zona);
+    const normalized = {
+      id: general ? "general" : id,
+      label: general ? "General" : (zone.label || zone.name || zone.zona || `Zona ${index + 1}`),
+      coef: zone.coef ?? zone.coefficient ?? zone.coeficiente ?? (general || useFallbackDefaults ? 1 : null)
+    };
+    if (normalized.id && normalized.label) byId.set(normalized.id, { ...(byId.get(normalized.id) || {}), ...normalized });
+  });
+  const hasDocumentaryGeneral = categories.some((category) => category.zone === "general")
+    || (byId.size > 0 && categories.some((category) => !category.zone));
+  if (!byId.has("general") && hasDocumentaryGeneral) {
+    byId.set("general", { id: "general", label: "General", coef: 1 });
+  }
+  if (!byId.size && useFallbackDefaults) {
+    byId.set("general", { id: "general", label: "General", coef: 1 });
+  }
+  return Array.from(byId.values());
+}
+
+function normalizeMoney(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const cleaned = String(value)
+    .replace(/\s/g, "")
+    .replace(/\$/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  const number = Number(cleaned);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeCurrencyAmount(value) {
+  const number = normalizeMoney(value);
+  if (number === null) return null;
+  if (typeof value === "number" && number > 0 && number < 10000 && String(value).includes(".")) {
+    const decimals = String(value).split(".")[1] || "";
+    if (decimals.length === 3) return Math.round(number * 1000);
+  }
+  return number;
+}
+
+function normalizeMoneyMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.entries(value).reduce((acc, [key, amount]) => {
+    const period = periodFromText(key) || key;
+    const normalized = normalizeCurrencyAmount(amount);
+    if (period && normalized !== null) acc[period] = normalized;
+    return acc;
+  }, {});
+}
+
+function normalizeSalaryType(value) {
+  const normalized = normalizeText(value);
+  if (["monthly", "mensual", "mensualizado", "sueldo mensual"].includes(normalized)) return "monthly";
+  if (["daily", "jornal", "jornalizado", "diario", "por dia"].includes(normalized)) return "daily";
+  if (["hourly", "hora", "horario", "por hora"].includes(normalized)) return "hourly";
+  return "";
+}
+
+function dropNullishKeys(object, keys) {
+  keys.forEach((key) => {
+    if (object[key] === null || object[key] === undefined) delete object[key];
+  });
+  return object;
+}
+
+function periodFromText(value, fallbackYear) {
+  const raw = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const iso = raw.match(/\b(20\d{2})-(0[1-9]|1[0-2])\b/);
+  if (iso) return iso[0];
+  const year = raw.match(/\b(20\d{2})\b/)?.[1] || fallbackYear || String(new Date().getFullYear());
+  const monthMap = {
+    enero: "01", ene: "01",
+    febrero: "02", feb: "02",
+    marzo: "03", mar: "03",
+    abril: "04", abr: "04",
+    mayo: "05", may: "05",
+    junio: "06", jun: "06",
+    julio: "07", jul: "07",
+    agosto: "08", ago: "08",
+    septiembre: "09", setiembre: "09", sep: "09", set: "09",
+    octubre: "10", oct: "10",
+    noviembre: "11", nov: "11",
+    diciembre: "12", dic: "12"
+  };
+  const monthKey = Object.keys(monthMap).find((key) => raw.includes(key));
+  return monthKey ? `${year}-${monthMap[monthKey]}` : null;
+}
+
+function monthLabel(period) {
+  const match = String(period || "").match(/^(\d{4})-(\d{2})$/);
+  if (!match) return period || "";
+  const names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  return `${names[Number(match[2]) - 1] || match[2]} ${match[1]}`;
+}
+
+function normalizeRows(rows, periodIds = []) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row, index) => {
+      const label = row.label || row.name || row.category || `Categoria ${index + 1}`;
+      const id = normalizeText(row.id || label || `categoria-${index + 1}`);
+      const nonRem = {};
+      const monthlyByPeriod = normalizeMoneyMap(row.monthlyByPeriod || row.monthlyByPeriodo || row.basicoPorPeriodo || row.sueldoMensualPorPeriodo);
+      const dayByPeriod = normalizeMoneyMap(row.dayByPeriod || row.jornalPorPeriodo || row.valorDiaPorPeriodo);
+      const hourlyByPeriod = normalizeMoneyMap(row.hourlyByPeriod || row.horaPorPeriodo || row.valorHoraPorPeriodo);
+      const rawNonRem = row.nonRem || row.nonRemunerativeByPeriod || row.noRemPorPeriodo;
+      if (rawNonRem && typeof rawNonRem === "object" && !Array.isArray(rawNonRem)) {
+        Object.entries(rawNonRem).forEach(([key, value]) => {
+          const period = periodFromText(key) || key;
+          nonRem[period] = normalizeCurrencyAmount(value) || 0;
+        });
+      }
+      if (!Object.keys(nonRem).length && row.nonRemunerative !== undefined) {
+        periodIds.forEach((period) => {
+          nonRem[period] = normalizeCurrencyAmount(row.nonRemunerative) || 0;
+        });
+      }
+      const normalized = {
+        id,
+        label: String(label),
+        group: row.group || row.grupo || "",
+        description: row.description || row.descripcion || "",
+        zone: normalizeZoneId(row.zone || row.zona),
+        monthly: normalizeCurrencyAmount(row.monthly ?? row.sueldoMensual ?? row.basicoMensual),
+        day: normalizeCurrencyAmount(row.day ?? row.jornal ?? row.valorDia),
+        hourly: normalizeCurrencyAmount(row.hourly ?? row.hora ?? row.valorHora),
+        monthlyByPeriod,
+        dayByPeriod,
+        hourlyByPeriod,
+        nonRem,
+        commissionPercent: Number(row.commissionPercent ?? row.comisionPorcentaje ?? 0) || null,
+        normalWeeklyHours: Number(row.normalWeeklyHours ?? row.horasSemanales ?? 0) || null,
+        legalReferences: Array.isArray(row.legalReferences || row.referenciasLegales) ? (row.legalReferences || row.referenciasLegales).filter(Boolean).map(String) : [],
+        notes: Array.isArray(row.notes) ? row.notes.filter(Boolean).map(String) : []
+      };
+      return dropNullishKeys(normalized, ["monthly", "day", "hourly"]);
+    })
+    .filter((row) => row.label && (
+      row.monthly
+      || row.day
+      || row.hourly
+      || Object.values(row.monthlyByPeriod).some(Boolean)
+      || Object.values(row.dayByPeriod).some(Boolean)
+      || Object.values(row.hourlyByPeriod).some(Boolean)
+      || Object.values(row.nonRem).some(Boolean)
+    ));
+}
+
+function normalizeConcepts(concepts, { useFallbackDefaults = true } = {}) {
+  if (!Array.isArray(concepts)) return [];
+  return concepts
+    .map((concept, index) => {
+      const label = concept.label || concept.name || `Concepto ${index + 1}`;
+      const inputType = ["checkbox", "number"].includes(concept.inputType) ? concept.inputType : (concept.type === "number" ? "number" : (useFallbackDefaults ? "checkbox" : ""));
+      const rowType = ["remunerative", "nonRemunerative", "deduction"].includes(concept.rowType) ? concept.rowType : (useFallbackDefaults ? "remunerative" : "");
+      const calculation = ["fixed", "percentOfBase", "amountPerUnit"].includes(concept.calculation) ? concept.calculation : (useFallbackDefaults ? "percentOfBase" : "");
+      const normalized = {
+        id: normalizeText(concept.id || label || `concepto-${index + 1}`),
+        label: String(label),
+        group: concept.group || "Adicionales",
+        inputType,
+        rowType,
+        calculation,
+        defaultValue: concept.defaultValue ?? (useFallbackDefaults ? (inputType === "checkbox" ? false : 0) : null),
+        amount: normalizeCurrencyAmount(concept.amount),
+        amountByPeriod: normalizeMoneyMap(concept.amountByPeriod || concept.amountPorPeriodo),
+        unitAmount: normalizeCurrencyAmount(concept.unitAmount),
+        unitAmountByPeriod: normalizeMoneyMap(concept.unitAmountByPeriod || concept.valorUnidadPorPeriodo),
+        percent: Number(concept.percent ?? concept.pct ?? 0) || 0,
+        base: concept.base || (useFallbackDefaults ? "basic" : ""),
+        detail: concept.detail || concept.legalReference || "",
+        subjectToSocialSecurity: concept.subjectToSocialSecurity === undefined ? (useFallbackDefaults ? true : null) : concept.subjectToSocialSecurity !== false,
+        subjectToHealthInsurance: concept.subjectToHealthInsurance === undefined ? (useFallbackDefaults ? true : null) : concept.subjectToHealthInsurance !== false,
+        subjectToART: concept.subjectToART === undefined ? (useFallbackDefaults ? true : null) : concept.subjectToART !== false,
+        taxableIncome: concept.taxableIncome === undefined ? (useFallbackDefaults ? false : null) : concept.taxableIncome === true,
+        requiresHumanValidation: concept.requiresHumanValidation === true,
+        notes: Array.isArray(concept.notes) ? concept.notes.filter(Boolean).map(String) : []
+      };
+      ["conditions", "proration", "rounding", "legalReferences", "audit", "ui", "tags", "source", "sourceFiles"].forEach((key) => {
+        if (concept[key] !== undefined) normalized[key] = concept[key];
+      });
+      return dropNullishKeys(normalized, ["amount", "unitAmount"]);
+    })
+    .filter((concept) => concept.id && concept.label);
+}
+
+function normalizeDeductions(deductions, { idPrefix = "deduccion", labelPrefix = "Deduccion", defaultValue = true, useFallbackDefaults = true } = {}) {
+  if (!Array.isArray(deductions)) return [];
+  return deductions
+    .map((item, index) => {
+      const normalized = {
+        id: normalizeText(item.id || item.label || `${idPrefix}-${index + 1}`),
+        label: item.label || item.name || `${labelPrefix} ${index + 1}`,
+        calculation: item.calculation || ((item.amount !== undefined && item.amount !== null) ? "fixed" : (useFallbackDefaults ? "percentOfBase" : "")),
+        percent: Number(item.percent ?? item.pct ?? 0) || 0,
+        amount: normalizeCurrencyAmount(item.amount),
+        amountByPeriod: normalizeMoneyMap(item.amountByPeriod || item.amountPorPeriodo),
+        base: item.base || (useFallbackDefaults ? "remunerative" : ""),
+        defaultValue: item.defaultValue === undefined ? (useFallbackDefaults ? defaultValue : false) : item.defaultValue !== false,
+        appliesWhen: item.appliesWhen || "",
+        detail: item.detail || item.legalReference || "",
+        requiresHumanValidation: item.requiresHumanValidation === true
+      };
+      ["conditions", "legalReferences", "audit", "ui", "tags", "source", "sourceFiles"].forEach((key) => {
+        if (item[key] !== undefined) normalized[key] = item[key];
+      });
+      return normalized;
+    })
+    .filter((item) => item.id && item.label && (
+      item.percent
+      || item.amount
+      || Object.values(item.amountByPeriod || {}).some(Boolean)
+      || item.requiresHumanValidation
+      || item.detail
+      || item.appliesWhen
+    ));
+}
+
+function scoreConvention(parsed) {
+  let score = 30;
+  if (parsed.id) score += 5;
+  if (parsed.name) score += 8;
+  if ((parsed.periods || []).length) score += 10;
+  if ((parsed.categories || []).length >= 3) score += 18;
+  else score += (parsed.categories || []).length * 4;
+  if ((parsed.zones || []).length) score += 6;
+  if (parsed.liquidationModel?.rules) score += 10;
+  if ((parsed.liquidationModel?.concepts || []).length) score += 8;
+  if ((parsed.liquidationModel?.deductions || []).length) score += 5;
+  if ((parsed.liquidationModel?.retentions || []).length) score += 4;
+  if ((parsed.auditChecklist || []).length) score += 6;
+  score -= Math.min(18, (parsed.warnings || []).length * 4);
+  const aiScore = Number(parsed.confidence || 0) || 0;
+  return Math.max(0, Math.min(96, Math.max(score, aiScore)));
+}
+
+function polishConventionWarnings(parsed) {
+  if (!parsed?.categories?.length || !Array.isArray(parsed.warnings) || !parsed.warnings.length) return parsed;
+  const criticalPattern = /no se detect|sin import|falt|no pudo|inconsisten|revisar total|json inval|json valido|error|pendiente de lectura/i;
+  const critical = [];
+  const notes = Array.isArray(parsed.notes) ? [...parsed.notes] : [];
+  parsed.warnings.forEach((warning) => {
+    const text = String(warning || "").trim();
+    if (!text) return;
+    if (criticalPattern.test(text)) critical.push(text);
+    else notes.push(text);
+  });
+  parsed.warnings = Array.from(new Set(critical));
+  parsed.notes = Array.from(new Set(notes));
+  return parsed;
+}
+
+function normalizeConvention(parsed, { fallbackName = "Convenio generado por leIA", useFallbackDefaults = true } = {}) {
+  if (parsed?.data && (parsed.ok === true || parsed.data.schemaVersion || parsed.data.convenio)) {
+    parsed = parsed.data;
+  }
+  if (parsed?.json_parcial) {
+    parsed = parsed.json_parcial;
+  }
+  const wrapped = parsed?.parsedConvention || parsed?.structuredConvention || parsed?.resultado || parsed?.result;
+  if (wrapped && typeof wrapped === "object" && (wrapped.schemaVersion || wrapped.convenio || wrapped.convention || wrapped.categorias || wrapped.categories)) {
+    parsed = wrapped;
+  }
+  if (parsed?.schemaVersion === UNIVERSAL_SCHEMA_VERSION || parsed?.convenio) {
+    return normalizeUniversalConvenio(parsed);
+  }
+  const source = parsed.convention || parsed.convenio || parsed;
+  if (source.schemaVersion || source.categories || source.payrollBases?.scales) {
+    return normalizeUniversalConvenio(source);
+  }
+  const name = source.name || source.nombre || fallbackName;
+  const id = normalizeText(source.id || source.shortName || name);
+  const fallbackYear = String(new Date().getFullYear());
+  const periodSource = Array.isArray(source.periods || source.periodos) ? (source.periods || source.periodos) : [];
+  const periods = periodSource
+    .map((period) => {
+      const value = typeof period === "string" ? period : (period.id || period.period || period.label);
+      const normalized = periodFromText(value, fallbackYear) || normalizeText(value);
+      return normalized ? { id: normalized, label: (typeof period === "object" && period.label) || monthLabel(normalized) || String(value) } : null;
+    })
+    .filter(Boolean);
+  if (!periods.length && useFallbackDefaults) {
+    const current = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+    periods.push({ id: current, label: monthLabel(current) });
+  }
+  const periodIds = periods.map((period) => period.id);
+  const categories = normalizeRows(source.categories || source.categorias || source.rows, periodIds);
+  const zones = normalizeConventionZones(source.zones || source.zonas, categories, { useFallbackDefaults });
+  const concepts = normalizeConcepts(source.liquidationModel?.concepts || source.concepts || source.conceptos, { useFallbackDefaults });
+  const deductions = normalizeDeductions(source.liquidationModel?.deductions || source.deductions || source.aportesTrabajador, { useFallbackDefaults });
+  const retentions = normalizeDeductions(source.liquidationModel?.retentions || source.retentions || source.retenciones, {
+    idPrefix: "retencion",
+    labelPrefix: "Retencion",
+    defaultValue: false,
+    useFallbackDefaults
+  });
+  const employerContributions = normalizeDeductions(source.liquidationModel?.employerContributions || source.employerContributions || source.contribucionesEmpleador, { useFallbackDefaults });
+  const warnings = Array.isArray(source.warnings || source.alertas)
+    ? (source.warnings || source.alertas).filter(Boolean).map(String)
+    : [];
+
+  if (!categories.length) warnings.push("No se detectaron categorias con importes. Completar antes de aprobar.");
+  if (!periods.length) warnings.push("No se detectaron periodos vigentes. Completar antes de aprobar.");
+
+  const inferredSalaryType = categories.some((cat) => cat.day || Object.keys(cat.dayByPeriod || {}).length)
+    ? "daily"
+    : (categories.some((cat) => cat.hourly || Object.keys(cat.hourlyByPeriod || {}).length)
+      ? "hourly"
+      : (categories.some((cat) => cat.monthly || Object.keys(cat.monthlyByPeriod || {}).length) ? "monthly" : ""));
+  const declaredSalaryType = normalizeSalaryType(source.type || source.liquidationModel?.rules?.salaryType);
+  const salaryType = inferredSalaryType || declaredSalaryType || (useFallbackDefaults ? "monthly" : "");
+  if (declaredSalaryType && inferredSalaryType && declaredSalaryType !== inferredSalaryType) {
+    warnings.push(`Tipo de liquidacion corregido por importes detectados: IA=${declaredSalaryType}, detectado=${inferredSalaryType}.`);
+  }
+  const rawNonRemunerativeScaleRules = source.liquidationModel?.rules?.nonRemunerativeScale
+    || source.nonRemunerativeRules
+    || source.reglasNoRemunerativas
+    || source.rules?.nonRemunerativeScale
+    || {};
+  const normalizedNonRemunerativeScaleRules = {
+    ...(rawNonRemunerativeScaleRules && typeof rawNonRemunerativeScaleRules === "object" ? rawNonRemunerativeScaleRules : {})
+  };
+  if (normalizedNonRemunerativeScaleRules.seniorityPercentPerYear == null && normalizedNonRemunerativeScaleRules.porcentajeAntiguedadPorAnio != null) {
+    normalizedNonRemunerativeScaleRules.seniorityPercentPerYear = normalizeMoney(String(normalizedNonRemunerativeScaleRules.porcentajeAntiguedadPorAnio).replace("%", ""));
+  }
+  if (normalizedNonRemunerativeScaleRules.presentismPercent == null && normalizedNonRemunerativeScaleRules.porcentajePresentismo != null) {
+    normalizedNonRemunerativeScaleRules.presentismPercent = normalizeMoney(String(normalizedNonRemunerativeScaleRules.porcentajePresentismo).replace("%", ""));
+  }
+  if (normalizedNonRemunerativeScaleRules.seniorityPercentPerYear != null && normalizedNonRemunerativeScaleRules.seniorityEnabled == null) {
+    normalizedNonRemunerativeScaleRules.seniorityEnabled = true;
+  }
+  if (normalizedNonRemunerativeScaleRules.presentismPercent != null && normalizedNonRemunerativeScaleRules.presentismEnabled == null) {
+    normalizedNonRemunerativeScaleRules.presentismEnabled = true;
+  }
+  const rules = useFallbackDefaults ? {
+    ...(source.rules && typeof source.rules === "object" ? source.rules : {}),
+    monthDivisor: Number(source.rules?.monthDivisor ?? source.liquidationModel?.rules?.monthDivisor ?? 30) || 30,
+    hourDivisor: Number(source.rules?.hourDivisor ?? source.liquidationModel?.rules?.hourDivisor ?? 200) || 200,
+    weeklyHours: Number(source.rules?.weeklyHours ?? source.liquidationModel?.rules?.weeklyHours ?? 48) || 48
+  } : {
+    ...(source.rules && typeof source.rules === "object" ? source.rules : {})
+  };
+  const liquidationRules = useFallbackDefaults ? {
+    ...(source.liquidationModel?.rules && typeof source.liquidationModel.rules === "object" ? source.liquidationModel.rules : {}),
+    salaryType,
+    monthDivisor: Number(source.liquidationModel?.rules?.monthDivisor ?? source.rules?.monthDivisor ?? 30) || 30,
+    hourDivisor: Number(source.liquidationModel?.rules?.hourDivisor ?? source.rules?.hourDivisor ?? 200) || 200,
+    weeklyHours: Number(source.liquidationModel?.rules?.weeklyHours ?? source.rules?.weeklyHours ?? 48) || 48,
+    seniority: {
+      ...(source.liquidationModel?.rules?.seniority && typeof source.liquidationModel.rules.seniority === "object" ? source.liquidationModel.rules.seniority : {}),
+      enabled: source.liquidationModel?.rules?.seniority?.enabled !== false,
+      percentPerYear: Number(source.liquidationModel?.rules?.seniority?.percentPerYear ?? 1) || 0,
+      capYears: Number(source.liquidationModel?.rules?.seniority?.capYears ?? 0) || 0,
+      base: source.liquidationModel?.rules?.seniority?.base || "basic"
+    },
+    presentism: {
+      ...(source.liquidationModel?.rules?.presentism && typeof source.liquidationModel.rules.presentism === "object" ? source.liquidationModel.rules.presentism : {}),
+      enabled: source.liquidationModel?.rules?.presentism?.enabled !== false,
+      percent: Number(source.liquidationModel?.rules?.presentism?.percent ?? 0) || 0,
+      requiresNoUnjustifiedAbsence: source.liquidationModel?.rules?.presentism?.requiresNoUnjustifiedAbsence !== false
+    },
+    nonRemunerativeScale: {
+      ...normalizedNonRemunerativeScaleRules,
+      enabled: normalizedNonRemunerativeScaleRules.enabled !== false
+    },
+    overtime: {
+      ...(source.liquidationModel?.rules?.overtime && typeof source.liquidationModel.rules.overtime === "object" ? source.liquidationModel.rules.overtime : {}),
+      enabled: source.liquidationModel?.rules?.overtime?.enabled !== false,
+      divisor: Number(source.liquidationModel?.rules?.overtime?.divisor ?? source.rules?.hourDivisor ?? 200) || 200
+    }
+  } : {
+    ...(source.liquidationModel?.rules && typeof source.liquidationModel.rules === "object" ? source.liquidationModel.rules : {}),
+    ...(Object.keys(normalizedNonRemunerativeScaleRules).length ? { nonRemunerativeScale: normalizedNonRemunerativeScaleRules } : {}),
+    ...(salaryType ? { salaryType } : {})
+  };
+  const normalized = {
+    schemaVersion: source.schemaVersion || "esueldos-convenio-universal-v1",
+    id,
+    name: String(name),
+    shortName: source.shortName || source.nombreCorto || String(name).replace(/\s*CCT.*$/i, "").slice(0, 42),
+    source: source.source || source.cct || source.legalSource || "",
+    type: salaryType,
+    calculationMode: "generic-v1",
+    generatedByLeia: true,

@@ -1,0 +1,420 @@
+@media screen and (min-width: 1181px) {
+  .topbar-inner {
+    max-width: 1640px !important;
+  }
+
+  .page-shell {
+    width: min(1640px, 100%) !important;
+    max-width: 1640px !important;
+    padding: 28px 32px !important;
+  }
+
+  .app-shell {
+    grid-template-columns: 540px minmax(0, 1fr) !important;
+    gap: 28px !important;
+  }
+
+  .form-panel {
+    width: 540px !important;
+    max-width: 540px !important;
+    padding: 24px !important;
+  }
+
+  .payroll-head {
+    min-height: 54px !important;
+    margin-bottom: 20px !important;
+    padding-left: 52px !important;
+  }
+
+  .payroll-head::before {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 12px !important;
+  }
+
+  .payroll-head h2 {
+    font-size: 20px !important;
+  }
+
+  .payroll-head p {
+    font-size: 12px !important;
+  }
+
+  .wizard-steps {
+    height: 48px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .wizard-step-btn {
+    min-height: 38px !important;
+    padding: 0 14px !important;
+  }
+
+  .wizard-step-btn span {
+    width: 23px !important;
+    height: 23px !important;
+    font-size: 11px !important;
+  }
+
+  .wizard-step-btn strong {
+    font-size: 11px !important;
+  }
+
+  .step-copy {
+    min-height: 70px !important;
+    margin-bottom: 18px !important;
+    padding: 16px 18px !important;
+  }
+
+  .step-copy h3 {
+    font-size: 15px !important;
+  }
+
+  .step-copy p {
+    font-size: 12px !important;
+  }
+
+  .grid.three {
+    gap: 14px !important;
+  }
+
+  .field span,
+  .field-label {
+    font-size: 10px !important;
+  }
+
+  .field input,
+  .field select {
+    min-height: 42px !important;
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .form-panel .convention-grid {
+    gap: 14px !important;
+  }
+
+  .form-panel .convention-card {
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
+  }
+
+  .convention-content {
+    min-height: 98px !important;
+    height: 98px !important;
+    padding: 15px !important;
+  }
+
+  .convention-mark {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .convention-title {
+    font-size: 19px !important;
+  }
+
+  .convention-code {
+    font-size: 12.5px !important;
+  }
+
+  .convention-copy {
+    font-size: 11.8px !important;
+    line-height: 1.38 !important;
+  }
+
+  .results {
+    padding: 18px !important;
+    border-radius: 20px !important;
+  }
+
+  .summary-grid {
+    gap: 18px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .metric {
+    height: 112px !important;
+    min-height: 112px !important;
+  }
+
+  .result-actions {
+    grid-template-columns: 128px 158px 128px minmax(300px, 1fr) !important;
+    gap: 16px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .result-actions .icon-btn,
+  .result-actions .audit-action {
+    min-height: 46px !important;
+    font-size: 13px !important;
+  }
+
+  .tabs {
+    height: 56px !important;
+    margin: 0 -18px !important;
+    padding: 0 24px !important;
+  }
+
+  .tab {
+    min-height: 56px !important;
+    min-width: 110px !important;
+    font-size: 13px !important;
+  }
+
+  .tab-pane {
+    padding: 18px 8px 0 !important;
+  }
+
+  .empty-state,
+  .audit-empty {
+    height: 260px !important;
+    min-height: 260px !important;
+  }
+
+  .audit-empty h3 {
+    font-size: 17px !important;
+  }
+
+  .audit-empty p {
+    font-size: 12px !important;
+  }
+
+  .audit-inline-action,
+  .audit-inline-action:disabled {
+    min-height: 40px !important;
+    min-width: 170px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* XL desktop correction: expand the working surface instead of leaving empty margins. */
+@media screen and (min-width: 1181px) {
+  .topbar-inner {
+    width: min(1780px, 100%) !important;
+    max-width: 1780px !important;
+    padding-inline: 34px !important;
+  }
+
+  .page-shell {
+    width: min(1780px, 100%) !important;
+    max-width: 1780px !important;
+    padding: 28px 28px !important;
+  }
+
+  .app-shell {
+    grid-template-columns: 620px minmax(0, 1fr) !important;
+    gap: 30px !important;
+  }
+
+  .form-panel {
+    width: 620px !important;
+    max-width: 620px !important;
+    padding: 28px !important;
+    border-radius: 20px !important;
+  }
+
+  .payroll-head {
+    min-height: 62px !important;
+    margin-bottom: 24px !important;
+    padding-left: 60px !important;
+  }
+
+  .payroll-head::before {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .payroll-head h2 {
+    font-size: 23px !important;
+  }
+
+  .payroll-head p {
+    font-size: 13px !important;
+  }
+
+  .wizard-steps {
+    height: 54px !important;
+    margin-bottom: 22px !important;
+  }
+
+  .wizard-step-btn {
+    min-height: 44px !important;
+    gap: 10px !important;
+    padding: 0 18px !important;
+  }
+
+  .wizard-step-btn span {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 12px !important;
+  }
+
+  .wizard-step-btn strong {
+    font-size: 12px !important;
+  }
+
+  .step-copy {
+    min-height: 82px !important;
+    margin-bottom: 22px !important;
+    padding: 18px 20px !important;
+  }
+
+  .step-copy h3 {
+    font-size: 17px !important;
+  }
+
+  .step-copy p {
+    font-size: 13px !important;
+  }
+
+  .field span,
+  .field-label {
+    font-size: 11px !important;
+  }
+
+  .field input,
+  .field select {
+    min-height: 48px !important;
+    font-size: 14px !important;
+  }
+
+  .form-panel .convention-grid {
+    gap: 18px !important;
+  }
+
+  .form-panel .convention-card {
+    min-height: 100px !important;
+    height: 100px !important;
+    max-height: 100px !important;
+  }
+
+  .convention-content {
+    min-height: 98px !important;
+    height: 98px !important;
+    padding: 18px !important;
+  }
+
+  .convention-mark {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .convention-icon {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .selection-check {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .convention-title {
+    font-size: 22px !important;
+  }
+
+  .convention-code {
+    font-size: 14px !important;
+  }
+
+  .convention-copy {
+    font-size: 13px !important;
+    line-height: 1.42 !important;
+  }
+
+  .convention-meta span {
+    min-height: 22px !important;
+    padding: 3px 7px !important;
+    font-size: 8.8px !important;
+  }
+
+  .convention-support {
+    min-height: 40px !important;
+    padding: 8px 11px !important;
+  }
+
+  .convention-support > span:nth-child(2) {
+    font-size: 10px !important;
+  }
+
+  .support-action {
+    min-width: 112px !important;
+    min-height: 26px !important;
+    font-size: 9.5px !important;
+  }
+
+  .results {
+    padding: 20px !important;
+    border-radius: 20px !important;
+  }
+
+  .summary-grid {
+    gap: 20px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .metric {
+    height: 126px !important;
+    min-height: 126px !important;
+  }
+
+  .result-actions {
+    grid-template-columns: 144px 180px 144px minmax(360px, 1fr) !important;
+    gap: 18px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .result-actions .icon-btn,
+  .result-actions .audit-action {
+    min-height: 52px !important;
+    font-size: 14px !important;
+  }
+
+  .tabs {
+    height: 62px !important;
+    margin: 0 -20px !important;
+    padding: 0 28px !important;
+  }
+
+  .tab {
+    min-height: 62px !important;
+    min-width: 128px !important;
+    font-size: 14px !important;
+  }
+
+  .tab-pane {
+    padding: 20px 8px 0 !important;
+  }
+
+  .empty-state,
+  .audit-empty {
+    height: 310px !important;
+    min-height: 310px !important;
+  }
+
+  .audit-empty-visual {
+    width: 78px !important;
+    height: 78px !important;
+  }
+
+  .audit-empty h3 {
+    font-size: 20px !important;
+  }
+
+  .audit-empty p {
+    max-width: 620px !important;
+    font-size: 14px !important;
+  }
+
+  .audit-inline-action,
+  .audit-inline-action:disabled {
+    min-width: 190px !important;
+    min-height: 46px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* Oversize desktop pass: use almost the full browser width. This must stay
+   after the previous target blocks so wide monitors don't render the UI tiny. */

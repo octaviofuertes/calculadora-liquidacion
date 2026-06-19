@@ -1,0 +1,335 @@
+.summary-table-wrap {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #edf2fb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.summary-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.summary-table th,
+.summary-table td {
+  padding: 10px 11px;
+  border-bottom: 1px solid #edf2fb;
+  color: #33415f;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  vertical-align: top;
+}
+
+.summary-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: #6a7898;
+  background: #f4f8ff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.summary-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.category-guide {
+  display: grid;
+  gap: 14px;
+}
+
+.uocra-guide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.uocra-guide-badge {
+  flex: 0 0 auto;
+  padding: 6px 11px;
+  border-radius: 999px;
+  color: #047857;
+  background: #dcfce7;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.uocra-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media screen and (max-width: 1180px) {
+  .summary-kpis,
+  .summary-rule-grid,
+  .summary-definition-list,
+  .uocra-guide-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .convention-summary-hero {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .summary-cct {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media screen and (max-width: 720px) {
+  .tab.tab-wide {
+    min-width: 146px !important;
+  }
+
+  .summary-kpis,
+  .summary-rule-grid,
+  .summary-definition-list,
+  .uocra-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .uocra-guide-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .uocra-guide-badge {
+    width: max-content;
+  }
+
+  .convention-summary-hero {
+    padding: 14px;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .topbar,
+  .calculator-picker,
+  .leia-widget,
+  .form-panel,
+  .summary-grid,
+  .tabs {
+    display: none !important;
+  }
+
+  .page-shell,
+  .app-shell {
+    display: block;
+    padding: 0;
+  }
+
+  .result-panel {
+    border: 0;
+    box-shadow: none;
+  }
+
+  .tab-pane {
+    display: none !important;
+    padding: 0;
+  }
+
+  #receiptPane {
+    display: block !important;
+  }
+}
+
+/* ── Validacion paso 2: datos del trabajador ──────────────────────────── */
+
+.step-validation-error {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #fff5f5, #fff1f2);
+  color: #be123c;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  animation: slideInError 0.22s ease;
+}
+
+.step-validation-error.visible {
+  display: flex;
+}
+
+.step-validation-error svg {
+  flex-shrink: 0;
+  color: #e11d48;
+}
+
+.step-validation-error strong {
+  font-weight: 700;
+}
+
+@keyframes slideInError {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Campos con error (borde rojo + shake suave) */
+.field input.field-error,
+.field select.field-error {
+  border-color: #e11d48 !important;
+  background: #fff5f5 !important;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.12) !important;
+  animation: shakeField 0.32s ease;
+}
+
+@keyframes shakeField {
+  0%  { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+  100%{ transform: translateX(0); }
+}
+
+/* Boton Siguiente deshabilitado en paso 2 */
+#nextStepBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.form-panel .convention-card {
+  box-sizing: border-box !important;
+  height: 162px !important;
+  min-height: 162px !important;
+  max-height: 162px !important;
+  overflow: hidden !important;
+}
+
+.form-panel .convention-card .convention-content {
+  box-sizing: border-box !important;
+  height: 160px !important;
+  min-height: 160px !important;
+  padding: 8px !important;
+}
+
+.form-panel .convention-card .convention-visual {
+  margin-bottom: 4px !important;
+}
+
+.form-panel .convention-card .convention-mark {
+  width: 44px !important;
+  height: 44px !important;
+  margin-bottom: 0 !important;
+}
+
+.form-panel .convention-card .convention-icon {
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.form-panel .convention-card .selection-check {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.form-panel .convention-card .convention-title {
+  font-size: 17px !important;
+  line-height: 1.02 !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.form-panel .convention-card .convention-code {
+  margin-top: 3px !important;
+  font-size: 11.5px !important;
+  line-height: 1.05 !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.form-panel .convention-card .convention-meta {
+  margin-top: auto !important;
+  padding-top: 4px !important;
+}
+
+.convention-search {
+  width: 100%;
+  min-height: 38px;
+  margin: 0 0 12px;
+  padding: 0 12px;
+  border: 1px solid #cfe0ff;
+  border-radius: 12px;
+  color: #172247;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.convention-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.convention-pager button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid #b9cdf8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2457d6;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.convention-pager button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.convention-pager span {
+  color: #64739d;
+  font-size: 11px;
+  font-weight: 800;
+}
+.form-panel .convention-card .convention-edit-btn {
+  position: absolute;
+  right: 30px;
+  top: 7px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  border-radius: 999px;
+  background: #fff;
+  color: #2563eb;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+  padding: 0;
+  cursor: pointer;
+  z-index: 3;
+}

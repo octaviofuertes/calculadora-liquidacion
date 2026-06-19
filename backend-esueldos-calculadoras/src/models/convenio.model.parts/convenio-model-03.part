@@ -1,0 +1,386 @@
+﻿    excel.escalas.forEach((scale) => {
+      const scalePeriods = scalePeriodIds(scale);
+      scale.valores
+        .filter((value) => value.categoria_id === category.categoria_id)
+        .forEach((value) => {
+          const amountValue = numericAmount(value.valor);
+          if (amountValue === null) return;
+          if (value.zona && !row.zone) row.zone = text(value.zona);
+          const conceptId = canonConceptId(value.concepto_id);
+          const targetPeriods = periodIds(value.periodicidad, value.periodo, value.mes, value.fecha);
+          const valuePeriods = targetPeriods.length ? targetPeriods : (scalePeriods.length ? scalePeriods : [fallbackPeriod].filter(Boolean));
+          valuePeriods.forEach((scalePeriod) => {
+            if (conceptId === "NO_REMUNERATIVO") {
+              row.nonRem[scalePeriod] = amountValue;
+            } else {
+              const field = runtimeSalaryField(value);
+              if (field === "day") row.dayByPeriod[scalePeriod] = amountValue;
+              else if (field === "hourly") row.hourlyByPeriod[scalePeriod] = amountValue;
+              else if (!conceptId || conceptId === "SUELDO_BASICO") row.monthlyByPeriod[scalePeriod] = amountValue;
+            }
+            const key = `concept_${conceptId}`;
+            if (!row[key]) row[key] = {};
+            row[key][scalePeriod] = amountValue;
+          });
+        });
+    });
+    const latestMonthly = Object.values(row.monthlyByPeriod).at(-1);
+    const latestDay = Object.values(row.dayByPeriod).at(-1);
+    const latestHourly = Object.values(row.hourlyByPeriod).at(-1);
+    if (latestMonthly !== undefined) row.monthly = latestMonthly;
+    if (latestDay !== undefined) row.day = latestDay;
+    if (latestHourly !== undefined) row.hourly = latestHourly;
+    row.salaryType = row.monthly || Object.keys(row.monthlyByPeriod).length
+      ? "monthly"
+      : row.day || Object.keys(row.dayByPeriod).length
+        ? "daily"
+        : row.hourly || Object.keys(row.hourlyByPeriod).length
+          ? "hourly"
+          : "";
+    return row;
+  });
+  const payableCategories = categories.filter((category) => (
+    category.monthly || category.day || category.hourly
+    || Object.keys(category.monthlyByPeriod).length
+    || Object.keys(category.dayByPeriod).length
+    || Object.keys(category.hourlyByPeriod).length
+  ));
+  const runtimeCategories = payableCategories.length ? payableCategories : categories;
+  const hasMonthlySalary = runtimeCategories.some((category) => category.monthly || Object.keys(category.monthlyByPeriod).length);
+  const hasDailySalary = runtimeCategories.some((category) => category.day || Object.keys(category.dayByPeriod).length);
+  const hasHourlySalary = runtimeCategories.some((category) => category.hourly || Object.keys(category.hourlyByPeriod).length);
+  const salaryType = hasMonthlySalary
+    ? "monthly"
+    : hasDailySalary
+      ? "daily"
+      : hasHourlySalary
+      ? "hourly"
+      : "monthly";
+  const rules = { salaryType, monthDivisor: 30, hourDivisor: 200, weeklyHours: 48 };
+  return {
+    id,
+    name: excel.convenio.denominacion || id,
+    shortName: excel.convenio.denominacion || id,
+    source: excel.convenio.fuente_documento,
+    type: salaryType,
+    calculationMode: "generic-v1",
+    periods,
+    zones: zones.length ? zones.map((zone) => ({ id: zone, label: zone, coef: 1 })) : [{ id: "general", label: "General", coef: 1 }],
+    categories: runtimeCategories,
+    rules,
+    liquidationModel: {
+      version: "generic-v1",
+      rules,
+      concepts: excel.conceptos.map((concept) => {
+        const calculation = runtimeConceptCalculation(concept);
+        const amountValue = numericAmount(concept.importe_fijo);
+        const isLiquidable = concept.es_liquidable !== false;
+        return {
+          id: concept.concepto_id,
+          label: concept.nombre,
+          group: concept.naturaleza || concept.tipo_concepto,
+          naturaleza: concept.naturaleza,
+          unidad_calculo: concept.unidad_calculo,
+          formula_base: concept.formula_base,
+          rowType: runtimeConceptRowType(concept),
+          calculation,
+          inputType: runtimeConceptInputType(concept),
+          amount: calculation === "amountPerUnit" ? null : amountValue,
+          unitAmount: calculation === "amountPerUnit" ? amountValue : null,
+          percent: numericAmount(concept.porcentaje) || 0,
+          base: concept.base_calculo || "requiere_revision_manual",
+          defaultValue: isLiquidable,
+          detail: concept.condicion || concept.formula_base || concept.fuente_documento
+        };
+      }).filter((concept) => concept.id && concept.label)
+    },
+    excelConvention: excel
+  };
+}
+
+const convenioRootSchema = z.object({
+  convenio_id: requiredText,
+  tipo_norma: emptyText,
+  numero: emptyText,
+  "a\u00f1o": emptyText,
+  denominacion: requiredText,
+  actividad: emptyText,
+  rama: emptyText,
+  jurisdiccion: emptyText,
+  organismo: emptyText,
+  partes_sindicales: emptyText,
+  partes_empleadoras: emptyText,
+  fecha_homologacion: emptyText,
+  vigencia_desde: emptyText,
+  vigencia_hasta: emptyText,
+  ambito_territorial: emptyText,
+  personal_comprendido: emptyText,
+  personal_excluido: emptyText,
+  fuente_documento: emptyText
+}).passthrough();
+
+const ambitoSchema = z.object({
+  ambito_id: requiredText,
+  convenio_id: emptyText,
+  tipo_ambito: emptyText,
+  descripcion: emptyText,
+  incluido: emptyText,
+  excluido: emptyText,
+  fuente_documento: emptyText
+}).passthrough();
+
+const categoriaSchema = z.object({
+  categoria_id: requiredText,
+  convenio_id: emptyText,
+  grupo_nombre: emptyText,
+  categoria_nombre: emptyText,
+  descripcion: emptyText,
+  tareas_incluidas: emptyText,
+  modalidad_aplicable: emptyText,
+  nivel_jerarquico: emptyText,
+  fuente_documento: emptyText
+}).passthrough();
+
+const conceptoSchema = z.object({
+  concepto_id: requiredText,
+  convenio_id: emptyText,
+  codigo: emptyText,
+  nombre: emptyText,
+  tipo_concepto: emptyText,
+  naturaleza: emptyText,
+  unidad_calculo: emptyText,
+  formula_base: emptyText,
+  base_calculo: emptyText,
+  porcentaje: emptyText,
+  importe_fijo: amountValue,
+  aplica_a: emptyText,
+  condicion: emptyText,
+  fuente_documento: emptyText,
+  es_liquidable: z.boolean().optional().default(true)
+}).passthrough();
+
+const escalaValorSchema = z.object({
+  valor_id: requiredText,
+  escala_id: requiredText,
+  convenio_id: emptyText,
+  categoria_id: emptyText,
+  concepto_id: emptyText,
+  modalidad: emptyText,
+  unidad_pago: emptyText,
+  periodicidad: emptyText,
+  valor: amountValue,
+  valor_minimo: amountValue,
+  valor_maximo: amountValue,
+  moneda: emptyText,
+  alcance: emptyText,
+  zona: emptyText,
+  vigencia_desde: emptyText,
+  vigencia_hasta: emptyText,
+  fuente_documento: emptyText
+}).passthrough();
+
+const escalaSchema = z.object({
+  escala_id: requiredText,
+  convenio_id: emptyText,
+  nombre_escala: emptyText,
+  tipo_escala: emptyText,
+  periodo_desde: emptyText,
+  periodo_hasta: emptyText,
+  moneda: emptyText,
+  alcance: emptyText,
+  zona: emptyText,
+  fuente_documento: emptyText,
+  valores: z.array(escalaValorSchema).optional().default([])
+}).passthrough();
+
+const adicionalSchema = z.object({
+  adicional_id: requiredText,
+  convenio_id: emptyText,
+  concepto_id: emptyText,
+  nombre: emptyText,
+  tipo: emptyText,
+  porcentaje: amountValue,
+  importe: amountValue,
+  base_calculo: emptyText,
+  condicion: emptyText,
+  zonas_aplica: emptyText,
+  vigencia_desde: emptyText,
+  vigencia_hasta: emptyText,
+  fuente_documento: emptyText,
+  articulo_anexo: emptyText,
+  estado_revision: emptyText
+}).passthrough();
+
+const convenioSchema = z.preprocess(normalizeConvenio, z.object({
+  schemaVersion: z.literal(EXCEL_SCHEMA_VERSION),
+  convenio: convenioRootSchema,
+  ambitos: z.array(ambitoSchema).optional().default([]),
+  categorias: z.array(categoriaSchema).optional().default([]),
+  conceptos: z.array(conceptoSchema).optional().default([]),
+  escalas: z.array(escalaSchema).optional().default([]),
+  adicionales: z.array(adicionalSchema).optional().default([])
+}).strict());
+
+function validationError(message, details = []) {
+  const error = new Error(message);
+  error.status = 400;
+  error.details = details;
+  return error;
+}
+
+function duplicateIds(items = [], key) {
+  const seen = new Set();
+  const duplicates = new Set();
+  items.forEach((item) => {
+    const value = text(item?.[key]).trim();
+    if (!value) return;
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  });
+  return Array.from(duplicates);
+}
+
+function assertNoDuplicates(items, key, label) {
+  const duplicates = duplicateIds(items, key);
+  if (duplicates.length) {
+    throw validationError(`${label} duplicados`, duplicates.map((id) => ({ path: `${label}.${key}`, message: `${key} duplicado: ${id}` })));
+  }
+}
+
+function containsObjectObject(value) {
+  if (value === "[object Object]") return true;
+  if (Array.isArray(value)) return value.some(containsObjectObject);
+  if (value && typeof value === "object") return Object.values(value).some(containsObjectObject);
+  return false;
+}
+
+function validateConvenioBusinessRules(convenio) {
+  assertNoDuplicates(convenio.categorias, "categoria_id", "categorias");
+  assertNoDuplicates(convenio.conceptos, "concepto_id", "conceptos");
+  assertNoDuplicates(convenio.adicionales, "adicional_id", "adicionales");
+  assertNoDuplicates(convenio.escalas, "escala_id", "escalas");
+  if (containsObjectObject(convenio)) {
+    throw validationError("Convenio contiene [object Object]", [{ path: "convenio", message: "Hay campos serializados como [object Object]" }]);
+  }
+  const categoryIds = new Set(convenio.categorias.map((item) => item.categoria_id));
+  const conceptIds = new Set(convenio.conceptos.map((item) => item.concepto_id));
+  const convenioIds = new Set([
+    convenio.convenio.convenio_id,
+    ...convenio.ambitos.map((item) => item.convenio_id),
+    ...convenio.categorias.map((item) => item.convenio_id),
+    ...convenio.conceptos.map((item) => item.convenio_id),
+    ...convenio.escalas.map((item) => item.convenio_id),
+    ...convenio.escalas.flatMap((escala) => escala.valores.map((value) => value.convenio_id)),
+    ...convenio.adicionales.map((item) => item.convenio_id)
+  ].filter(Boolean));
+  const details = [];
+  if (convenioIds.size > 1) {
+    details.push({ path: "convenio_id", message: `Hay mas de un convenio_id: ${Array.from(convenioIds).join(", ")}` });
+  }
+  convenio.escalas.forEach((escala) => {
+    assertNoDuplicates(escala.valores, "valor_id", `valores de escala ${escala.escala_id}`);
+    if (escala.valores.length && !scalePeriodIds(escala).length) {
+      details.push({ path: `escalas.${escala.escala_id}`, message: "Escala con importes pero sin periodo detectable" });
+    }
+    escala.valores.forEach((value) => {
+      if (value.categoria_id && !categoryIds.has(value.categoria_id)) {
+        console.warn(`[CCT normalize] Escala ${escala.escala_id} apunta a categoria inexistente: ${value.categoria_id}`);
+        details.push({ path: `escalas.${escala.escala_id}.valores.categoria_id`, message: `Categoria inexistente: ${value.categoria_id}` });
+      }
+      if (value.concepto_id && !conceptIds.has(value.concepto_id)) {
+        console.warn(`[CCT normalize] Escala ${escala.escala_id} apunta a concepto inexistente: ${value.concepto_id}`);
+        details.push({ path: `escalas.${escala.escala_id}.valores.concepto_id`, message: `Concepto inexistente: ${value.concepto_id}` });
+      }
+    });
+  });
+  const salaryConceptIds = new Set(["SUELDO_BASICO", "VALOR_HORA", "VALOR_DIA", "VALOR_JORNAL"]);
+  const hasSalaryValue = convenio.escalas.some((escala) => escala.valores.some((value) => salaryConceptIds.has(value.concepto_id)));
+  if (convenio.escalas.some((escala) => escala.valores.length) && convenio.categorias.length && !hasSalaryValue) {
+    details.push({ path: "escalas.valores", message: "No se detectaron valores salariales base (SUELDO_BASICO, VALOR_HORA, VALOR_DIA o VALOR_JORNAL)" });
+  }
+  convenio.conceptos.forEach((concept) => {
+    const reference = isReferenceConcept(concept.concepto_id, concept.nombre);
+    ["nombre", "tipo_concepto", "naturaleza"].forEach((field) => {
+      if (!text(concept[field]).trim()) details.push({ path: `conceptos.${concept.concepto_id}.${field}`, message: `${field} vacio` });
+    });
+    if (reference && concept.es_liquidable !== false) details.push({ path: `conceptos.${concept.concepto_id}.es_liquidable`, message: "Concepto de referencia debe ser no liquidable" });
+  });
+  convenio.adicionales.forEach((adicional) => {
+    if (!text(adicional.concepto_id).trim()) details.push({ path: `adicionales.${adicional.adicional_id}.concepto_id`, message: "concepto_id vacio" });
+  });
+  if (details.length) throw validationError("Convenio Excel con relaciones invalidas", details);
+}
+
+function parseConvenio(input) {
+  if (input && typeof input === "object") {
+    assertNoDuplicates(input.categorias, "categoria_id", "categorias");
+    assertNoDuplicates(input.conceptos, "concepto_id", "conceptos");
+    assertNoDuplicates(input.adicionales, "adicional_id", "adicionales");
+    assertNoDuplicates(input.escalas, "escala_id", "escalas");
+  }
+  const result = convenioSchema.safeParse(input);
+  if (!result.success) {
+    throw validationError("Convenio Excel invalido", result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })));
+  }
+  validateConvenioBusinessRules(result.data);
+  return result.data;
+}
+
+function forceConvenioId(data, convenioId = "") {
+  const finalConvenioId = canonConvenioId(convenioId || data.convenio.convenio_id || slugId(data.convenio.denominacion, "CONVENIO"));
+  data.convenio.convenio_id = finalConvenioId;
+  if (!text(data.convenio.denominacion).trim()) data.convenio.denominacion = `CCT ${finalConvenioId}`;
+  ["ambitos", "categorias", "conceptos", "escalas", "adicionales"].forEach((key) => {
+    (data[key] || []).forEach((item) => {
+      item.convenio_id = finalConvenioId;
+      (item.valores || []).forEach((value) => {
+        value.convenio_id = finalConvenioId;
+      });
+    });
+  });
+  return data;
+}
+
+function normalizeAndValidateCCTJson(input) {
+  const json_parcial = forceConvenioId(normalizeConvenio(input));
+  try {
+    const data = parseConvenio(json_parcial);
+    return { ok: true, data };
+  } catch (error) {
+    return {
+      ok: false,
+      errores: error.details || [{ message: error.message }],
+      data: null
+    };
+  }
+}
+
+const validateConvenioResult = normalizeAndValidateCCTJson;
+
+function parseEscala(input, convenioId = "") {
+  const result = escalaSchema.safeParse(normalizeEscala(input.escala || input, convenioId));
+  if (!result.success) {
+    throw validationError("Escala invalida", result.error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })));
+  }
+  assertNoDuplicates(result.data.valores, "valor_id", `valores de escala ${result.data.escala_id}`);
+  return result.data;
+}
+
+module.exports = {
+  EXCEL_SCHEMA_VERSION,
+  adicionalSchema,
+  ambitoSchema,
+  categoriaSchema,
+  conceptoSchema,
+  convenioSchema,
+  escalaSchema,
+  escalaValorSchema,
+  normalizeConvenio,
+  normalizeAndValidateCCTJson,
+  validateConvenioResult,
+  toRuntimeConvention,
+  parseConvenio,
+  parseEscala,
+  canonCategoryId,
+  canonConceptId
+};

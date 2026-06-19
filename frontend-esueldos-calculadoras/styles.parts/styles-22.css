@@ -1,0 +1,441 @@
+@keyframes esueldosTopGlowScroll {
+  from {
+    opacity: 0.82;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0.28;
+    transform: translateY(-90px);
+  }
+}
+
+/* Receipt cross-highlighting from metric cards. */
+.metric[data-receipt-highlight] {
+  cursor: pointer !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, filter 0.18s ease !important;
+}
+
+.metric[data-receipt-highlight]:hover,
+.metric[data-receipt-highlight]:focus-visible,
+.metric.metric-highlight-active {
+  transform: translateY(-2px) !important;
+  filter: saturate(1.04) !important;
+  box-shadow:
+    0 18px 38px rgba(35, 78, 160, 0.16),
+    0 0 0 2px rgba(47, 111, 232, 0.16) inset !important;
+  outline: none !important;
+}
+
+.receipt-section,
+.line-total {
+  position: relative;
+  border-radius: 12px;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.receipt-section.receipt-highlight-active,
+.line-total.receipt-highlight-active {
+  z-index: 2;
+  animation: receiptSpotlight 2.6s ease both;
+}
+
+.receipt-section[data-receipt-section="remunerative"].receipt-highlight-active,
+.line-total[data-receipt-section="remunerative-total"].receipt-highlight-active {
+  --spot-color: 47, 111, 232;
+}
+
+.receipt-section[data-receipt-section="nonremunerative"].receipt-highlight-active {
+  --spot-color: 139, 92, 246;
+}
+
+.receipt-section[data-receipt-section="deductions"].receipt-highlight-active,
+.line-total[data-receipt-section="deductions-total"].receipt-highlight-active {
+  --spot-color: 244, 63, 94;
+}
+
+.line-total[data-receipt-section="net"].receipt-highlight-active {
+  --spot-color: 16, 185, 129;
+}
+
+@keyframes receiptSpotlight {
+  0% {
+    background-color: rgba(var(--spot-color, 47, 111, 232), 0.02);
+    box-shadow: 0 0 0 0 rgba(var(--spot-color, 47, 111, 232), 0);
+    transform: translateY(0);
+  }
+
+  18%,
+  72% {
+    background-color: rgba(var(--spot-color, 47, 111, 232), 0.12);
+    box-shadow:
+      0 0 0 2px rgba(var(--spot-color, 47, 111, 232), 0.38),
+      0 16px 34px rgba(var(--spot-color, 47, 111, 232), 0.18);
+    transform: translateY(-1px);
+  }
+
+  100% {
+    background-color: rgba(var(--spot-color, 47, 111, 232), 0);
+    box-shadow: 0 0 0 0 rgba(var(--spot-color, 47, 111, 232), 0);
+    transform: translateY(0);
+  }
+}
+
+.autopilot-strip {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.8fr) 1.7fr;
+  gap: 14px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(47, 111, 232, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(47, 111, 232, 0.14), transparent 38%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 255, 0.96));
+  box-shadow: 0 16px 34px rgba(36, 79, 155, 0.10);
+}
+
+.autopilot-strip span {
+  display: block;
+  color: #2f6fe8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.autopilot-strip strong {
+  display: block;
+  margin-top: 3px;
+  color: #101936;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.autopilot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.autopilot-action {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgba(47, 111, 232, 0.22);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #235bd8;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(35, 91, 216, 0.10);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.autopilot-action:hover,
+.autopilot-action:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(47, 111, 232, 0.52);
+  background: #eef5ff;
+  box-shadow: 0 14px 28px rgba(35, 91, 216, 0.16);
+  outline: none;
+}
+
+.audit-report .scale-warning {
+  border-radius: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: #fff8ed;
+  color: #8a4a05;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .autopilot-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .autopilot-actions {
+    justify-content: flex-start;
+  }
+
+  .convention-builder-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .convention-draft-list {
+    grid-template-columns: 1fr;
+  }
+
+  .convention-audit-table-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .convention-audit-actions {
+    justify-content: flex-start;
+  }
+
+  .convention-audit-general-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Premium product background: structured, animated, and less generic. */
+html {
+  background: #eaf4ff !important;
+}
+
+body {
+  background:
+    linear-gradient(180deg,
+      #06144b 0px,
+      #082071 72px,
+      #155dc4 166px,
+      #72c2ff 318px,
+      #e8f5ff 520px,
+      #f4f9ff 100%) !important;
+  isolation: isolate !important;
+}
+
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background:
+    linear-gradient(112deg, transparent 0 10%, rgba(255, 255, 255, 0.24) 10.2% 10.8%, transparent 11% 38%, rgba(72, 181, 255, 0.15) 38.2% 39.2%, transparent 39.4% 100%),
+    linear-gradient(68deg, transparent 0 58%, rgba(255, 255, 255, 0.20) 58.2% 58.9%, transparent 59.1% 100%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.075) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg, rgba(11, 42, 112, 0.055) 0 1px, transparent 1px 58px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 44%) !important;
+  background-size: 150% 150%, 140% 140%, 72px 72px, 58px 58px, 100% 100% !important;
+  background-position: 0 0, 100% 0, center top, center top, center top !important;
+  opacity: 0.86 !important;
+  transform: translate3d(0, 0, 0) !important;
+  animation: payrollSurfaceDrift 22s ease-in-out infinite alternate !important;
+}
+
+body::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 72px 0 auto 0 !important;
+  z-index: 0 !important;
+  height: 360px !important;
+  pointer-events: none !important;
+  background:
+    linear-gradient(180deg, rgba(4, 18, 65, 0.62) 0%, rgba(24, 95, 205, 0.22) 42%, rgba(231, 246, 255, 0) 100%),
+    linear-gradient(96deg, transparent 0 18%, rgba(255, 255, 255, 0.30) 18.3% 18.8%, transparent 19.1% 45%, rgba(128, 216, 255, 0.22) 45.2% 46%, transparent 46.2% 100%) !important;
+  opacity: 0.76 !important;
+  clip-path: polygon(0 0, 100% 0, 100% 74%, 70% 63%, 42% 83%, 0 68%) !important;
+  animation: payrollHeaderCurrent 16s ease-in-out infinite alternate !important;
+}
+
+.page-shell {
+  position: relative !important;
+}
+
+.page-shell::before {
+  content: "" !important;
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 56px !important;
+  z-index: 0 !important;
+  height: 1px !important;
+  pointer-events: none !important;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent) !important;
+}
+
+@keyframes payrollSurfaceDrift {
+  0% {
+    background-position: 0 0, 100% 0, center top, center top, center top;
+    filter: saturate(1);
+  }
+
+  100% {
+    background-position: 10% 8%, 88% 10%, calc(50% + 18px) 22px, calc(50% - 12px) 16px, center top;
+    filter: saturate(1.08);
+  }
+}
+
+@keyframes payrollHeaderCurrent {
+  0% {
+    opacity: 0.66;
+    transform: translateY(-8px);
+  }
+
+  100% {
+    opacity: 0.86;
+    transform: translateY(22px);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  body::before {
+    animation-name: payrollSurfaceScroll !important;
+    animation-duration: 1ms !important;
+    animation-timeline: scroll(root) !important;
+    animation-range: 0 900px !important;
+    animation-fill-mode: both !important;
+  }
+
+  body::after {
+    animation-name: payrollHeaderScroll !important;
+    animation-duration: 1ms !important;
+    animation-timeline: scroll(root) !important;
+    animation-range: 0 760px !important;
+    animation-fill-mode: both !important;
+  }
+}
+
+@keyframes payrollSurfaceScroll {
+  from {
+    background-position: 0 0, 100% 0, center top, center top, center top;
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    background-position: 14% 16%, 82% 18%, calc(50% + 28px) 44px, calc(50% - 20px) 32px, center top;
+    transform: translate3d(0, -36px, 0);
+  }
+}
+
+@keyframes payrollHeaderScroll {
+  from {
+    opacity: 0.82;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0.18;
+    transform: translateY(-120px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+}
+
+/* e-Sueldos brand background: large blue cloud forms like the public hero. */
+html {
+  background: #ffffff !important;
+}
+
+body {
+  background: #ffffff !important;
+  isolation: isolate !important;
+}
+
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background:
+    radial-gradient(ellipse 820px 620px at 18% 18%, #2d63f3 0 67%, transparent 67.4%),
+    radial-gradient(ellipse 880px 650px at 58% 22%, #2d63f3 0 68%, transparent 68.4%),
+    radial-gradient(ellipse 560px 460px at 84% -2%, #2d63f3 0 69%, transparent 69.4%),
+    radial-gradient(ellipse 520px 390px at 61% 76%, rgba(87, 139, 246, 0.86) 0 66%, transparent 66.4%),
+    radial-gradient(ellipse 360px 260px at 44% 92%, #2d63f3 0 62%, transparent 62.4%),
+    linear-gradient(180deg, rgba(238, 247, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 58%, #ffffff 100%) !important;
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) scale(1.02) !important;
+  animation: esueldosHeroClouds 24s ease-in-out infinite alternate !important;
+}
+
+body::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  background:
+    radial-gradient(ellipse 900px 660px at 18% 18%, transparent 0 63%, rgba(179, 218, 249, 0.95) 63.3% 72%, transparent 72.3%),
+    radial-gradient(ellipse 910px 680px at 58% 26%, transparent 0 65%, rgba(189, 226, 250, 0.88) 65.3% 73%, transparent 73.3%),
+    radial-gradient(ellipse 620px 500px at 86% 2%, transparent 0 66%, rgba(190, 226, 250, 0.82) 66.3% 75%, transparent 75.3%),
+    radial-gradient(circle 8px at 67% 24%, rgba(255, 255, 255, 0.22) 0 98%, transparent 100%),
+    radial-gradient(circle 8px at 70% 32%, rgba(255, 255, 255, 0.24) 0 98%, transparent 100%),
+    radial-gradient(circle 8px at 68% 41%, rgba(255, 255, 255, 0.22) 0 98%, transparent 100%),
+    radial-gradient(circle 8px at 71% 52%, rgba(255, 255, 255, 0.24) 0 98%, transparent 100%),
+    linear-gradient(90deg, transparent 0 17%, rgba(255, 255, 255, 0.18) 17.2% 17.8%, transparent 18% 100%) !important;
+  opacity: 0.92 !important;
+  animation: esueldosHeroRings 28s ease-in-out infinite alternate !important;
+}
+
+.page-shell::after {
+  content: "++++" !important;
+  position: fixed !important;
+  left: min(23vw, 360px) !important;
+  bottom: 120px !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  color: rgba(255, 255, 255, 0.16) !important;
+  font-size: 42px !important;
+  font-weight: 950 !important;
+  letter-spacing: 14px !important;
+  line-height: 1 !important;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.12) !important;
+}
+
+@keyframes esueldosHeroClouds {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+    filter: saturate(1);
+  }
+
+  100% {
+    background-position: -18px 10px, 22px 18px, -10px 14px, 18px -12px, -16px -10px, 0 0;
+    filter: saturate(1.05);
+  }
+}
+
+@keyframes esueldosHeroRings {
+  0% {
+    background-position: 0 0;
+    opacity: 0.84;
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    background-position: 18px 18px;
+    opacity: 0.96;
+    transform: translate3d(0, 16px, 0);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  body::before {
+    animation-name: esueldosHeroCloudsScroll !important;
+    animation-duration: 1ms !important;
+    animation-timeline: scroll(root) !important;
+    animation-range: 0 900px !important;
+    animation-fill-mode: both !important;
+  }
+
+  body::after {
+    animation-name: esueldosHeroRingsScroll !important;
+    animation-duration: 1ms !important;
+    animation-timeline: scroll(root) !important;
+    animation-range: 0 900px !important;
+    animation-fill-mode: both !important;
+  }
+}
+
+@keyframes esueldosHeroCloudsScroll {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.02);
+    filter: saturate(1);
+  }
+
+  to {
+    transform: translate3d(0, -64px, 0) scale(1.05);
+    filter: saturate(1.08);
+  }
+}

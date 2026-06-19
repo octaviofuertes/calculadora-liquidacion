@@ -1,0 +1,119 @@
+﻿  const warnings = [...parsedScale.warnings];
+  if (commerceAdditionals.length && commerceAdditionals.length < COMMERCE_ADDITIONAL_ROWS.length) {
+    warnings.push(`La tabla separada de adicionales de Comercio se reconstruyo parcialmente: se detectaron ${commerceAdditionals.length} de ${COMMERCE_ADDITIONAL_ROWS.length} filas esperadas.`);
+  }
+  const notesList = [
+    "Estructurado con lector local de PDF para CCT 130/75 cuando Gemini no entrego JSON valido.",
+    "La circular FAECYS 04/2026 informa basico remunerativo y sumas no remunerativas para abril, mayo y junio 2026.",
+    "La antiguedad y el presentismo se aplican tambien sobre sumas no remunerativas segun la propia circular.",
+    notes
+  ].filter(Boolean);
+  if (aiError) notesList.push(`Error IA original conservado como antecedente: ${aiError}`);
+
+  return normalizeConvention({
+    convention: {
+      id: "comercio-cct-130-75",
+      name: "Empleados de Comercio - CCT 130/75",
+      shortName: "Comercio",
+      source: "CCT 130/75 - FAECYS acuerdo abril 2026",
+      type: "monthly",
+      calculationMode: "generic-v1",
+      periods,
+      zones: [{ id: "general", label: "Todo el pais", coef: 1 }],
+      categories: parsedScale.categories,
+      rules: { monthDivisor: 30, hourDivisor: 200, weeklyHours: 48 },
+      liquidationModel: {
+        version: "generic-v1",
+        rules: {
+          salaryType: "monthly",
+          monthDivisor: 30,
+          hourDivisor: 200,
+          weeklyHours: 48,
+          seniority: { enabled: true, percentPerYear: 1, capYears: 0, base: "basic" },
+          presentism: { enabled: true, percent: 8.333333, requiresNoUnjustifiedAbsence: true },
+          nonRemunerativeScale: {
+            enabled: true,
+            seniorityPercentPerYear: 1,
+            presentismPercent: 8.333333,
+            presentismRequiresNoUnjustifiedAbsence: true
+          },
+          overtime: { enabled: true, divisor: 200 }
+        },
+        concepts: [
+          {
+            id: "feriados-trabajados",
+            label: "Feriados trabajados",
+            group: "Jornada y feriados",
+            inputType: "number",
+            rowType: "remunerative",
+            calculation: "percentOfBase",
+            percent: 3.333333,
+            base: "seniorityBase",
+            detail: "Valor diario estimado sobre basico + antiguedad. Controlar caso particular antes de emitir.",
+            subjectToSocialSecurity: true
+          },
+          {
+            id: "horas-nocturnas-adicional",
+            label: "Horas nocturnas adicional",
+            group: "Jornada y feriados",
+            inputType: "number",
+            rowType: "remunerative",
+            calculation: "percentOfBase",
+            percent: 13.333333,
+            base: "categoryHourly",
+            detail: "Adicional horario configurable para control humano segun jornada declarada.",
+            subjectToSocialSecurity: true
+          },
+          {
+            id: "ajuste-no-remunerativo-controlado",
+            label: "Ajuste no remunerativo controlado",
+            group: "Ajustes auditables",
+            inputType: "number",
+            rowType: "nonRemunerative",
+            calculation: "fixed",
+            amount: 1,
+            base: "basic",
+            detail: "Usar solo para diferencias aprobadas por auditoria humana.",
+            subjectToSocialSecurity: false
+          },
+          ...commerceAdditionals
+        ],
+        deductions: [],
+        employerContributions: []
+      },
+      auditChecklist: [
+        "Verificar que la escala vigente corresponda al periodo liquidado.",
+        "Controlar que la categoria del legajo coincida con las tareas reales del CCT 130/75.",
+        "Validar antiguedad 1% por aÃ±o sobre remunerativo y no remunerativo.",
+        "Validar presentismo Art. 40 sobre remunerativo y no remunerativo, salvo inasistencias injustificadas.",
+        "Controlar que los no remunerativos abril-junio se incorporen correctamente y que julio no los duplique.",
+        "Revisar aportes y contribuciones generales aplicados por el motor eSueldos."
+      ],
+      confidence: warnings.length ? 90 : 94,
+      warnings,
+      notes: notesList,
+      sourceFiles: [cctPdf?.sourceFileName, scalePdf?.sourceFileName].filter(Boolean)
+    }
+  }, { fallbackName: draftName || "Empleados de Comercio - CCT 130/75" });
+}
+
+module.exports = {
+  GeminiConventionError,
+  extractConventionFromPdfs,
+  normalizeConvention,
+  buildConventionPrompt,
+  conventionAttachmentParts,
+  looksLikeHairdressers730,
+  isLikelySalaryCategoryLabel,
+  parseGenericDocumentConcepts,
+  parseGenericDocumentDeductions,
+  parseGenericDocumentRules,
+  parseGenericScaleAdditionals,
+  parseGenericScaleCategories,
+  parseLooseScaleCategories,
+  parseCommerceCategories,
+  parseCommerceScaleAdditionals,
+  enrichConventionWithDocumentConcepts,
+  sanitizeGenericConventionCategories,
+  UNIVERSAL_CONVENTION_TEMPLATE
+};
