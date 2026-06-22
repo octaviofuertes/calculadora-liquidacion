@@ -1,4 +1,4 @@
-﻿    );
+    );
     container.innerHTML = visibleConventions
       .map((conv) => {
         const meta = conventionCardMeta(conv);
@@ -13,6 +13,7 @@
               <span class="convention-mark" aria-hidden="true">${conventionIcon(conv.id, "convention-icon")}</span>
               <span class="selection-check" aria-hidden="true"></span>
               <button class="convention-edit-btn" type="button" data-edit-convention-id="${escapeHtml(conv.id)}" aria-label="Editar convenio ${escapeHtml(meta.title)}">✎</button>
+              <button class="convention-delete-btn" type="button" data-delete-convention-id="${escapeHtml(conv.id)}" aria-label="Eliminar convenio ${escapeHtml(meta.title)}" style="position: absolute; right: 54px; top: 7px; width: 20px; height: 20px; min-width: 20px; min-height: 20px; box-sizing: border-box; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 50%; background: #fff; color: #ef4444; font-size: 11px; line-height: 1; padding: 0; margin: 0; cursor: pointer; z-index: 3;" title="Eliminar convenio">🗑</button>
             </div>
             <h3 class="convention-title">${escapeHtml(meta.title)}</h3>
             <div class="convention-code">${escapeHtml(meta.code)}</div>
