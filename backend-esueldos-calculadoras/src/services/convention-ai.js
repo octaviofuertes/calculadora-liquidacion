@@ -594,7 +594,13 @@ function normalizeConvention(parsed, { fallbackName = "Convenio generado por leI
     "extractedRules",
     "automationHints",
     "ui",
-    "extraction"
+    "extraction",
+    "convenio",
+    "ambitos",
+    "escalas",
+    "categorias",
+    "conceptos",
+    "adicionales"
   ].forEach((key) => {
     if (source[key] !== undefined) normalized[key] = source[key];
   });
@@ -1467,32 +1473,30 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   const cctText = await extractPdfText(cctPdf);
   const scaleText = (await Promise.all(allScalePdfs.map(extractPdfText))).filter(Boolean).join("\n\n");
 
-  const fullText = [
-    cctText ? `Documento CCT:\n${cctText}` : "",
-    scaleText ? `Documento Escala:\n${scaleText}` : ""
-  ].filter(Boolean).join("\n\n");
+  let cctContext = "";
+  if (cctText) {
+    const cctChunks = chunkText(cctText, 2000, 400);
+    console.log(`[CCT RAG] CCT dividido en ${cctChunks.length} chunks. Generando embeddings...`);
+    const cctEmbeddings = await generateEmbeddings(cctChunks, apiKey);
+    const cctQuery = "Extraer categorias salariales, adicionales, jornada laboral, sumas no remunerativas y reglas de antiguedad o presentismo. Estructurar para " + (draftName || "convenio") + " " + (notes || "");
+    cctContext = await retrieveContext(cctQuery, cctChunks, cctEmbeddings, apiKey, 15);
+  }
 
-  const chunks = chunkText(fullText, 2000, 400);
-  console.log(`[CCT RAG] Texto dividido en ${chunks.length} chunks. Generando embeddings...`);
-  
-  const embeddings = await generateEmbeddings(chunks, apiKey);
-
-  const query = "Extraer categorias salariales con sus respectivos sueldos basicos, adicionales, jornada laboral, sumas no remunerativas y reglas de antiguedad o presentismo. Estructurar para " + (draftName || "convenio") + " " + (notes || "");
-  
-  console.log(`[CCT RAG] Recuperando chunks relevantes...`);
-  const relevantContext = await retrieveContext(query, chunks, embeddings, apiKey, 10);
+  // Para las escalas salariales evitamos RAG porque las tablas numéricas pierden semántica y RAG podría omitir números vitales.
+  // Enviamos el texto plano de la escala completo.
+  const scaleContext = scaleText || "";
 
   const models = geminiModelList(model, fallbackModels);
   const errors = [];
 
   for (const currentModel of models) {
     try {
-      console.log(`[CCT RAG] Consultando a Gemini (${currentModel}) con contexto reducido...`);
+      console.log(`[CCT RAG] Consultando a Gemini (${currentModel}) con contextos RAG reducidos...`);
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctMarkdown: `Contexto recuperado (RAG):\n${relevantContext}`,
-        scaleMarkdown: "", 
+        cctMarkdown: `Contexto recuperado CCT (RAG):\n${cctContext}`,
+        scaleMarkdown: `Contexto recuperado Escala (RAG):\n${scaleContext}`, 
         cctPdf: null, 
         scalePdf: null,
         draftName,
