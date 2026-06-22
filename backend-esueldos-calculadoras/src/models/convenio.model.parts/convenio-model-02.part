@@ -1,0 +1,450 @@
+﻿    fuente_documento: text(item.fuente_documento || item.source),
+    es_liquidable: item.es_liquidable === undefined ? defaults.es_liquidable : Boolean(item.es_liquidable),
+    ...traceFields(item)
+  };
+}
+
+function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
+  const rawConceptId = item.concepto_id || item.conceptId || item.concepto || item.nombre_concepto;
+  const rawCategoryId = item.categoria_id || item.categoryId || item.categoria || item.categoria_nombre || item.nombre_categoria;
+  const normalizedCategoryId = rawCategoryId || item.categoria_nombre || item.categoryName || item.categoria
+    ? canonCategoryId(rawCategoryId, item.categoria_nombre || item.categoryName || item.categoria, item.grupo_nombre || item.rama || item.groupName || item.group)
+    : "";
+  return {
+    valor_id: text(item.valor_id || item.id || `valor-${index + 1}`),
+    escala_id: text(item.escala_id || item.scaleId || escalaId),
+    convenio_id: canonConvenioId(item.convenio_id || convenioId),
+    categoria_id: normalizedCategoryId,
+    categoria_nombre: text(item.categoria_nombre || item.categoryName || item.categoria),
+    grupo_nombre: text(item.grupo_nombre || item.rama || item.groupName || item.group),
+    concepto_id: rawConceptId ? canonConceptId(rawConceptId) : "",
+    modalidad: text(item.modalidad || item.modality),
+    unidad_pago: text(item.unidad_pago || item.paymentUnit),
+    periodicidad: text(item.periodicidad || item.periodicity),
+    valor: amount(item.valor ?? item.value ?? item.importe ?? item.monto ?? item.amount),
+    valor_minimo: amount(item.valor_minimo ?? item.minValue),
+    valor_maximo: amount(item.valor_maximo ?? item.maxValue),
+    moneda: text(item.moneda || item.currency),
+    alcance: text(item.alcance || item.scope),
+    zona: text(item.zona || item.zone),
+    vigencia_desde: text(item.vigencia_desde || item.fecha_desde || item.desde || item.validFrom),
+    vigencia_hasta: text(item.vigencia_hasta || item.fecha_hasta || item.hasta || item.validTo),
+    fuente_documento: text(item.fuente_documento || item.source),
+    ...traceFields(item)
+  };
+}
+
+function expandScaleValue(item = {}, convenioId = "", escalaId = "", index = 0) {
+  const base = normalizeValor(item, convenioId, escalaId, index);
+  const values = base.concepto_id && base.valor !== null && base.valor !== undefined && base.valor !== "" ? [base] : [];
+  const columns = [
+    [["sueldo_basico", "basico", "salario_basico"], "SUELDO_BASICO", "mensual"],
+    [["no_remunerativo", "no_rem", "suma_no_remunerativa", "asignacion_no_remunerativa", "bono_no_remunerativo"], "NO_REMUNERATIVO", "mensual"],
+    [["valor_hora", "hora"], "VALOR_HORA", "hora"],
+    [["valor_dia", "valor_jornal", "jornal"], "VALOR_JORNAL", "jornal"],
+    [["valor_changa", "changa"], "VALOR_CHANGA", "changa"],
+    [["total_remunerativo"], "TOTAL_REMUNERATIVO", "mensual"],
+    [["total_7h", "total_7_h"], "TOTAL_7H", "mensual"],
+    [["total_8h", "total_8_h"], "TOTAL_8H", "mensual"],
+    [["viatico", "viaticos"], "VIATICO", "mensual"]
+  ];
+  for (const [fields, concepto_id, unidad_pago] of columns) {
+    const field = fields.find((key) => item[key] !== undefined && item[key] !== null && item[key] !== "");
+    if (!field) continue;
+    values.push(normalizeValor({
+      ...item,
+      valor_id: `${base.valor_id}-${concepto_id}`,
+      concepto_id,
+      unidad_pago,
+      valor: item[field]
+    }, convenioId, escalaId, values.length));
+  }
+  return values;
+}
+
+function normalizeEscala(item = {}, convenioId = "", index = 0) {
+  const escalaId = text(item.escala_id || item.id || `escala-${index + 1}`);
+  const valores = array(item.valores || item.values)
+    .flatMap((value, valueIndex) => expandScaleValue(value, convenioId, escalaId, valueIndex))
+    .filter((value) => value.valor !== null && value.valor !== undefined && value.valor !== "");
+  const nombreEscala = text(item.nombre_escala || item.nombre || item.name || item.periodo || item.period);
+  const periodoDesde = text(item.periodo_desde || item.fecha_desde || item.vigencia_desde || item.desde || item.periodFrom || item.period);
+  const periodoHasta = text(item.periodo_hasta || item.fecha_hasta || item.vigencia_hasta || item.hasta || item.periodTo);
+  const inferredPeriods = periodIds(
+    periodoDesde,
+    periodoHasta,
+    nombreEscala,
+    escalaId,
+    item.fuente_documento,
+    item.source,
+    item.evidencia,
+    item.contexto,
+    ...valores.flatMap((value) => [value.periodicidad, value.periodo, value.mes, value.fecha, value.vigencia_desde, value.vigencia_hasta, value.evidencia])
+  );
+  const inferredFrom = inferredPeriods[0] || "";
+  const inferredTo = inferredPeriods[inferredPeriods.length - 1] || inferredFrom;
+  return {
+    escala_id: escalaId,
+    convenio_id: canonConvenioId(item.convenio_id || convenioId),
+    nombre_escala: nombreEscala,
+    tipo_escala: text(item.tipo_escala || item.tipo || item.type),
+    periodo_desde: periodoDesde || inferredFrom,
+    periodo_hasta: periodoHasta || inferredTo,
+    moneda: text(item.moneda || item.currency),
+    alcance: text(item.alcance || item.scope),
+    zona: text(item.zona || item.zone),
+    fuente_documento: text(item.fuente_documento || item.source),
+    valores,
+    ...traceFields(item)
+  };
+}
+
+function escalaHasData(escala = {}) {
+  return Boolean(
+    text(escala.nombre_escala).trim()
+    || text(escala.periodo_desde).trim()
+    || text(escala.periodo_hasta).trim()
+    || array(escala.valores).some((value) => value?.valor !== null && value?.valor !== undefined && value?.valor !== "")
+  );
+}
+
+function normalizeAdicional(item = {}, convenioId = "", index = 0) {
+  const nombre = text(item.nombre || item.name);
+  const conceptoId = canonConceptId(item.concepto_id || item.conceptId || item.adicional_id || item.id, nombre);
+  return {
+    adicional_id: conceptoId || slugId(item.adicional_id || item.id || nombre, `ADICIONAL_${index + 1}`),
+    convenio_id: canonConvenioId(item.convenio_id || convenioId),
+    concepto_id: conceptoId,
+    nombre,
+    tipo: text(item.tipo || item.type),
+    porcentaje: amount(item.porcentaje ?? item.percentage),
+    importe: amount(item.importe ?? item.amount),
+    base_calculo: text(item.base_calculo || item.base),
+    condicion: text(item.condicion || item.condition),
+    zonas_aplica: text(item.zonas_aplica || item.zones),
+    vigencia_desde: text(item.vigencia_desde || item.validFrom),
+    vigencia_hasta: text(item.vigencia_hasta || item.validTo),
+    fuente_documento: text(item.fuente_documento || item.source),
+    articulo_anexo: text(item.articulo_anexo),
+    estado_revision: text(item.estado_revision || item.status),
+    ...traceFields(item)
+  };
+}
+
+function dedupeById(items, idField, label) {
+  const map = new Map();
+  for (const item of items || []) {
+    const id = item[idField];
+    if (!id) continue;
+    if (map.has(id)) {
+      console.warn(`[CCT normalize] Duplicado en ${label}: ${id}. Se fusiono.`);
+      map.set(id, { ...item, ...map.get(id), ...Object.fromEntries(Object.entries(item).filter(([, value]) => value !== "" && value !== null && value !== undefined)) });
+    } else {
+      map.set(id, item);
+    }
+  }
+  return Array.from(map.values());
+}
+
+function finalizeConvenio(normalized) {
+  const convenioId = canonConvenioId(normalized.convenio?.convenio_id);
+  normalized.convenio = { ...normalized.convenio, convenio_id: convenioId };
+  normalizeRetiroDuplicateValues(normalized);
+  const categoryByName = new Map();
+  const categoryIdMap = new Map();
+  const categoryByCanonicalName = new Map();
+  const additionalCategoryById = new Map();
+  const promotedAdditionalConcepts = [];
+  const promotedAdicionales = [];
+  for (const category of dedupeById(normalized.categorias, "categoria_id", "categorias")) {
+    const canonicalId = canonCategoryId(category.categoria_id, category.categoria_nombre, category.grupo_nombre);
+    if (canonicalId && canonicalId !== category.categoria_id) {
+      console.warn(`[CCT normalize] categoria_id normalizado: ${category.categoria_id} -> ${canonicalId}`);
+    }
+    if (isModalityOnlyCategoryLabel(category)) {
+      console.warn(`[CCT normalize] Categoria descartada por ser modalidad pura: ${category.categoria_nombre || category.categoria_id}`);
+      categoryIdMap.set(category.categoria_id, "");
+      categoryIdMap.set(canonicalId, "");
+      continue;
+    }
+    if (isAdditionalCategoryLabel(category)) {
+      const concepto_id = canonConceptId(category.categoria_id, category.categoria_nombre);
+      console.warn(`[CCT normalize] Categoria reclasificada como adicional/concepto: ${category.categoria_nombre || category.categoria_id} -> ${concepto_id}`);
+      const promoted = {
+        concepto_id,
+        nombre: text(category.categoria_nombre || category.categoria_id),
+        fuente_documento: text(category.fuente_documento)
+      };
+      additionalCategoryById.set(category.categoria_id, promoted);
+      additionalCategoryById.set(canonicalId, promoted);
+      categoryIdMap.set(category.categoria_id, "");
+      categoryIdMap.set(canonicalId, "");
+      promotedAdditionalConcepts.push(promoted);
+      promotedAdicionales.push({ adicional_id: concepto_id, concepto_id, nombre: promoted.nombre, fuente_documento: promoted.fuente_documento });
+      continue;
+    }
+    const nameKey = categoryIdentityKey(category);
+    if (categoryByCanonicalName.has(nameKey)) {
+      const existing = categoryByCanonicalName.get(nameKey);
+      console.warn(`[CCT normalize] Categoria duplicada por nombre: ${category.categoria_nombre}. ${category.categoria_id} -> ${existing.categoria_id}`);
+      categoryIdMap.set(category.categoria_id, existing.categoria_id);
+      categoryIdMap.set(canonicalId, existing.categoria_id);
+      categoryByCanonicalName.set(nameKey, mergeCategoryData(existing, { ...category, categoria_id: canonicalId }, convenioId));
+      continue;
+    }
+    const finalCategory = { ...category, convenio_id: convenioId, categoria_id: canonicalId };
+    categoryIdMap.set(category.categoria_id, canonicalId);
+    categoryIdMap.set(canonicalId, canonicalId);
+    categoryByCanonicalName.set(nameKey, finalCategory);
+    categoryByName.set(slugId(finalCategory.categoria_nombre), finalCategory.categoria_id);
+    categoryByName.set(semanticCategoryKey(finalCategory.categoria_nombre), finalCategory.categoria_id);
+    categoryByName.set(semanticCategoryKey(finalCategory.categoria_id), finalCategory.categoria_id);
+  }
+  let categorias = Array.from(categoryByCanonicalName.values());
+  let categoryIds = new Set(categorias.map((category) => category.categoria_id));
+
+  const resolveCategoryIdForValue = (value = {}, scale = {}) => {
+    const hasValueCategory = text(value.categoria_id).trim() || text(value.categoria_nombre).trim() || text(value.grupo_nombre).trim();
+    const normalizedCategoryId = hasValueCategory ? canonCategoryId(value.categoria_id, value.categoria_nombre, value.grupo_nombre || scale.zona) : "";
+    return categoryIds.has(normalizedCategoryId)
+      ? normalizedCategoryId
+      : (categoryIdMap.get(value.categoria_id)
+        || categoryIdMap.get(normalizedCategoryId)
+        || categoryByName.get(semanticCategoryKey(value.categoria_nombre, value.categoria_id))
+        || categoryByName.get(slugId(value.categoria_id))
+        || normalizedCategoryId);
+  };
+
+  const variantPlans = new Map();
+  normalized.escalas.forEach((scale) => {
+    (scale.valores || []).forEach((value) => {
+      const baseCategoryId = resolveCategoryIdForValue(value, scale);
+      if (!baseCategoryId) return;
+      const conceptId = canonConceptId(value.concepto_id || "SUELDO_BASICO");
+      if (!/^(SUELDO_BASICO|NO_REMUNERATIVO|VALOR_HORA|VALOR_DIA|VALOR_JORNAL)$/.test(conceptId)) return;
+      const plan = variantPlans.get(baseCategoryId) || { total: 0, variantless: 0, variants: new Map() };
+      plan.total += 1;
+      const variantId = scaleValueVariantId(value);
+      if (variantId) plan.variants.set(variantId, scaleValueVariantText(value));
+      else plan.variantless += 1;
+      variantPlans.set(baseCategoryId, plan);
+    });
+  });
+
+  const splitBaseCategoryIds = new Set();
+  const variantCategoryByKey = new Map();
+  variantPlans.forEach((plan, baseCategoryId) => {
+    if (plan.variants.size <= 1 || plan.variantless > 0) return;
+    const baseCategory = categorias.find((category) => category.categoria_id === baseCategoryId);
+    if (!baseCategory) return;
+    splitBaseCategoryIds.add(baseCategoryId);
+    plan.variants.forEach((variantLabel, variantId) => {
+      const finalId = variantCategoryId(baseCategoryId, variantId);
+      variantCategoryByKey.set(`${baseCategoryId}|${variantId}`, finalId);
+      if (!categoryIds.has(finalId)) {
+        categorias.push({
+          ...baseCategory,
+          categoria_id: finalId,
+          categoria_nombre: `${baseCategory.categoria_nombre} - ${variantLabel}`,
+          modalidad_aplicable: variantLabel
+        });
+      }
+    });
+  });
+  if (splitBaseCategoryIds.size) {
+    categorias = categorias.filter((category) => !splitBaseCategoryIds.has(category.categoria_id));
+    categoryIds = new Set(categorias.map((category) => category.categoria_id));
+  }
+
+  const conceptosInput = [...normalized.conceptos, ...promotedAdditionalConcepts].filter((concept) => {
+    if (!isNonLiquidableLicenseConcept(concept)) return true;
+    console.warn(`[CCT normalize] Concepto descartado por ser licencia/regimen no liquidable: ${concept.nombre || concept.concepto_id}`);
+    return false;
+  }).map((concept) => {
+    const id = canonConceptId(concept.concepto_id, concept.nombre);
+    if (id !== concept.concepto_id) console.warn(`[CCT normalize] concepto_id normalizado: ${concept.concepto_id} -> ${id}`);
+    const defaults = conceptDefaults({ ...concept, concepto_id: id });
+    return { ...concept, convenio_id: convenioId, concepto_id: id, ...defaults };
+  });
+  const conceptos = dedupeById(conceptosInput, "concepto_id", "conceptos");
+  const conceptIds = new Set(conceptos.map((concept) => concept.concepto_id));
+
+  const escalas = normalized.escalas.map((scale) => ({
+    ...scale,
+    convenio_id: convenioId,
+    valores: scale.valores.map((value) => {
+      const valueCategoryIsModality = isModalityOnlyCategoryLabel(value);
+      const normalizedValue = valueCategoryIsModality
+        ? { ...value, modalidad: text(value.modalidad || value.categoria_nombre || value.categoria_id), categoria_id: "", categoria_nombre: "", grupo_nombre: "" }
+        : value;
+      const hasValueCategory = text(normalizedValue.categoria_id).trim() || text(normalizedValue.categoria_nombre).trim() || text(normalizedValue.grupo_nombre).trim();
+      const normalizedCategoryId = hasValueCategory ? canonCategoryId(normalizedValue.categoria_id, normalizedValue.categoria_nombre, normalizedValue.grupo_nombre || scale.zona) : "";
+      const promotedAdditional = additionalCategoryById.get(normalizedValue.categoria_id) || additionalCategoryById.get(normalizedCategoryId);
+      const categoryId = promotedAdditional ? "" : categoryIds.has(normalizedCategoryId)
+        ? normalizedCategoryId
+        : (categoryIdMap.get(normalizedValue.categoria_id)
+          || categoryIdMap.get(normalizedCategoryId)
+          || categoryByName.get(semanticCategoryKey(normalizedValue.categoria_nombre, normalizedValue.categoria_id))
+          || categoryByName.get(slugId(normalizedValue.categoria_id)));
+      const conceptId = promotedAdditional ? canonConceptId(promotedAdditional.concepto_id, promotedAdditional.nombre) : canonConceptId(normalizedValue.concepto_id || "SUELDO_BASICO");
+      const baseCategoryId = categoryId || normalizedCategoryId || normalizedValue.categoria_id;
+      const variantId = scaleValueVariantId(normalizedValue);
+      const finalCategoryId = !promotedAdditional && splitBaseCategoryIds.has(baseCategoryId) && variantId
+        ? (variantCategoryByKey.get(`${baseCategoryId}|${variantId}`) || baseCategoryId)
+        : baseCategoryId;
+      if (!promotedAdditional && finalCategoryId && !categoryIds.has(finalCategoryId)) {
+        console.warn(`[CCT normalize] Se creo categoria minima desde escala ${scale.escala_id}: ${finalCategoryId}`);
+        categorias.push({
+          categoria_id: finalCategoryId,
+          convenio_id: convenioId,
+          grupo_nombre: text(normalizedValue.grupo_nombre || scale.zona),
+          categoria_nombre: text(normalizedValue.categoria_nombre) || finalCategoryId.replace(/_/g, " "),
+          descripcion: "",
+          tareas_incluidas: "",
+          modalidad_aplicable: text(normalizedValue.modalidad) || categoryVariantLabelFromId(finalCategoryId),
+          nivel_jerarquico: "",
+          fuente_documento: text(normalizedValue.fuente_documento || scale.fuente_documento)
+        });
+        categoryIds.add(finalCategoryId);
+      }
+      if (!conceptIds.has(conceptId)) {
+        console.warn(`[CCT normalize] Escala ${scale.escala_id} apunta a concepto inexistente: ${conceptId}. Se creo concepto minimo.`);
+        conceptos.push(normalizeConcepto({ concepto_id: conceptId, nombre: conceptId.replace(/_/g, " ") }, normalized.convenio.convenio_id));
+        conceptIds.add(conceptId);
+      }
+      return {
+        ...normalizedValue,
+        convenio_id: convenioId,
+        categoria_id: promotedAdditional ? "" : finalCategoryId,
+        categoria_nombre: promotedAdditional ? "" : normalizedValue.categoria_nombre,
+        grupo_nombre: promotedAdditional ? "" : normalizedValue.grupo_nombre,
+        concepto_id: conceptId
+      };
+    })
+  }));
+
+  const adicionales = dedupeById([...normalized.adicionales, ...promotedAdicionales].filter((item) => {
+    if (!isNonLiquidableLicenseConcept({ ...item, concepto_id: item.concepto_id || item.adicional_id })) return true;
+    console.warn(`[CCT normalize] Adicional descartado por ser licencia/regimen no liquidable: ${item.nombre || item.adicional_id}`);
+    return false;
+  }).map((item) => {
+    if (!text(item.nombre).trim() && !text(item.concepto_id).trim() && /^ADICIONAL_\d+$/.test(text(item.adicional_id))) return null;
+    const concepto_id = canonConceptId(item.concepto_id || item.adicional_id, item.nombre);
+    if (!concepto_id) return null;
+    if (!conceptIds.has(concepto_id)) {
+      console.warn(`[CCT normalize] Adicional ${item.adicional_id} apunta a concepto inexistente: ${concepto_id}. Se creo concepto minimo.`);
+      conceptos.push(normalizeConcepto({ concepto_id, nombre: item.nombre }, convenioId));
+      conceptIds.add(concepto_id);
+    }
+    return {
+    ...item,
+    convenio_id: convenioId,
+    adicional_id: canonConceptId(item.adicional_id, item.nombre),
+    concepto_id
+  };
+  }).filter(Boolean), "adicional_id", "adicionales");
+
+  const ambitos = (normalized.ambitos || []).map((item) => ({ ...item, convenio_id: convenioId }));
+  const valuedCategoryIds = new Set(escalas.flatMap((scale) => (scale.valores || [])
+    .filter((value) => numericAmount(value.valor) !== null)
+    .map((value) => value.categoria_id)
+    .filter(Boolean)));
+  categorias = categorias.filter((category) => valuedCategoryIds.has(category.categoria_id) || !isGeneralGroupingCategory(category));
+
+  return { ...normalized, ambitos, categorias, conceptos, escalas, adicionales };
+}
+
+function universalConcepts(source = {}) {
+  const model = source.liquidationModel || {};
+  return [
+    ...array(model.concepts).map((item) => ({ ...item, __forcedType: item.type || "HABER" })),
+    ...array(model.deductions).map((item) => ({ ...item, __forcedType: item.type || "DESCUENTO" })),
+    ...array(model.retentions).map((item) => ({ ...item, __forcedType: item.type || "RETENCION" })),
+    ...array(model.employerContributions).map((item) => ({ ...item, __forcedType: item.type || "APORTE_PATRONAL" }))
+  ];
+}
+
+function normalizeConvenio(input = {}) {
+  if (input?.data && (input.ok === true || input.data.schemaVersion || input.data.convenio)) input = input.data;
+  if (input?.json_parcial) input = input.json_parcial;
+  const wrapped = input?.parsedConvention || input?.structuredConvention || input?.resultado || input?.result;
+  if (wrapped && typeof wrapped === "object" && (wrapped.schemaVersion || wrapped.convenio || wrapped.categorias || wrapped.categories)) input = wrapped;
+  const source = input.schemaVersion === EXCEL_SCHEMA_VERSION || input.convenio
+    ? input
+    : { convenio: input, ambitos: input.ambitos, categorias: input.categorias, conceptos: input.conceptos, escalas: input.escalas, adicionales: input.adicionales };
+  const universal = input.id && input.categories ? input : null;
+  const convenio = normalizeConvenioRoot(source.convenio || universal || input);
+  const convenioId = convenio.convenio_id;
+  const conceptos = source.conceptos || (universal ? universalConcepts(universal) : []);
+  const adicionales = source.adicionales || (universal?.additionals ? Object.values(universal.additionals) : []);
+  return finalizeConvenio({
+    schemaVersion: EXCEL_SCHEMA_VERSION,
+    convenio,
+    ambitos: array(source.ambitos).map((item, index) => normalizeAmbito(item, convenioId, index)),
+    categorias: array(source.categorias || universal?.categories)
+      .map((item, index) => normalizeCategoria(item, convenioId, index))
+      .filter((category) => text(category.categoria_nombre).trim()),
+    conceptos: array(conceptos).map((item, index) => normalizeConcepto(item, convenioId, index, item.__forcedType)),
+    escalas: array(source.escalas || universal?.payrollBases?.scales)
+      .map((item, index) => normalizeEscala(item, convenioId, index))
+      .filter(escalaHasData),
+    adicionales: array(adicionales).map((item, index) => normalizeAdicional(item, convenioId, index))
+  });
+}
+
+function runtimeSalaryField(value = {}) {
+  const raw = text(`${value.modalidad} ${value.unidad_pago} ${value.periodicidad}`).toLowerCase();
+  if (raw.includes("hora")) return "hourly";
+  if (raw.includes("jornal") || raw.includes("dia") || raw.includes("dÃ­a")) return "day";
+  return "monthly";
+}
+
+function runtimeConceptRowType(concept = {}) {
+  const raw = slugId(`${concept.concepto_id || ""} ${concept.nombre || ""} ${concept.tipo_concepto || ""} ${concept.naturaleza || ""}`);
+  if (/REFERENCIA|REFERENCIAL|TOTAL_/.test(raw)) return "reference";
+  if (/APORTE_PATRONAL|CONTRIBUCION_PATRONAL|PATRONAL|EMPLEADOR/.test(raw)) return "employerContribution";
+  if (/DESCUENTO|RETENCION|DEDUCCION|CUOTA|APORTE|OBRA_SOCIAL|JUBILACION|LEY_19032|SINDICAL/.test(raw)
+    && !/HABER|ADICIONAL|BONO|ASIGNACION|PREMIO|SUELDO|SALARIO|NO_REM/.test(raw)) return "deduction";
+  if (/NO_REMUNERATIVO|NO_REM/.test(raw)) return "nonRemunerative";
+  return "remunerative";
+}
+
+function runtimeConceptCalculation(concept = {}) {
+  const formula = slugId(`${concept.concepto_id || ""} ${concept.nombre || ""} ${concept.formula_base || ""} ${concept.unidad_calculo || ""} ${concept.base_calculo || ""} ${concept.condicion || ""}`);
+  if (/CANTIDAD_POR_VALOR_UNITARIO|VALOR_UNITARIO|POR_DIA|DIARIO|DIA|VALOR_DIA|POR_HORA|VALOR_HORA|HORA|KILOMETR|KM|VIAJE|TRASLADO|VIATIC/.test(formula)) return "amountPerUnit";
+  if (numericAmount(concept.importe_fijo) !== null || /MONTO_FIJO|IMPORTE_FIJO|SUMA_FIJA|FIJO/.test(formula)) return "fixed";
+  if (numericAmount(concept.porcentaje) !== null || /PORCENTAJE|PERCENT|SOBRE_BASE|SOBRE_VALOR/.test(formula)) return "percentOfBase";
+  if (/VALOR_ESCALA|ESCALA_SALARIAL|ESCALA_CATEGORIA/.test(formula)) return "scaleValue";
+  if (/REFERENCIA/.test(formula)) return "reference";
+  return text(concept.formula_base || "requiresReview");
+}
+
+function runtimeConceptInputType(concept = {}) {
+  const calculation = runtimeConceptCalculation(concept);
+  if (calculation === "amountPerUnit") return "number";
+  const raw = slugId(`${concept.unidad_calculo || ""} ${concept.formula_base || ""}`);
+  return /CANTIDAD|UNIDAD|HORAS?|DIAS?|KM|VIAJE/.test(raw) ? "number" : "checkbox";
+}
+
+function toRuntimeConvention(input = {}) {
+  const excel = normalizeConvenio(input);
+  const id = excel.convenio.convenio_id || text(input.id);
+  const periods = Array.from(new Set(excel.escalas.flatMap(scalePeriodIds).filter(Boolean)))
+    .sort()
+    .map((period) => ({ id: period, label: period }));
+  const zones = Array.from(new Set(excel.escalas.flatMap((scale) => [
+    scale.zona,
+    ...(scale.valores || []).map((value) => value.zona)
+  ]).map(text).map((zone) => zone.trim()).filter(Boolean)));
+  const fallbackPeriod = periods[0]?.id || "";
+  const categories = excel.categorias.map((category) => {
+    const row = {
+      id: category.categoria_id,
+      label: categoryRuntimeLabel(category),
+      group: category.grupo_nombre || excel.convenio.rama,
+      description: category.descripcion,
+      monthlyByPeriod: {},
+      dayByPeriod: {},
+      hourlyByPeriod: {},
+      nonRem: {}
+    };

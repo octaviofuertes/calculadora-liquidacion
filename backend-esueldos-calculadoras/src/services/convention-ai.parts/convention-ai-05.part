@@ -1,0 +1,450 @@
+﻿    if (!inAdditionalSection && !isLikelyAdditionalLabel(label)) continue;
+    const concept = scaleAdditionalConcept({ label, values, period, group: currentGroup });
+    if (!concept || seen.has(concept.id)) continue;
+    seen.add(concept.id);
+    concepts.push(concept);
+  }
+  return concepts;
+}
+
+function mergeGenericConcepts(...groups) {
+  const concepts = new Map();
+  groups.flat().filter(Boolean).forEach((concept) => {
+    const id = normalizeText(concept.id || concept.label);
+    if (!id) return;
+    const existing = concepts.get(id);
+    if (!existing) {
+      concepts.set(id, { ...concept, id });
+      return;
+    }
+    const details = Array.from(new Set([existing.detail, concept.detail].filter(Boolean)));
+    const sourceFiles = Array.from(new Set([...(existing.sourceFiles || []), ...(concept.sourceFiles || [])].filter(Boolean)));
+    concepts.set(id, {
+      ...existing,
+      ...concept,
+      id,
+      amountByPeriod: { ...(existing.amountByPeriod || {}), ...(concept.amountByPeriod || {}) },
+      unitAmountByPeriod: { ...(existing.unitAmountByPeriod || {}), ...(concept.unitAmountByPeriod || {}) },
+      detail: details.join(" "),
+      source: Array.from(new Set([existing.source, concept.source].filter(Boolean))).join(" + "),
+      sourceFiles
+    });
+  });
+  return Array.from(concepts.values());
+}
+
+function enrichConventionWithDocumentConcepts(convention, { cctText = "", cctPdf, scaleText = "", scalePdf } = {}) {
+  if (!convention) return convention;
+  const period = convention.periods?.[0]?.id || detectMainPeriodFromText({
+    text: cctText,
+    fileName: cctPdf?.sourceFileName
+  });
+  const cctConcepts = parseGenericDocumentConcepts(cctText, period, {
+    sourceType: "cct",
+    sourceFileName: cctPdf?.sourceFileName || ""
+  });
+  const cctFinancialItems = parseGenericDocumentDeductions(cctText, period, {
+    sourceFileName: cctPdf?.sourceFileName || ""
+  });
+  const cctRules = parseGenericDocumentRules(cctText, {
+    sourceFileName: cctPdf?.sourceFileName || ""
+  });
+  const scaleRules = parseGenericDocumentRules(scaleText, {
+    sourceFileName: scalePdf?.sourceFileName || "",
+    sourceType: "escala salarial"
+  });
+  const extractedRules = {
+    rules: mergeRuleObjects(cctRules.rules, scaleRules.rules),
+    liquidationRules: mergeRuleObjects(cctRules.liquidationRules, scaleRules.liquidationRules),
+    evidence: mergeFinancialItems(cctRules.evidence, scaleRules.evidence)
+  };
+  if (!cctConcepts.length && !cctFinancialItems.deductions.length && !cctFinancialItems.retentions.length && !extractedRules.evidence.length) return convention;
+  return {
+    ...convention,
+    rules: mergeRuleObjects(convention.rules, extractedRules.rules),
+    extractedRules: mergeFinancialItems(convention.extractedRules || [], extractedRules.evidence),
+    liquidationModel: {
+      ...(convention.liquidationModel || {}),
+      rules: mergeRuleObjects(convention.liquidationModel?.rules, extractedRules.liquidationRules),
+      concepts: mergeGenericConcepts(convention.liquidationModel?.concepts || [], cctConcepts),
+      deductions: mergeFinancialItems(convention.liquidationModel?.deductions || [], cctFinancialItems.deductions),
+      retentions: mergeFinancialItems(convention.liquidationModel?.retentions || [], cctFinancialItems.retentions)
+    }
+  };
+}
+
+function parseGenericScaleCategories(scaleText, period, { stopAtTotals = false } = {}) {
+  const lines = String(scaleText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const categories = [];
+  const seen = new Set();
+  let currentGroup = "Escala";
+  let inAdditionalSection = false;
+
+  for (const line of lines) {
+    const folded = asciiFold(line);
+    if (stopAtTotals && /(TOTAL A ABONAR|LA SUMA FIJA|LOS ADICIONALES EXTRAORDINARIOS)/i.test(folded)) break;
+    if (isSalarySectionHeader(line)) {
+      inAdditionalSection = false;
+      currentGroup = "Escala";
+      continue;
+    }
+    if (isAdditionalSectionHeader(line)) {
+      if (categories.length) inAdditionalSection = true;
+      continue;
+    }
+    if (inAdditionalSection) continue;
+    if (isUsefulScaleHeader(line)) {
+      currentGroup = line.replace(/\s+/g, " ").trim();
+      continue;
+    }
+    const values = moneyValuesFromText(line);
+    if (!values.length) continue;
+    const label = labelBeforeFirstAmount(line);
+    if (!isLikelySalaryCategoryLabel(label, currentGroup)) continue;
+    const amounts = inferSalaryAmounts(values);
+    if (!amounts?.monthly) continue;
+    const id = normalizeText(label);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    categories.push({
+      id,
+      label,
+      group: currentGroup,
+      monthly: amounts.monthly,
+      monthlyByPeriod: { [period]: amounts.monthly },
+      day: null,
+      hourly: null,
+      nonRem: { [period]: amounts.nonRem || 0 },
+      notes: amounts.total && amounts.nonRem ? [`Total de escala detectado: ${amounts.total}.`] : []
+    });
+  }
+  return categories;
+}
+
+function sanitizeGenericConventionCategories(convention) {
+  const shouldSanitize = convention?.extraction?.model === "local-pdf-parse/generic-scale-parser"
+    || (convention?.generatedByLeia === true && convention?.calculationMode === "generic-v1");
+  if (!shouldSanitize) return convention;
+  const originalCategories = convention.categories || [];
+  const categories = originalCategories.filter((category) => isLikelySalaryCategoryLabel(category.label || category.id, category.group));
+  const period = convention.periods?.[0]?.id || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const promotedConcepts = originalCategories
+    .filter((category) => !isLikelySalaryCategoryLabel(category.label || category.id, category.group))
+    .map((category) => {
+      const label = String(category.label || category.id || "").trim();
+      const group = String(category.group || "").trim();
+      const recoverableGroup = isLikelyAdditionalGroup(group);
+      const recoveredLabel = recoverableGroup
+        ? (/^[a-z]/.test(label) && /[a-z]$/i.test(group) ? `${group}${label}` : `${group} - ${label}`)
+        : label;
+      if (!recoverableGroup && !isLikelyAdditionalLabel(label)) return null;
+      return scaleAdditionalConcept({
+      label: recoveredLabel,
+      values: [category.monthly, category.day, category.hourly],
+      period,
+      group: category.group || "Adicionales recuperados de escala"
+      });
+    })
+    .filter(Boolean);
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const concepts = [...(convention.liquidationModel?.concepts || [])];
+  promotedConcepts.forEach((concept) => {
+    if (!concepts.some((item) => item.id === concept.id)) concepts.push(concept);
+  });
+  const structuredConcepts = convention.structuredModel?.conceptos;
+  const promotedStructuredConcepts = promotedConcepts.map((concept) => ({
+    codigo: concept.id,
+    nombre: concept.label,
+    tipo_calculo: concept.calculation,
+    valor: concept.percent || concept.amount || concept.unitAmount || 0,
+    base_calculo: concept.base || "",
+    condiciones: [],
+    fuente: "Tabla separada de adicionales de escala"
+  }));
+  const structuredRemunerative = [...(structuredConcepts?.haberes_remunerativos || [])];
+  const structuredNonRemunerative = [...(structuredConcepts?.haberes_no_remunerativos || [])];
+  promotedConcepts.forEach((concept, index) => {
+    const target = concept.rowType === "nonRemunerative" ? structuredNonRemunerative : structuredRemunerative;
+    if (!target.some((item) => item.codigo === concept.id)) target.push(promotedStructuredConcepts[index]);
+  });
+  return {
+    ...convention,
+    categories,
+    warnings: originalCategories.length === categories.length ? convention.warnings : Array.from(new Set([
+      ...(convention.warnings || []),
+      "Se reclasificaron filas fragmentadas de tablas complementarias para evitar tratarlas como categorias salariales."
+    ])),
+    liquidationModel: { ...(convention.liquidationModel || {}), concepts },
+    structuredModel: convention.structuredModel ? {
+      ...convention.structuredModel,
+      categorias: (convention.structuredModel.categorias || []).filter((category) => categoryIds.has(category.codigo)),
+      escalas_salariales: (convention.structuredModel.escalas_salariales || []).filter((scale) => categoryIds.has(scale.categoria)),
+      conceptos: structuredConcepts ? {
+        ...structuredConcepts,
+        haberes_remunerativos: structuredRemunerative,
+        haberes_no_remunerativos: structuredNonRemunerative
+      } : structuredConcepts
+    } : convention.structuredModel
+  };
+}
+
+function looksLikeHairdressers730({ draftName, notes, cctText, scaleText, cctPdf, scalePdf }) {
+  const haystack = asciiFold([
+    draftName,
+    notes,
+    cctPdf?.sourceFileName,
+    scalePdf?.sourceFileName,
+    cctText.slice(0, 12000),
+    scaleText.slice(0, 5000)
+  ].join(" "));
+  const hasCct = haystack.includes("730/15")
+    || haystack.includes("730-15")
+    || haystack.includes("CCT 730");
+  const specificSignals = [
+    "FENTPEA",
+    "TRABAJADORES DE PELUQUERIA",
+    "FEDERACION NACIONAL DE TRABAJADORES DE PELUQUERIA",
+    "PELUQUERIAS, ESTETICA Y ACTIVIDADES AFINES"
+  ].filter((signal) => haystack.includes(signal));
+  return hasCct || specificSignals.length >= 2;
+}
+
+function parseHairdressersScale(scaleText, scalePdf) {
+  const period = detectMainPeriodFromText({
+    text: scaleText,
+    fileName: scalePdf?.sourceFileName,
+    fallback: "2026-04"
+  });
+  const categories = parseGenericScaleCategories(scaleText, period, { stopAtTotals: true });
+  const enriched = categories.map((category) => {
+    const line = String(scaleText || "").split(/\r?\n/).find((item) => normalizeText(labelBeforeFirstAmount(item)) === category.id) || "";
+    const commission = Number((line.match(/(\d+(?:,\d+)?)\s*%/)?.[1] || "").replace(",", ".")) || null;
+    return {
+      ...category,
+      commissionPercent: commission,
+      notes: [
+        ...(category.notes || []),
+        commission ? `Comision de produccion detectada en escala: ${commission}%.` : ""
+      ].filter(Boolean)
+    };
+  });
+  return {
+    period,
+    categories: enriched,
+    nonRemValue: enriched.find((item) => Object.values(item.nonRem || {})[0]) ? Object.values(enriched.find((item) => Object.values(item.nonRem || {})[0]).nonRem)[0] : 0
+  };
+}
+
+function buildHairdressersConvention({ draftName, notes, cctPdf, scalePdf, cctText, scaleText }) {
+  const parsedScale = parseHairdressersScale(scaleText, scalePdf);
+  if (parsedScale.categories.length < 5) return null;
+  const period = parsedScale.period;
+  return normalizeConvention({
+    convention: {
+      schemaVersion: "esueldos-convenio-universal-v1",
+      id: "peluqueros-cct-730-15",
+      name: "Peluqueros - CCT 730/15",
+      shortName: "Peluqueros",
+      source: "CCT 730/15 y escala salarial",
+      type: "monthly",
+      calculationMode: "generic-v1",
+      metadata: {
+        country: "AR",
+        jurisdiction: "Nacional / Provincia de Buenos Aires segun actividad",
+        activity: "Peluquerias, estetica y actividades afines",
+        union: "Federacion Nacional de Trabajadores de Peluqueria, Estetica y Afines",
+        cct: "730/15",
+        status: "draft",
+        createdBy: "leIA"
+      },
+      legalFramework: {
+        primarySources: [
+          { type: "cct", title: "CCT 730/15", fileName: cctPdf?.sourceFileName || "" },
+          { type: "salaryScale", title: "Escala salarial", fileName: scalePdf?.sourceFileName || "", effectiveFrom: period }
+        ],
+        defaultLaws: ["LCT", "SIPA", "Ley de Obras Sociales", "ART"],
+        articleMap: {
+          jornada: "Art. 8",
+          antiguedad: "Art. 41 inc. a",
+          puntualidad: "Art. 41 inc. b",
+          presentismo: "Art. 41 inc. c",
+          plusFuncion: "Art. 42"
+        }
+      },
+      scope: {
+        workersIncluded: ["Personal tecnico especializado", "Personal administrativo y de servicios"],
+        workersExcluded: [],
+        territory: ["Territorio nacional segun CCT y actividades alcanzadas"],
+        notes: []
+      },
+      periods: [{ id: period, label: monthLabel(period) }],
+      zones: [{ id: "general", label: "General", coef: 1 }],
+      categories: parsedScale.categories,
+      rules: {
+        salaryType: "monthly",
+        monthDivisor: 30,
+        dayDivisor: 30,
+        hourDivisor: 200,
+        weeklyHours: 48,
+        fixedPayWeeklyHours: 44,
+        productionPayWeeklyHours: 48,
+        partTimeUsesFullOsBase: true
+      },
+      liquidationModel: {
+        version: "generic-v1",
+        rules: {
+          salaryType: "monthly",
+          monthDivisor: 30,
+          hourDivisor: 200,
+          weeklyHours: 48,
+          seniority: { enabled: true, percentPerYear: 2, capYears: 0, base: "basic", legalReferences: ["Art. 41 inc. a CCT 730/15"] },
+          presentism: { enabled: true, percent: 1, base: "basic", requiresNoUnjustifiedAbsence: true, legalReferences: ["Art. 41 inc. c CCT 730/15"] },
+          nonRemunerativeScale: { enabled: true, subjectToHealthInsurance: true, subjectToUnion: true, legalReferences: ["Escala salarial"] },
+          overtime: { enabled: true, divisor: 200 }
+        },
+        concepts: [
+          { id: "puntualidad", label: "Puntualidad", group: "Asistencia", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 1, base: "basic", defaultValue: true, detail: "Art. 41 inc. b CCT 730/15", subjectToSocialSecurity: true, conditions: [{ field: "perfectPunctuality", operator: "=", value: true }] },
+          { id: "comision-produccion-manual", label: "Comision produccion informada", group: "Produccion", inputType: "number", rowType: "remunerative", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Cargar importe de comision liquidada segun produccion y porcentaje de categoria.", subjectToSocialSecurity: true, requiresHumanValidation: true },
+          { id: "plus-director", label: "Plus Director/a", group: "Plus por funcion", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 15, base: "basic", detail: "Art. 42 inc. 1 CCT 730/15", subjectToSocialSecurity: true },
+          { id: "plus-encargado-administrativo", label: "Plus encargado/a administrativo/a", group: "Plus por funcion", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 15, base: "basic", detail: "Art. 42 inc. 2 CCT 730/15", subjectToSocialSecurity: true },
+          { id: "plus-cajero", label: "Plus cajero/a", group: "Plus por funcion", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 10, base: "basic", detail: "Art. 42 inc. 3 CCT 730/15", subjectToSocialSecurity: true }
+        ],
+        deductions: [],
+        employerContributions: []
+      },
+      employeeRequirements: {
+        requiredFields: ["name", "cuil", "entryDate", "category", "period"],
+        optionalFields: ["weeklyHours", "productionAmount", "affiliate", "perfectPunctuality"],
+        legajoFlags: ["perfectPunctuality", "perfectAttendance", "productionCommission"]
+      },
+      validation: {
+        blocking: ["Debe existir categoria con sueldo minimo garantizado.", "Controlar escala vigente del periodo."],
+        warnings: ["La comision por produccion debe cargarse con respaldo de produccion bruta mensual.", "La suma fija no remunerativa integra bases indicadas por la escala."],
+        autoChecks: ["sumRowsEqualsTotals", "activeScaleForPeriod", "requiredEmployeeData"]
+      },
+      auditChecklist: [
+        "Validar categoria del trabajador contra tarea real.",
+        "Controlar si la modalidad es con produccion o retribucion fija para jornada 48/44 hs.",
+        "Validar antiguedad 2% por aÃ±o sobre salario minimo garantizado.",
+        "Validar puntualidad 1% y presentismo 1% solo con cumplimiento perfecto.",
+        "Controlar comision de produccion contra ventas/produccion bruta mensual.",
+        "Controlar plus de funcion para Director, Encargado administrativo y Cajero.",
+        "Controlar suma fija no remunerativa de escala y sus bases especiales."
+      ],
+      automationHints: {
+        preferredEngine: "generic-v1",
+        humanReviewRequiredWhen: ["comision-produccion-manual > 0", "weeklyHours < conventionalHours"]
+      },
+      confidence: 94,
+      warnings: [],
+      notes: [
+        "Estructurado con lector local para CCT 730/15 cuando Gemini no devolvio JSON valido.",
+        "La escala indica suma fija no remunerativa incluida en base de SAC, cuota sindical, aportes solidarios, contribucion patronal Fe.N.T.P.E.A. y obra social.",
+        notes
+      ].filter(Boolean),
+      extraction: {
+        confidence: 94,
+        model: "local-pdf-parse/peluqueros-cct-730-15",
+        readStrategy: "pdf-text+local-scale-parser",
+        sourceFiles: [cctPdf?.sourceFileName, scalePdf?.sourceFileName].filter(Boolean)
+      }
+    }
+  }, { fallbackName: draftName || "Peluqueros - CCT 730/15" });
+}
+
+function buildGenericConventionFromScale({ draftName, notes, cctPdf, scalePdf, cctText, scaleText, aiError }) {
+  const period = detectMainPeriodFromText({
+    text: scaleText,
+    fileName: scalePdf?.sourceFileName
+  });
+  const categories = parseGenericScaleCategories(scaleText, period);
+  const documentConcepts = mergeGenericConcepts(
+    parseGenericDocumentConcepts(cctText, period, { sourceType: "cct", sourceFileName: cctPdf?.sourceFileName || "" }),
+    parseGenericScaleAdditionals(scaleText, period, { sourceFileName: scalePdf?.sourceFileName || "" })
+  );
+  if (categories.length < 2) return null;
+  const safeName = draftName || "Convenio estructurado por leIA";
+  return normalizeConvention({
+    convention: {
+      schemaVersion: "esueldos-convenio-universal-v1",
+      id: normalizeText(safeName),
+      name: safeName,
+      shortName: safeName.slice(0, 42),
+      source: [cctPdf?.sourceFileName, scalePdf?.sourceFileName].filter(Boolean).join(" + "),
+      type: "monthly",
+      calculationMode: "generic-v1",
+      metadata: {
+        country: "AR",
+        activity: safeName,
+        status: "draft",
+        createdBy: "leIA"
+      },
+      legalFramework: {
+        primarySources: [
+          { type: "cct", title: "CCT adjunto", fileName: cctPdf?.sourceFileName || "" },
+          { type: "salaryScale", title: "Escala adjunta", fileName: scalePdf?.sourceFileName || "", effectiveFrom: period }
+        ],
+        defaultLaws: ["LCT", "SIPA", "Ley de Obras Sociales", "ART"],
+        articleMap: {}
+      },
+      periods: [{ id: period, label: monthLabel(period) }],
+      zones: [{ id: "general", label: "General", coef: 1 }],
+      categories,
+      rules: { salaryType: "monthly", monthDivisor: 30, dayDivisor: 30, hourDivisor: 200, weeklyHours: 48 },
+      liquidationModel: {
+        version: "generic-v1",
+        rules: {
+          salaryType: "monthly",
+          monthDivisor: 30,
+          hourDivisor: 200,
+          weeklyHours: 48,
+          seniority: { enabled: true, percentPerYear: 1, capYears: 0, base: "basic", requiresHumanValidation: true },
+          presentism: { enabled: false, percent: 0, requiresNoUnjustifiedAbsence: true },
+          nonRemunerativeScale: { enabled: true },
+          overtime: { enabled: true, divisor: 200 }
+        },
+        concepts: [
+          ...documentConcepts,
+          { id: "adicional-remunerativo-manual", label: "Adicional remunerativo manual", group: "Ajustes auditables", inputType: "number", rowType: "remunerative", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Usar solo con respaldo del CCT/acta o auditoria humana.", subjectToSocialSecurity: true, requiresHumanValidation: true },
+          { id: "adicional-no-remunerativo-manual", label: "Adicional no remunerativo manual", group: "Ajustes auditables", inputType: "number", rowType: "nonRemunerative", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Usar solo con respaldo del CCT/acta o auditoria humana.", subjectToSocialSecurity: false, requiresHumanValidation: true },
+          { id: "descuento-convencional-manual", label: "Descuento convencional manual", group: "Ajustes auditables", inputType: "number", rowType: "deduction", calculation: "fixed", amount: 1, base: "basic", defaultValue: 0, detail: "Usar solo con respaldo del CCT/acta o auditoria humana.", requiresHumanValidation: true }
+        ],
+        deductions: [],
+        employerContributions: []
+      },
+      validation: {
+        blocking: ["Controlar CCT: parser generico detecto escala pero no reglas especificas completas."],
+        warnings: ["Completar conceptos especificos si el CCT contiene adicionales no detectados automaticamente."],
+        autoChecks: ["sumRowsEqualsTotals", "activeScaleForPeriod", "requiredEmployeeData"]
+      },
+      auditChecklist: [
+        "Controlar que las categorias e importes coincidan con la escala PDF.",
+        "Completar o validar antiguedad, presentismo, adicionales, aportes y contribuciones del CCT.",
+        "Validar tratamiento de no remunerativos y bases de obra social/sindicato.",
+        "Aprobar solo luego de revision humana."
+      ],
+      confidence: 82,
+      warnings: ["Estructura generica: se detectaron categorias e importes, pero requiere completar reglas finas del CCT antes de aprobar."],
+      notes: [
+        aiError ? `Error IA original: ${aiError}` : "",
+        notes
+      ].filter(Boolean),
+      extraction: {
+        confidence: 82,
+        model: "local-pdf-parse/generic-scale-parser",
+        readStrategy: "pdf-text+generic-scale-parser",
+        sourceFiles: [cctPdf?.sourceFileName, scalePdf?.sourceFileName].filter(Boolean)
+      }
+    }
+  }, { fallbackName: safeName });
+}
+
+function buildCommerceConvention({ draftName, notes, cctPdf, scalePdf, cctText, scaleText, aiError }) {
+  const parsedScale = parseCommerceCategories(scaleText);
+  if (!parsedScale.categories.length) return null;
+  const periodIds = Array.from(new Set(parsedScale.categories.flatMap((category) => Object.keys(category.monthlyByPeriod || {})))).sort();
+  const periods = periodIds.map((period) => ({ id: period, label: monthLabel(period) }));
+  const commerceAdditionals = parseCommerceScaleAdditionals(scaleText, periodIds);

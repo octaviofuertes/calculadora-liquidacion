@@ -1,0 +1,278 @@
+@media screen and (min-width: 1181px) {
+  .metric:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .metric::before {
+    left: 16px;
+    top: 19px;
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+  }
+
+  .metric::after {
+    right: 18px;
+    bottom: 10px;
+    width: 88px;
+    height: 18px;
+    opacity: 0.82;
+  }
+
+  .metric span {
+    margin: 0 0 6px;
+    font-size: 8.5px;
+    line-height: 1;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  .metric strong {
+    color: var(--mock-blue);
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .result-panel {
+    min-height: calc(100vh - 163px);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.74);
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .result-actions {
+    display: grid;
+    grid-template-columns: 104px 126px 97px minmax(230px, 1fr);
+    gap: 13px;
+    height: 35px;
+    margin: 0 0 16px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .result-actions .icon-btn,
+  .result-actions .audit-action {
+    min-width: 0;
+    min-height: 35px;
+    margin: 0;
+    padding: 0 14px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .result-actions .icon-btn {
+    border: 0;
+    background: rgba(255, 255, 255, 0.92);
+    color: #8c98b7;
+    box-shadow: 0 10px 24px rgba(56, 80, 132, 0.08);
+  }
+
+  .result-actions .audit-action {
+    border: 0;
+    color: #fff;
+    background: linear-gradient(135deg, #2f7cff, #6b46ee);
+    box-shadow: 0 10px 24px rgba(62, 87, 228, 0.25);
+  }
+
+  .tabs {
+    height: 52px;
+    margin: 0 -12px;
+    padding: 0 20px;
+    gap: 18px;
+    align-items: stretch;
+    border-top: 1px solid #edf2fb;
+    border-bottom: 1px solid #edf2fb;
+    background: rgba(248, 251, 255, 0.86);
+  }
+
+  .tab {
+    min-width: 70px;
+    min-height: 52px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #7080a5;
+    box-shadow: none;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .tab.active {
+    color: var(--mock-blue);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tab.active::after {
+    left: 9px;
+    right: 9px;
+    bottom: 0;
+    height: 3px;
+    background: var(--mock-blue);
+  }
+
+  .tab-pane {
+    padding: 0 10px;
+    overflow: visible;
+  }
+
+  .empty-state,
+  .audit-empty {
+    box-sizing: border-box;
+    height: 236px;
+    min-height: 236px;
+    padding: 28px;
+    border: 1.5px dashed #c9daf8;
+    border-radius: 11px;
+    background: rgba(241, 247, 255, 0.78);
+    color: #91a0bf;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .audit-empty {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+  }
+
+  .audit-empty-visual {
+    width: 66px;
+    height: 66px;
+    border-radius: 14px;
+    font-size: 0;
+    background:
+      radial-gradient(circle at 43% 40%, transparent 0 12px, #8fc6ff 13px 16px, transparent 17px),
+      linear-gradient(45deg, transparent 58%, #2458ff 59% 66%, transparent 67%),
+      linear-gradient(180deg, #f8fbff, #e9f3ff);
+    box-shadow: 0 12px 28px rgba(54, 117, 255, 0.16);
+  }
+
+  .audit-empty h3 {
+    margin: 2px 0 0;
+    color: #5b6684;
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  .audit-empty p {
+    max-width: 430px;
+    color: #7887a9;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .audit-inline-action {
+    min-width: 136px;
+    min-height: 33px;
+    margin-top: 6px;
+    border-radius: 7px;
+    font-size: 11px;
+    background: linear-gradient(135deg, #2f7cff, #6b46ee);
+  }
+
+  .leia-widget {
+    right: 15px;
+    top: 346px;
+    bottom: auto;
+    z-index: 80;
+  }
+
+  .leia-launcher {
+    width: 160px;
+    min-width: 160px;
+    min-height: 164px;
+    padding: 10px;
+    gap: 9px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 42px rgba(39, 70, 130, 0.18);
+    align-items: flex-end;
+  }
+
+  .leia-launcher::after {
+    inset: auto 16px 10px 86px;
+  }
+
+  .leia-launcher .leia-logo {
+    --logo-size: 84px;
+    border-radius: 22px;
+  }
+
+  .leia-launch-text {
+    min-width: 50px;
+    padding-bottom: 38px;
+  }
+
+  .leia-launch-text strong {
+    color: #2f73ff;
+    font-size: 21px;
+    line-height: 1;
+    font-weight: 900;
+  }
+
+  .leia-launch-text small {
+    max-width: 58px;
+    color: #62718f;
+    font-size: 8px;
+    line-height: 1.1;
+    font-weight: 900;
+  }
+
+  .leia-launch-text em {
+    position: relative;
+    display: inline-block;
+    margin-top: 5px;
+    padding-left: 10px;
+    color: #16a365;
+    font-size: 8px;
+    font-style: normal;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .leia-launch-text em::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #17d979;
+    box-shadow: 0 0 0 3px rgba(23, 217, 121, 0.13);
+  }
+
+  .leia-launch-prompt {
+    position: absolute;
+    left: 45px;
+    right: 9px;
+    bottom: 10px;
+    display: flex;
+    height: 24px;
+    align-items: center;
+    padding: 0 8px;
+    border: 1px solid #9dc6ff;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #2f62d7;
+    font-size: 8px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* Final target override - keep this block last before print */

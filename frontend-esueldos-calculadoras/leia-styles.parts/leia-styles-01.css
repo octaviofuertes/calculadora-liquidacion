@@ -1,0 +1,437 @@
+﻿/* leIA visual layer loaded after the main stylesheet. */
+
+.leia-widget {
+  pointer-events: none !important;
+}
+
+.leia-launcher,
+.leia-panel,
+.leia-close,
+.leia-form button {
+  pointer-events: auto !important;
+}
+
+.leia-launcher {
+  cursor: pointer !important;
+}
+
+.leia-panel[hidden] {
+  display: none !important;
+}
+
+@media screen and (min-width: 1181px) {
+  .leia-widget {
+    position: fixed !important;
+    top: auto !important;
+    right: 6px !important;
+    bottom: 10px !important;
+    z-index: 80 !important;
+    display: block !important;
+  }
+
+  .leia-launcher {
+    position: relative !important;
+    display: grid !important;
+    width: 108px !important;
+    min-width: 108px !important;
+    height: 108px !important;
+    min-height: 108px !important;
+    padding: 0 !important;
+    place-items: center !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    transform: none !important;
+  }
+
+  .leia-launcher::before {
+    content: none !important;
+    position: absolute !important;
+    inset: 9px 10px auto auto !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-top: 2px solid rgba(65, 185, 255, 0.42) !important;
+    border-right: 2px solid rgba(65, 185, 255, 0.26) !important;
+    border-radius: 50% !important;
+    animation: leiaOrbitSweep 5.8s ease-in-out infinite !important;
+  }
+
+  .leia-launcher:hover {
+    transform: translateY(-5px) scale(1.03) !important;
+    box-shadow: none !important;
+  }
+
+  .leia-launcher::after {
+    content: "Soy leIA, en que puedo ayudarte" !important;
+    position: absolute !important;
+    inset: auto !important;
+    left: auto !important;
+    right: 106px !important;
+    top: 18px !important;
+    bottom: auto !important;
+    z-index: 8 !important;
+    display: block !important;
+    width: 232px !important;
+    height: auto !important;
+    padding: 9px 13px !important;
+    border: 1px solid rgba(135, 205, 255, 0.82) !important;
+    border-radius: 999px 999px 6px 999px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    color: #2f73ff !important;
+    font-size: 12px !important;
+    font-weight: 950 !important;
+    line-height: 1.15 !important;
+    box-shadow: 0 10px 22px rgba(36, 116, 232, 0.16) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateX(10px) translateY(4px) scale(0.94) !important;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease !important;
+    animation: none !important;
+  }
+
+  .leia-launcher:hover::after {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(0) translateY(0) scale(1) !important;
+  }
+
+  .leia-launcher > * {
+    opacity: 1 !important;
+  }
+
+  .leia-launcher-avatar {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 2 !important;
+    display: block !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+    animation: leiaBodyFloat 3.6s ease-in-out infinite !important;
+  }
+
+  .leia-launcher-avatar::before {
+    content: none !important;
+    position: absolute !important;
+    left: 30px !important;
+    right: auto !important;
+    top: 54px !important;
+    z-index: 7 !important;
+    width: 44px !important;
+    height: 38px !important;
+    border-top: 3px solid rgba(59, 190, 255, 0.86) !important;
+    border-left: 3px solid rgba(59, 190, 255, 0.58) !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    box-shadow:
+      -7px -5px 0 -4px rgba(59, 190, 255, 0.45),
+      -14px -10px 0 -8px rgba(59, 190, 255, 0.28) !important;
+    opacity: 1 !important;
+    transform: rotate(-24deg) translateY(0) scale(1) !important;
+    transform-origin: 100% 100% !important;
+    animation: leiaHandWave 4.4s ease-in-out infinite !important;
+  }
+
+  .leia-launcher-avatar::after {
+    content: none !important;
+    position: absolute !important;
+    left: -218px !important;
+    right: auto !important;
+    top: 18px !important;
+    z-index: 6 !important;
+    width: 214px !important;
+    padding: 8px 12px !important;
+    border: 1px solid rgba(135, 205, 255, 0.82) !important;
+    border-radius: 999px 999px 6px 999px !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #2f73ff !important;
+    font-size: 12px !important;
+    font-weight: 950 !important;
+    box-shadow: 0 10px 22px rgba(36, 116, 232, 0.16) !important;
+    opacity: 1 !important;
+    transform: translateY(0) scale(1) !important;
+    animation: leiaGreetingBubble 4.4s ease-in-out infinite !important;
+  }
+
+  .leia-launcher-img {
+    display: block !important;
+    width: 128px !important;
+    height: auto !important;
+    margin-left: -10px !important;
+    margin-top: -8px !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    filter: drop-shadow(0 16px 18px rgba(37, 107, 180, 0.16)) !important;
+    transform-origin: center bottom !important;
+    animation: leiaCharacterSway 3.6s ease-in-out infinite !important;
+    transition: transform 0.22s ease, filter 0.22s ease !important;
+  }
+
+  .leia-launcher:hover .leia-launcher-img {
+    animation-duration: 1.5s !important;
+    filter: drop-shadow(0 20px 22px rgba(37, 107, 180, 0.24)) !important;
+  }
+
+  .leia-launcher:hover .leia-launcher-avatar::after,
+  .leia-launcher:hover .leia-launcher-avatar::before {
+    opacity: 0 !important;
+    animation-duration: 1.05s !important;
+  }
+
+  .leia-launcher:hover .leia-launcher-avatar::before {
+    animation-name: leiaHandWaveHover !important;
+  }
+
+  .leia-launcher-glow {
+    position: absolute !important;
+    left: 24px !important;
+    right: 24px !important;
+    bottom: 12px !important;
+    z-index: 1 !important;
+    height: 34px !important;
+    border-radius: 50% !important;
+    background: radial-gradient(ellipse, rgba(67, 189, 251, 0.46), transparent 70%) !important;
+    filter: blur(10px) !important;
+    animation: leiaGlowPulse 2.8s ease-in-out infinite !important;
+  }
+
+  .leia-launch-text,
+  .leia-launch-prompt {
+    display: none !important;
+  }
+
+  .leia-widget.open .leia-launcher {
+    display: none !important;
+  }
+
+  .leia-panel {
+    position: fixed !important;
+    top: auto !important;
+    right: 6px !important;
+    bottom: 10px !important;
+    display: flex !important;
+    width: 360px !important;
+    height: min(520px, calc(100vh - 92px)) !important;
+    max-height: calc(100vh - 92px) !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border: 1px solid #b7d6ff !important;
+    border-radius: 18px !important;
+    background: #ffffff !important;
+    box-shadow: 0 26px 64px rgba(7, 23, 74, 0.24) !important;
+    backdrop-filter: blur(18px) !important;
+    animation: leiaPanelIn 0.18s ease !important;
+  }
+}
+
+@keyframes leiaBodyFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -7px;
+  }
+}
+
+@keyframes leiaCharacterSway {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  18% {
+    transform: rotate(-1.8deg) scale(1.012);
+  }
+  36% {
+    transform: rotate(1.3deg) scale(1.018);
+  }
+  58% {
+    transform: rotate(-0.8deg) scale(1.008);
+  }
+}
+
+@keyframes leiaGreetingBubble {
+  0%,
+  12%,
+  76%,
+  100% {
+    opacity: 0.72;
+    transform: translateY(3px) scale(0.94);
+  }
+  22%,
+  54% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  32% {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+
+@keyframes leiaHandWave {
+  0%,
+  12%,
+  76%,
+  100% {
+    opacity: 0.78;
+    transform: rotate(-28deg) translateY(3px) scale(0.82);
+  }
+  18% {
+    opacity: 1;
+    transform: rotate(-10deg) translateY(0) scale(1);
+  }
+  27% {
+    opacity: 1;
+    transform: rotate(-34deg) translateY(-4px) scale(1.12);
+  }
+  36% {
+    opacity: 1;
+    transform: rotate(-8deg) translateY(-2px) scale(1.06);
+  }
+  45% {
+    opacity: 1;
+    transform: rotate(-32deg) translateY(-4px) scale(1.12);
+  }
+  58% {
+    opacity: 0.92;
+    transform: rotate(-16deg) translateY(0) scale(0.98);
+  }
+}
+
+@keyframes leiaHandWaveHover {
+  0%,
+  100% {
+    opacity: 1;
+    transform: rotate(-14deg) translateY(0) scale(1);
+  }
+  25% {
+    opacity: 1;
+    transform: rotate(-36deg) translateY(-5px) scale(1.14);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(-8deg) translateY(-2px) scale(1.06);
+  }
+  75% {
+    opacity: 1;
+    transform: rotate(-34deg) translateY(-5px) scale(1.14);
+  }
+}
+
+@keyframes leiaOrbitSweep {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.62;
+  }
+  50% {
+    transform: rotate(18deg) scale(1.08);
+    opacity: 0.95;
+  }
+}
+
+@keyframes leiaGlowPulse {
+  0%,
+  100% {
+    opacity: 0.56;
+    transform: scaleX(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scaleX(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leia-launcher,
+  .leia-launcher::before,
+  .leia-launcher-avatar,
+  .leia-launcher-avatar::before,
+  .leia-launcher-avatar::after,
+  .leia-launcher-img,
+  .leia-launcher-glow {
+    animation: none !important;
+  }
+}
+
+.leia-panel-head {
+  flex: 0 0 76px !important;
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr) 34px !important;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 11px 12px !important;
+  border-bottom: 0 !important;
+  background: linear-gradient(135deg, #1f62d7 0%, #2f73ff 58%, #664cf4 100%) !important;
+  color: #ffffff !important;
+}
+
+.leia-avatar-img-container {
+  position: relative !important;
+  width: 54px !important;
+  height: 54px !important;
+  overflow: hidden !important;
+  border: 2px solid rgba(255, 255, 255, 0.72) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 12px 28px rgba(0, 31, 105, 0.22) !important;
+}
+
+.leia-avatar-img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center 24% !important;
+}
+
+.leia-avatar-glow {
+  position: absolute !important;
+  inset: -16px !important;
+  z-index: -1 !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(83, 207, 255, 0.45), transparent 68%) !important;
+}
+
+.leia-panel-head strong {
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 20px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.leia-panel-head span {
+  display: block !important;
+  max-width: 210px !important;
+  margin-top: 4px !important;
+  overflow: hidden !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.leia-close {
+  display: grid !important;
+  width: 34px !important;
+  height: 34px !important;
+  place-items: center !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}

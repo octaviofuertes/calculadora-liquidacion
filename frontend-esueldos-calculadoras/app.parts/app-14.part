@@ -1,0 +1,86 @@
+﻿    if (auditBtn) auditBtn.addEventListener("click", runLiquidationAudit);
+    setupScaleDashboard();
+    setupConventionBuilder();
+    setupLeia();
+    setActionButtonsEnabled(false);
+    updateConvention();
+    goToStep(1);
+    activateTab("audit");
+  }
+
+  function exportJson() {
+    if (!lastResult) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      convention: lastResult.conv.name,
+      period: lastResult.period,
+      employee: lastResult.employee,
+      category: lastResult.category.label,
+      zone: lastResult.zone.label,
+      totals: lastResult.totals,
+      remunerative: lastResult.remRows,
+      nonRemunerative: lastResult.noRemRows,
+      deductions: lastResult.deductionRows,
+      employer: lastResult.employerRows,
+      audit: lastAudit
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `liquidacion-${lastResult.conv.id}-${lastResult.period}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function saveLiquidation() {
+    if (!lastResult) return;
+
+    const button = $("saveBtn");
+    if (!button) return;
+    const originalText = button.textContent;
+    button.textContent = "Guardando";
+    button.disabled = true;
+
+    const payload = {
+      convention: lastResult.conv.id,
+      conventionName: lastResult.conv.name,
+      period: lastResult.period,
+      employee: lastResult.employee,
+      category: lastResult.category.label,
+      zone: lastResult.zone.label,
+      totals: lastResult.totals,
+      remunerative: lastResult.remRows,
+      nonRemunerative: lastResult.noRemRows,
+      deductions: lastResult.deductionRows,
+      employer: lastResult.employerRows,
+      details: lastResult.details,
+      audit: lastAudit
+    };
+
+    try {
+      const response = await fetch(apiUrl("/api/liquidations"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const saved = await response.json();
+      button.textContent = `Guardado ${saved.id.slice(-6)}`;
+      setTimeout(() => {
+        button.textContent = originalText;
+      }, 2500);
+    } catch (error) {
+      alert("No se pudo guardar en MongoDB. Verifica que el backend este iniciado en http://localhost:4100.");
+      button.textContent = originalText;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+})();

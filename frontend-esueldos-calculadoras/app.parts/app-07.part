@@ -1,0 +1,450 @@
+﻿      <section class="summary-section summary-highlight">
+        <h3>Lectura contable</h3>
+        <p>Camioneros CCT 40/89 requiere separar con precision basico remunerativo, adicionales de rama y viaticos no remunerativos del Art. 4.2.11. El sistema calcula zona, jornal, presentismo, antiguedad sin tope, kilometraje, comida, viaticos y aportes sindicales propios.</p>
+      </section>
+      ${renderSummaryCards([
+        { label: "Basico mensual", value: monthly ? fmt(monthly) : "-", detail: `Categoria seleccionada con coeficiente ${coef.toLocaleString("es-AR")}.` },
+        { label: "Jornal diario", value: day ? fmt(day) : "-", detail: "Por defecto divide por 24 dias convencionales, editable." },
+        { label: "Antiguedad", value: "1% por aÃ±o", detail: "Sin tope, sobre subtotal de remunerativos antes de antiguedad." },
+        { label: "Presentismo", value: `${items.presentismoPct || 8.33}%`, detail: "Sobre basico; no corresponde con inasistencias injustificadas." }
+      ])}
+      ${renderSummarySection("Base, zona y jornada", [
+        { label: "CCT", value: "40/89", detail: "Transporte automotor de cargas y ramas alcanzadas." },
+        { label: "Zona seleccionada", value: zone?.label || "-", detail: `Coeficiente aplicado: ${coef.toLocaleString("es-AR")}.` },
+        { label: "Dias convencionales", value: num("camPeriodDays", 24), detail: "El sistema permite adaptar jornales a pagar y ausencias." },
+        { label: "Horas extra", value: "50% / 100% / nocturnas", detail: "Valor hora estimado con jornal diario / 8." },
+        { label: "Dia camionero", value: "15 de diciembre", detail: "Si se trabaja, el sistema permite liquidarlo como jornal doble." }
+      ])}
+      ${renderSummaryTable("Viaticos y no remunerativos Art. 4.2.11", ["Concepto", "Valor base", "Tratamiento"], [
+        ["Comida", fmt((items.comida || 0) * coef), "No remunerativo por dia"],
+        ["Viatico especial", fmt((items.viaticoEspecial || 0) * coef), "No remunerativo por dia"],
+        ["Pernoctada", fmt((items.pernoctada || 0) * coef), "No remunerativo por evento"],
+        ["Viatico por km", fmt((items.kmViatico || 0) * coef), "No remunerativo por kilometro"],
+        ["Permanencia fuera de residencia", fmt((items.permanencia || 0) * coef), "No remunerativo"],
+        ["Simple presencia", fmt((items.simplePresencia || 0) * coef), "No remunerativo"],
+        ["Cruce de frontera", fmt((items.cruceFrontera || 0) * coef), "No remunerativo"],
+        ["Ingreso/egreso Tierra del Fuego", fmt((items.ingresoIsla || 0) * coef), "No remunerativo"]
+      ])}
+      ${renderSummaryTable("Adicionales remunerativos de rama", ["Concepto", "Porcentaje / valor", "Base"], [
+        ["Chofer larga distancia", `${items.choferLargaDistanciaPct || 10}%`, "Basico"],
+        ["Materia prima lactea", `${items.lacteaPct || 15}%`, "Basico"],
+        ["Conductor auxilio", `${items.auxilioPct || 10}%`, "Basico"],
+        ["Unidades blindadas", `${items.blindadoPct || 20}%`, "Basico"],
+        ["Combustibles", `${items.combustiblesPct || 15}%`, "Conductor 1ra"],
+        ["Sustancias peligrosas", `${items.peligrosasPct || 20}%`, "Conductor 1ra"],
+        ["Pozos petroliferos", `${items.pozosPetroliferosPct || 40}%`, "Basico"],
+        ["Pluralidad Grupo I/III", `${items.pluralidadGrupoIPct || 25}%`, "Basico"],
+        ["Pluralidad Grupo II", `${items.pluralidadGrupoIIPct || 18}%`, "Basico"],
+        ["Diarios y revistas", `${items.diariosRevistasPct || 12}%`, "Basico"],
+        ["Logistica / almacenamiento", `${items.logisticaPct || 18}%`, "Basico"],
+        ["Camara de frio", `${items.camaraFrioPct || 20}%`, "Basico"],
+        ["Bitrenes", fmt((items.bitrenes || 0) * coef), "Valor de planilla"]
+      ])}
+      ${renderSummarySection("Aportes, contribuciones y bases", [
+        { label: "Aportes generales", value: "SIPA 11%, PAMI 3%, Obra social 3%", detail: "Sobre remunerativos; los viaticos Art. 4.2.11 no integran base OS en este motor." },
+        { label: "Trabajador Camioneros", value: "Cuota sindical 2%, solidaria 3%, sepelio 1,5%", detail: "Activables desde conceptos." },
+        { label: "Empleador Camioneros", value: "2% empresario, 0,5% capacitacion, 2% profesionalizacion", detail: "Se suman al costo empleador." },
+        { label: "Kilometraje", value: `${fmt((items.kmExtra || 0) * coef)} / km`, detail: "Remunerativo para horas extraordinarias por kilometro; viatico por km se separa no remunerativo." }
+      ])}
+      ${renderSummaryBulletSection("Checklist profesional", [
+        "Verificar categoria exacta, rama y zona antes de liquidar.",
+        "Separar comida, viaticos, pernoctada y kilometraje no remunerativo del Art. 4.2.11.",
+        "Controlar que la antiguedad se aplique despues de adicionales remunerativos configurados.",
+        "No liquidar presentismo si hay inasistencias injustificadas.",
+        "Validar kilometros, pernoctadas y adicionales de rama contra planilla/parte de viaje."
+      ])}
+    `;
+  }
+
+  function renderGenericConventionSummary(conv, result = null) {
+    const { period, zone, category } = currentSummaryContext(conv, result);
+    const model = conv.liquidationModel || {};
+    const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
+    const seniority = rules.seniority || {};
+    const presentism = rules.presentism || {};
+    const nonRem = rules.nonRemunerativeScale || {};
+    const nonRemDetail = [
+      `OS: ${summaryValue(nonRem.subjectToHealthInsurance, "segun datos aprobados")}`,
+      `sindicato: ${summaryValue(nonRem.subjectToUnion, "segun datos aprobados")}`,
+      Number(nonRem.seniorityPercentPerYear || 0) ? `antiguedad NR ${nonRem.seniorityPercentPerYear}% por aÃ±o` : "",
+      Number(nonRem.presentismPercent || 0) ? `presentismo NR ${nonRem.presentismPercent}%` : ""
+    ].filter(Boolean).join("; ");
+    const overtime = rules.overtime || {};
+    const legal = conv.legalFramework || {};
+    const sources = summaryArray(legal.primarySources).map((source) => `${source.title || source.type || "Fuente"}${source.fileName ? ` - ${source.fileName}` : ""}`);
+    const scope = conv.scope || {};
+    const concepts = summaryArray(model.concepts || conv.concepts);
+    const conceptSummaryRow = (item) => [
+      humanizeTechnicalText(item.label || item.id),
+      humanConceptType(item),
+      humanConceptCalculation(item),
+      humanConceptBase(item.base),
+      humanConceptDetail(item)
+    ];
+    const conceptType = (item) => String(item.rowType || "remunerative").toLowerCase().replace(/[^a-z]/g, "");
+    const remunerativeConceptRows = concepts
+      .filter((item) => conceptType(item) === "remunerative")
+      .map(conceptSummaryRow);
+    const nonRemunerativeConceptRows = concepts
+      .filter((item) => conceptType(item) === "nonremunerative")
+      .map(conceptSummaryRow);
+    const deductionConceptRows = concepts
+      .filter((item) => conceptType(item) === "deduction")
+      .map(conceptSummaryRow);
+    const otherConceptRows = concepts
+      .filter((item) => !["remunerative", "nonremunerative", "deduction"].includes(conceptType(item)))
+      .map(conceptSummaryRow);
+    const deductionRows = summaryArray(model.deductions || conv.deductions).map((item) => [
+      humanizeTechnicalText(item.label || item.id),
+      item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
+      humanConceptBase(item.base || "remunerative"),
+      humanConceptDetail(item)
+    ]);
+    const retentionRows = summaryArray(model.retentions || conv.retentions).map((item) => [
+      humanizeTechnicalText(item.label || item.id),
+      item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
+      humanConceptBase(item.base || "remunerative"),
+      humanConceptDetail(item)
+    ]);
+    const extractedRuleRows = summaryArray(conv.extractedRules).map((item) => [
+      item.label || item.id,
+      summaryValue(item.value),
+      item.evidence || "-",
+      item.sourceFileName || item.source || "-"
+    ]);
+    const employerRows = summaryArray(model.employerContributions || conv.employerContributions).map((item) => [
+      humanizeTechnicalText(item.label || item.id),
+      item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
+      humanConceptBase(item.base || "remunerative"),
+      humanConceptDetail(item)
+    ]);
+    const articleRows = Object.entries(legal.articleMap || {}).map(([key, value]) => [
+      key,
+      typeof value === "string" ? value : summaryValue(value?.title || value?.summary || value?.detail || JSON.stringify(value))
+    ]);
+    const scaleZones = conv.zones?.length ? conv.zones : [zone || { id: "general", label: "General" }];
+    const scaleTables = scaleZones.flatMap((tableZone) => categoryGuideGroups(conv.categories || []).map((group) => renderSummaryTable(categoryGuideTitle(`Escala salarial - ${tableZone.label || "General"}`, group.label), ["Categoria", "Mensual", "Jornal", "Hora", "No rem. periodo"], group.categories.map((cat) => {
+      const row = scaleCategoryRow(conv, cat, tableZone);
+      return [
+        cat.label,
+        firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period]) ? fmt(firstFinite(row?.monthly, cat.monthly, cat.monthlyByPeriod?.[period])) : "-",
+        firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period]) ? fmt(firstFinite(row?.day, cat.day, cat.dayByPeriod?.[period])) : "-",
+        firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period]) ? fmt(firstFinite(row?.hourly, cat.hourly, cat.hourlyByPeriod?.[period])) : "-",
+        periodNonRemValue(cat, period) ? fmt(periodNonRemValue(cat, period)) : "-"
+      ];
+    })))).join("");
+    return `
+      <section class="summary-section summary-highlight">
+        <h3>Lectura contable</h3>
+        <p>Este convenio fue estructurado por leIA para liquidaciÃ³n. El motor genÃ©rico usa categorÃ­a, perÃ­odo, zona, escala vigente, reglas de proporcionalidad, antigÃ¼edad, presentismo, no remunerativos, conceptos variables, deducciones, retenciones y contribuciones aprobadas por auditorÃ­a humana.</p>
+      </section>
+      ${renderSummaryCards([
+        { label: "Tipo de sueldo", value: rules.salaryType || conv.type || "monthly", detail: "Define si la base se prorratea mensual, diaria u horaria." },
+        { label: "Divisor mensual", value: rules.monthDivisor || rules.dayDivisor || 30, detail: "Usado para proporcionalidad por dias." },
+        { label: "Divisor hora", value: rules.hourDivisor || overtime.divisor || 200, detail: "Base de horas extra." },
+        { label: "Jornada semanal", value: `${rules.weeklyHours || category?.normalWeeklyHours || "-"} hs`, detail: "Referencia para jornada completa y proporciones." }
+      ])}
+      ${renderSummarySection("Identificacion y alcance", [
+        { label: "Convenio", value: conv.name, detail: conv.source || "" },
+        { label: "CCT / acta", value: conventionCct(conv), detail: conv.metadata?.homologation?.resolution ? `Homologacion: ${conv.metadata.homologation.resolution}` : "" },
+        { label: "Actividad", value: conv.metadata?.activity || scope.activity || "-", detail: conv.metadata?.jurisdiction || "" },
+        { label: "Sindicato", value: conv.metadata?.union || "-", detail: conv.metadata?.employerChamber || "" },
+        { label: "Territorio", value: summaryArray(scope.territory).join(", ") || zone?.label || "-", detail: "Alcance territorial declarado en el JSON." }
+      ])}
+      ${renderSummarySection("Reglas automaticas", [
+        { label: "Antiguedad", value: seniority.enabled === false ? "No aplica" : `${summaryValue(seniority.percentPerYear, 0)}% por aÃ±o`, detail: `Base: ${summaryValue(seniority.base, "basic")}${seniority.capYears ? `; tope ${seniority.capYears} aÃ±os` : "; sin tope informado"}` },
+        { label: "Presentismo", value: presentism.enabled ? `${summaryValue(presentism.percent, 0)}%` : "No aplica", detail: presentism.requiresNoUnjustifiedAbsence === false ? "No exige ausencia cero" : "Exige controlar inasistencias injustificadas." },
+        { label: "No remunerativo escala", value: nonRem.enabled === false ? "No aplica" : "Activo", detail: nonRemDetail },
+        { label: "Horas extra", value: overtime.enabled === false ? "No aplica" : `50% x${summaryValue(overtime.rate50, 1.5)} / 100% x${summaryValue(overtime.rate100, 2)}`, detail: `Divisor ${summaryValue(overtime.divisor || rules.hourDivisor, 200)}` },
+        { label: "Categoria actual", value: category?.label || "-", detail: `Periodo ${monthLabel(periodIdToMonth(period) || period)} - zona ${zone?.label || "-"}` }
+      ])}
+      ${renderSummaryBulletSection("Fuentes cargadas", sources)}
+      ${renderSummaryBulletSection("Trabajadores incluidos", scope.workersIncluded)}
+      ${renderSummaryBulletSection("Trabajadores excluidos", scope.workersExcluded)}
+      ${renderSummaryTable("Articulos relevantes", ["Articulo", "Resumen"], articleRows)}
+      ${renderSummaryTable("Haberes remunerativos", ["Concepto", "Tipo", "CÃ³mo se calcula", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], remunerativeConceptRows)}
+      ${renderSummaryTable("Haberes no remunerativos", ["Concepto", "Tipo", "CÃ³mo se calcula", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], nonRemunerativeConceptRows)}
+      ${renderSummaryTable("Descuentos convencionales variables", ["Concepto", "Tipo", "CÃ³mo se calcula", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], deductionConceptRows)}
+      ${renderSummaryTable("Otros conceptos del motor", ["Concepto", "Tipo", "CÃ³mo se calcula", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], otherConceptRows)}
+      ${renderSummaryTable("Deducciones propias", ["Concepto", "Valor", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], deductionRows)}
+      ${renderSummaryTable("Retenciones propias", ["Concepto", "Valor", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], retentionRows)}
+      ${renderSummaryTable("Contribuciones propias empleador", ["Concepto", "Valor", "Base de cÃ¡lculo", "CondiciÃ³n / detalle"], employerRows)}
+      ${renderSummaryTable("Reglas extraidas de documentos", ["Regla", "Valor", "Evidencia", "Fuente"], extractedRuleRows)}
+      ${scaleTables}
+      ${renderSummaryBulletSection("Checklist de auditoria", conv.auditChecklist || conv.validation?.warnings || [
+        "Controlar CCT, escala y periodo vigente.",
+        "Validar categoria, zona y jornada contra legajo.",
+        "Revisar conceptos marcados con validacion humana.",
+        "Controlar bases de aportes y no remunerativos."
+      ])}
+      ${renderSummaryBulletSection("Notas y advertencias", [...summaryArray(conv.notes), ...summaryArray(conv.warnings)])}
+    `;
+  }
+
+  function renderGenericScale(result) {
+    const conv = result.conv;
+    const period = result.period;
+    const model = conv.liquidationModel || {};
+    return `<div class="tables">
+      <section class="scale-table-card">
+        <h3>Categorias</h3>
+        <div class="scale-table-scroll">
+          <table><thead><tr><th>Categoria</th><th class="num">Mensual</th><th class="num">Jornal</th><th class="num">Hora</th><th class="num">No rem.</th></tr></thead><tbody>
+            ${(conv.categories || []).map((cat) => {
+              const row = scaleCategoryRow(conv, cat, result.zone);
+              return `<tr>
+                <td>${escapeHtml(cat.label)}</td>
+                <td class="num">${fmt(firstFinite(row?.monthly, cat.monthly) || 0)}</td>
+                <td class="num">${fmt(firstFinite(row?.day, cat.day) || 0)}</td>
+                <td class="num">${fmt(firstFinite(row?.hourly, cat.hourly) || 0)}</td>
+                <td class="num">${fmt(firstFinite(row?.nonRemunerative, periodNonRemValue(cat, period)) || 0)}</td>
+              </tr>`;
+            }).join("")}
+          </tbody></table>
+        </div>
+      </section>
+      <section class="scale-table-card">
+        <h3>Conceptos</h3>
+        <div class="scale-table-scroll">
+          <table><thead><tr><th>Concepto</th><th>Tipo</th><th>CÃ³mo se calcula</th><th>Base de cÃ¡lculo</th></tr></thead><tbody>
+            ${(model.concepts || []).map((concept) => `<tr>
+              <td>${escapeHtml(humanizeTechnicalText(concept.label || concept.id))}</td>
+              <td>${escapeHtml(humanConceptType(concept))}</td>
+              <td>${escapeHtml(humanConceptCalculation(concept))}</td>
+              <td>${escapeHtml(humanConceptBase(concept.base || "basic"))}</td>
+            </tr>`).join("") || `<tr><td colspan="4">Sin conceptos variables cargados.</td></tr>`}
+          </tbody></table>
+        </div>
+      </section>
+      <div class="scale-summary">Convenio generado por leIA con motor generico JSON. Edita el convenio desde Convenios IA si necesitÃ¡s ajustar reglas finas.</div>
+    </div>`;
+  }
+
+  function renderUocraScale(result) {
+    const period = result.period;
+    const zone = result.zone.id;
+    const conv = result.conv;
+    return `<div class="tables"><table><thead><tr><th>Categoria</th><th class="num">Jornal / sueldo</th><th class="num">Valor hora</th><th class="num">SNR mensual</th></tr></thead><tbody>
+      ${conv.categories.map((cat) => {
+        const activeRow = scaleCategoryRow(conv, cat, result.zone);
+        const value = firstFinite(
+          cat.monthly ? activeRow?.monthly : activeRow?.day,
+          cat.monthly ? activeRow?.day ? activeRow.day * 24 : null : activeRow?.hourly ? activeRow.hourly * 8 : null,
+          activeRow?.monthly,
+          conv.scales[period][zone][cat.id]
+        ) || 0;
+        const snr = firstFinite(activeRow?.nonRemunerative, conv.nonRem[period][zone][cat.id]) || 0;
+        return `<tr><td>${escapeHtml(cat.label)}</td><td class="num">${fmt(value)}</td><td class="num">${cat.monthly ? "-" : fmt(value / 8)}</td><td class="num">${fmt(snr)}</td></tr>`;
+      }).join("")}
+    </tbody></table></div>`;
+  }
+
+  function renderFarmaciaScale(result) {
+    const period = result.period;
+    const conv = result.conv;
+    const additions = Object.values(conv.additionals);
+    const rules = conv.rules || {};
+    const ruleRows = [
+      ["Jornada base", `${rules.weeklyHours || 45} hs semanales`, "Proporcional por horas"],
+      ["Jornada insalubre", `${rules.insalubreWeeklyHours || 33} hs pagadas como ${rules.insalubrePaidWeeklyHours || rules.weeklyHours || 45}`, "Art. 15"],
+      ["Divisor inasistencias", rules.dayDivisor || 30, "Remuneracion / divisor"],
+      ["Divisor vacaciones", rules.vacationDivisor || 25, "Remuneracion / divisor"],
+      ["Divisor horas extra", rules.hourDivisor || 200, "Base habitual / divisor"],
+      ["Nocturnidad voluntaria", `${rules.nightPct || 100}%`, "Art. 16/17"],
+      ["Dia empleado farmacia", rules.pharmacyEmployeeDay || "6 de septiembre", "Feriado convencional"],
+      ["Antiguedad", "5/10/20/25/30/35%", "Escala por aÃ±os"],
+      ["Falla de caja", `${rules.fallaCajaPct || 10}%`, "No remunerativo"],
+      ["Aporte solidario ADEF", `${rules.adefSolidarityPct || 2}%`, "Configurable"]
+    ];
+    return `<div class="tables">
+      <table><thead><tr><th>Categoria</th><th class="num">Basico abril 2026</th><th class="num">No rem. periodo</th></tr></thead><tbody>
+        ${conv.categories.map((cat) => {
+          const row = scaleCategoryRow(conv, cat, result.zone);
+          return `<tr><td>${escapeHtml(cat.label)}</td><td class="num">${fmt(firstFinite(row?.monthly, cat.monthly) || 0)}</td><td class="num">${fmt(firstFinite(row?.nonRemunerative, cat.nonRem[period]) || 0)}</td></tr>`;
+        }).join("")}
+      </tbody></table>
+      <table><thead><tr><th>Adicional</th><th class="num">Basico</th><th class="num">No rem. periodo</th></tr></thead><tbody>
+        ${additions.map((add) => {
+          const key = Object.keys(conv.additionals).find((item) => conv.additionals[item] === add);
+          const row = scaleAdditionalRow(conv, key, add);
+          return `<tr><td>${escapeHtml(add.label)}</td><td class="num">${fmt(firstFinite(row?.monthly, add.monthly) || 0)}</td><td class="num">${fmt(firstFinite(row?.nonRemunerative, add.nonRem[period]) || 0)}</td></tr>`;
+        }).join("")}
+      </tbody></table>
+      <table><thead><tr><th>Regla</th><th>Valor</th><th>Uso</th></tr></thead><tbody>
+        ${ruleRows.map(([label, value, use]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td><td>${escapeHtml(use)}</td></tr>`).join("")}
+      </tbody></table>
+    </div>`;
+  }
+
+  function renderCamionerosScale(result) {
+    const zone = result.zone;
+    const items = result.conv.items || {};
+    const noRemItems = [
+      ["Comida", items.comida, "Item 4.1.12"],
+      ["Viatico especial", items.viaticoEspecial, "Item 4.1.13"],
+      ["Pernoctada", items.pernoctada, "Item 4.1.14"],
+      ["Viatico por km", items.kmViatico, "Item 4.2.4"],
+      ["Permanencia fuera de residencia", items.permanencia, "Item 4.2.5"],
+      ["Simple presencia", items.simplePresencia, "Item 4.2.5"],
+      ["Cruce de frontera", items.cruceFrontera, "Item 4.2.17"],
+      ["Ingreso/egreso Tierra del Fuego", items.ingresoIsla, "Item 4.2.17"]
+    ];
+    const remItems = [
+      ["Horas extraordinarias por km", items.kmExtra, "Item 4.2.3"],
+      ["Plus vacacional por dia", items.plusVacacionalDia, "Item 3.3.2"],
+      ["Adicional bitrenes", items.bitrenes, "Planilla vigente"]
+    ];
+    return `<div class="tables"><table><thead><tr><th>Categoria</th><th class="num">Por mes</th><th class="num">Por dia</th></tr></thead><tbody>
+      ${result.conv.categories.map((cat) => {
+        const row = scaleCategoryRow(result.conv, cat, zone);
+        const rowHasZone = !!(row && row.zone);
+        const coef = rowHasZone ? 1 : zone.coef;
+        const monthly = firstFinite(row?.monthly) ? firstFinite(row?.monthly) * coef : cat.monthly * zone.coef;
+        const day = firstFinite(row?.day, row?.hourly ? row.hourly * 8 : null) ? firstFinite(row?.day, row?.hourly ? row.hourly * 8 : null) * coef : cat.day * zone.coef;
+        return `<tr><td>${escapeHtml(cat.label)}</td><td class="num">${fmt(monthly)}</td><td class="num">${fmt(day)}</td></tr>`;
+      }).join("")}
+    </tbody></table>
+    <table><thead><tr><th>Concepto no remunerativo</th><th>Referencia</th><th class="num">Valor zona</th></tr></thead><tbody>
+      ${noRemItems.map(([label, value, ref]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(ref)}</td><td class="num">${fmt((Number(value) || 0) * (zone.coef || 1))}</td></tr>`).join("")}
+    </tbody></table>
+    <table><thead><tr><th>Concepto remunerativo / adicional</th><th>Referencia</th><th class="num">Valor zona</th></tr></thead><tbody>
+      ${remItems.map(([label, value, ref]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(ref)}</td><td class="num">${fmt((Number(value) || 0) * (zone.coef || 1))}</td></tr>`).join("")}
+      <tr><td>Presentismo</td><td>Parametro del sistema</td><td class="num">${Number(items.presentismoPct || 8.33).toLocaleString("es-AR")}%</td></tr>
+      <tr><td>Antiguedad</td><td>Item 6.1.5</td><td class="num">1% por aÃ±o</td></tr>
+    </tbody></table></div>`;
+  }
+
+  function activateTab(tabName) {
+    document.querySelectorAll(".tab").forEach((item) => item.classList.toggle("active", item.dataset.tab === tabName));
+    document.querySelectorAll(".tab-pane").forEach((pane) => pane.classList.toggle("active", pane.id === `${tabName}Pane`));
+  }
+
+  function buildLiquidationAuditPayload() {
+    if (!lastResult) return null;
+    return {
+      conventionId: lastResult.conv.id,
+      conventionName: lastResult.conv.name,
+      period: lastResult.period,
+      periodLabel: lastResult.conv.periods.find((item) => item.id === lastResult.period)?.label || lastResult.period,
+      employee: lastResult.employee,
+      category: {
+        id: lastResult.category.id,
+        label: lastResult.category.label
+      },
+      zone: {
+        id: lastResult.zone.id,
+        label: lastResult.zone.label,
+        coef: lastResult.zone.coef
+      },
+      activeScale: lastResult.activeScale,
+      totals: lastResult.totals,
+      remunerative: lastResult.remRows,
+      nonRemunerative: lastResult.noRemRows,
+      deductions: lastResult.deductionRows,
+      employer: lastResult.employerRows,
+      details: lastResult.details,
+      parameters: collectLeiaParameters()
+    };
+  }
+
+  function auditSeverityClass(severity) {
+    const value = String(severity || "").toLowerCase();
+    if (value.includes("alta")) return "high";
+    if (value.includes("media")) return "medium";
+    return "low";
+  }
+
+  function renderAuditFinding(finding) {
+    return `<article class="audit-finding ${auditSeverityClass(finding.severity)}">
+      <div>
+        <span>${escapeHtml(finding.severity || "baja")}</span>
+        <strong>${escapeHtml(finding.title || "Control")}</strong>
+      </div>
+      <p>${escapeHtml(finding.detail || "")}</p>
+      ${finding.action ? `<em>${escapeHtml(finding.action)}</em>` : ""}
+    </article>`;
+  }
+
+  function cuilLooksValid(cuil) {
+    const digits = String(cuil || "").replace(/\D/g, "");
+    return digits.length === 11;
+  }
+
+  function localAutopilotAudit(result, extra = {}) {
+    const totals = result?.totals || {};
+    const parameters = collectLeiaParameters();
+    const findings = [];
+    const checklist = [];
+    const nextSteps = [];
+    const actions = [];
+    let score = 100;
+
+    const addFinding = (severity, title, detail, action, actionType, actionValue) => {
+      findings.push({ severity, title, detail, action });
+      if (severity === "alta") score -= 18;
+      else if (severity === "media") score -= 10;
+      else score -= 4;
+      if (action) nextSteps.push(action);
+      if (actionType) actions.push({ label: action, type: actionType, value: actionValue });
+    };
+
+    const addChecklist = (item, ok, note) => {
+      checklist.push({ item, status: ok ? "ok" : "review", note });
+    };
+
+    const gross = Number(totals.gross || 0);
+    const deductions = Number(totals.deductions || 0);
+    const calculatedNet = gross - deductions;
+    const selectedScale = result.activeScale || scaleState.activeForPayroll;
+    const employee = result.employee || {};
+    const missingEntry = !employee.entryDate || employee.entryDate === "-";
+
+    addChecklist("Escala vigente aprobada", !!selectedScale, selectedScale ? `${selectedScale.periodLabel || monthLabel(selectedScale.period)} aplicada.` : "La liquidacion usa la escala base del sistema.");
+    addChecklist("Datos de ingreso", !missingEntry, missingEntry ? "Falta fecha de ingreso para antiguedad y controles." : `${employee.years || 0} aÃ±os de antiguedad.`);
+    addChecklist("Ecuacion neto", Math.abs(Number(totals.net || 0) - calculatedNet) < 1, "Neto = bruto - deducciones.");
+    addChecklist("Conceptos remunerativos", Number(totals.remTotal || 0) > 0, Number(totals.remTotal || 0) > 0 ? "Hay base remunerativa." : "No hay haberes remunerativos.");
+
+    if (!selectedScale) {
+      addFinding(
+        "alta",
+        "Escala no aprobada para el periodo",
+        "La liquidacion puede emitirse, pero leIA recomienda aprobar o revisar la escala vigente del mes antes de cerrar el recibo.",
+        "Ir a Escalas y validar la vigente",
+        "nav-scales",
+        ""
+      );
+    }
+    if (missingEntry) {
+      addFinding("baja", "Fecha de ingreso pendiente", "La antiguedad puede quedar subestimada si el convenio la usa.", "Revisar fecha de ingreso", "step", "2");
+    }
+    if (Number(totals.remTotal || 0) <= 0) {
+      addFinding("alta", "Sin base remunerativa", "El calculo no genero haberes remunerativos. Puede faltar categoria, jornada o escala.", "Revisar conceptos", "step", "3");
+    }
+    if (gross > 0 && deductions / gross > 0.45) {
+      addFinding("media", "Deducciones altas", `Las deducciones representan ${Math.round((deductions / gross) * 100)}% del bruto.`, "Resaltar deducciones en recibo", "receipt", "deductions");
+    }
+    if (Number(totals.net || 0) < 0) {
+      addFinding("alta", "Neto negativo", "El trabajador queda con neto menor a cero. Revisar descuentos manuales y ausencias.", "Resaltar neto", "receipt", "net");
+    }
+    if (Number(totals.noRemTotal || 0) > gross * 0.65 && gross > 0) {
+      addFinding("media", "No remunerativos dominantes", "Los conceptos no remunerativos son muy altos contra el bruto total.", "Resaltar no remunerativos", "receipt", "nonremunerative");
+    }
+
+    if (result.conv.id === "camioneros") {
+      const periodDays = Number(parameters.camPeriodDays || 24);
+      const paidDays = Number(parameters.camWorkingDays || 0);
+      const absentDays = Number(parameters.camAbsentDays || 0);
+      const noRemDays = parameters.camNoRemDays === "" ? Math.max(0, paidDays - absentDays) : Number(parameters.camNoRemDays || 0);
+      const remLabels = (result.remRows || []).map((row) => String(row.label || "").toLowerCase()).join(" | ");
+      const noRemLabels = (result.noRemRows || []).map((row) => String(row.label || "").toLowerCase()).join(" | ");
+      const viaticosOk = !["comida", "viatico especial", "pernoctada", "permanencia", "simple presencia", "cruce de frontera"].some((label) => remLabels.includes(label));
+      const hasSeniority = remLabels.includes("antiguedad") || !parameters.camSeniority;
+
+      addChecklist("Camioneros: divisor 24/jornal", periodDays === 24, periodDays === 24 ? "Divisor convencional aplicado." : `Divisor modificado a ${periodDays}.`);
+      addChecklist("Camioneros: viaticos fuera de remunerativos", viaticosOk, viaticosOk ? "Art. 4.2.11 separado correctamente." : "Hay viaticos dentro de haberes remunerativos.");
+      addChecklist("Camioneros: antiguedad 1%", hasSeniority, hasSeniority ? "Antiguedad controlada." : "No se detecto antiguedad y esta activada.");
+
+      if (absentDays > paidDays) {
+        addFinding("alta", "Ausencias mayores a jornales pagados", "Los dias injustificados superan los jornales a liquidar.", "Corregir parametros de Camioneros", "step", "3");
+      }
+      if (paidDays > periodDays) {

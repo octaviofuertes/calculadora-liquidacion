@@ -1,0 +1,450 @@
+﻿    const period = periodFromText(source, String(new Date().getFullYear()));
+    if (period) return period;
+  }
+  return fallback || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+}
+
+function inferSalaryAmounts(values) {
+  const clean = (values || []).map(Number).filter((value) => Number.isFinite(value) && value > 0);
+  if (!clean.length) return null;
+  for (let index = clean.length - 1; index >= 2; index -= 1) {
+    const total = clean[index];
+    const nonRem = clean[index - 1];
+    const monthly = clean[index - 2];
+    if (monthly > 0 && nonRem >= 0 && Math.abs((monthly + nonRem) - total) <= Math.max(2, total * 0.002)) {
+      return { monthly, nonRem, total };
+    }
+  }
+  const max = Math.max(...clean);
+  return { monthly: max, nonRem: 0, total: max };
+}
+
+function labelBeforeFirstAmount(line) {
+  const normalized = String(line || "").replace(/\s+/g, " ").replace(/\s*\$\s*/g, "$");
+  const match = normalized.match(/\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{1,3},\d{2}/);
+  return (match ? normalized.slice(0, match.index) : normalized).trim();
+}
+
+function parseLooseScaleCategories(scaleText, period) {
+  const seen = new Set();
+  return String(scaleText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const values = moneyValuesFromText(line);
+      if (!values.length) return null;
+      const label = labelBeforeFirstAmount(line);
+      if (!isUsefulCategoryLabel(label) || isLikelyAdditionalLabel(label)) return null;
+      const id = normalizeText(label);
+      if (!id || seen.has(id)) return null;
+      const amounts = inferSalaryAmounts(values);
+      if (!amounts?.monthly) return null;
+      seen.add(id);
+      return {
+        id,
+        label,
+        group: "Escala",
+        monthly: amounts.monthly,
+        monthlyByPeriod: { [period]: amounts.monthly },
+        day: null,
+        hourly: null,
+        nonRem: { [period]: amounts.nonRem || 0 }
+      };
+    })
+    .filter(Boolean);
+}
+
+function isUsefulScaleHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  if (folded.length < 4 || folded.length > 90) return false;
+  if (moneyValuesFromText(line).length) return false;
+  if (/%|\$/.test(line)) return false;
+  return !/(ESCALA|REMUNERACION|VIGENCIA|CATEGORIA|CLASIFICACION|BASICO|COMISION|TOTAL|SUMA|APORTE|CONTRIBUCION|LOS ADICIONALES|LA SUMA|DEBERA|SINDICAL|OBRA SOCIAL|CONVENIO|ARTICULO)/i.test(folded);
+}
+
+function isUsefulCategoryLabel(label) {
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  if (folded.length < 3 || folded.length > 95) return false;
+  return !/(ESCALA|REMUNERACION|VIGENCIA|CATEGORIA|CLASIFICACION|BASICO|COMISION|TOTAL|SUMA|APORTE|CONTRIBUCION|SINDICAL|OBRA SOCIAL|CONVENIO|ARTICULO|GARANTIZAD|PRODUCTIVIDAD)/i.test(folded);
+}
+
+function isNumericOnlyScaleLabel(label) {
+  return /^[\s$%.,\d-]+$/.test(String(label || "").trim());
+}
+
+function isLikelyAdditionalGroup(group) {
+  const folded = asciiFold(group).replace(/\s+/g, " ").trim();
+  return /(ADICIONAL|COMPLEMENTARIA|ART\.?\s*\d+|AYUD\.?\s*CHOF|CHOFER|KILOMETR|\bKM\b|VIATIC|PERNOCT|COMIDA|PLUS|PREMIO|BONIFIC|PRESENTISMO|ANTIGUEDAD|TITULO|QUEBRANTO|FALLA DE CAJA|MOVILIDAD|REFRIGERIO)/i.test(folded);
+}
+
+function isLikelySalaryCategoryLabel(label, group = "") {
+  if (!isUsefulCategoryLabel(label)) return false;
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  if (isNumericOnlyScaleLabel(label) || isLikelyAdditionalGroup(group)) return false;
+  return !/(POR LOS PRIMEROS|MAS DE\s+\d+\s*KM|KILOMETR|\bKM\b|VIATIC|PERNOCT|COMIDA|SEGURO|CUOTA|HORAS?\s+EXTRA|ADICIONAL|PRESENTISMO|ANTIGUEDAD|ART\.?\s*\d+|CCT\s*\d+|^\w*BLECIDA\b)/i.test(folded);
+}
+
+function isAdditionalSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  return /(ADICIONALES?|VIATICOS?|ITEMS?|CONCEPTOS? NO REMUNERATIVOS?|OTROS CONCEPTOS)/i.test(folded)
+    && !moneyValuesFromText(line).length;
+}
+
+function conceptSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  if (!folded || moneyValuesFromText(line).length || /\d+(?:[.,]\d+)?\s*%/.test(line)) return null;
+  if (/^(HABERES?|CONCEPTOS?|ADICIONALES?|SUMAS?)\s+NO\s+REMUNERATIV(?:OS|AS)?\s*:?$/.test(folded)) {
+    return { group: line.replace(/\s+/g, " ").trim(), rowType: "nonRemunerative" };
+  }
+  if (/^(HABERES?|CONCEPTOS?|ADICIONALES?|SUMAS?)\s+REMUNERATIV(?:OS|AS)?\s*:?$/.test(folded)) {
+    return { group: line.replace(/\s+/g, " ").trim(), rowType: "remunerative" };
+  }
+  if (/^(ADICIONALES?|OTROS CONCEPTOS?)\s*:?$/.test(folded)) {
+    return { group: line.replace(/\s+/g, " ").trim(), rowType: null };
+  }
+  return null;
+}
+
+function isNonConceptSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  if (!folded || moneyValuesFromText(line).length || /\d+(?:[.,]\d+)?\s*%/.test(line)) return false;
+  return /(CATEGORIAS?|ESCALA SALARIAL|BASICOS?|SALARIOS? BASICOS?|DESCUENTOS?|DEDUCCIONES?|RETENCIONES?|APORTES?|CONTRIBUCIONES?|JORNADA|LICENCIAS?|VACACIONES?)/i.test(folded);
+}
+
+function isSalarySectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").trim();
+  return /(CATEGORIAS?|ESCALA SALARIAL|BASICOS?|SALARIOS? BASICOS?)/i.test(folded)
+    && !moneyValuesFromText(line).length;
+}
+
+function isLikelyAdditionalLabel(label) {
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  return /(ADICIONAL|PLUS|PREMIO|BONIFIC|VIATIC|PERNOCT|COMIDA|KILOMETR|\bKM\b|HORAS?\s+EXTRA|PRESENTISMO|ANTIGUEDAD|TITULO|QUEBRANTO|FALLA DE CAJA|MOVILIDAD|REFRIGERIO|SEGURO|POR LOS PRIMEROS|MAS DE\s+\d+)/i.test(folded);
+}
+
+function conceptLabelBeforeValue(line) {
+  return labelBeforeFirstAmount(line)
+    .replace(/\s*[-:]?\s*\d+(?:[.,]\d+)?\s*%.*$/i, "")
+    .replace(/\s*\$$/, "")
+    .trim();
+}
+
+function scaleAdditionalConcept({ label, rawText = label, values, period, group = "Adicionales de escala", rowType, detail, source, sourceFiles }) {
+  const folded = asciiFold(`${label} ${rawText}`);
+  const percent = Number(String(rawText).match(/(\d+(?:[.,]\d+)?)\s*%/)?.[1]?.replace(",", ".")) || 0;
+  const amount = Math.max(...(values || []).map(Number).filter((value) => Number.isFinite(value) && value > 0), 0);
+  const amountPerUnit = /(POR LOS PRIMEROS|MAS DE\s+\d+|KILOMETR|\bKM\b|POR DIA|DIARIO|POR HORA|HORAS?\s+EXTRA|PERNOCT|COMIDA|VIATIC)/i.test(folded);
+  const inferredRowType = rowType || (/(VIATIC|PERNOCT|COMIDA|MOVILIDAD|REFRIGERIO|NO REMUNERATIV)/i.test(folded) ? "nonRemunerative" : "remunerative");
+  const id = normalizeText(label);
+  if (!id || (!percent && !amount)) return null;
+  return {
+    id,
+    label,
+    group,
+    inputType: amountPerUnit ? "number" : "checkbox",
+    rowType: inferredRowType,
+    calculation: percent ? "percentOfBase" : amountPerUnit ? "amountPerUnit" : "fixed",
+    percent,
+    amount: !percent && !amountPerUnit ? amount : null,
+    amountByPeriod: !percent && !amountPerUnit ? { [period]: amount } : {},
+    unitAmount: !percent && amountPerUnit ? amount : null,
+    unitAmountByPeriod: !percent && amountPerUnit ? { [period]: amount } : {},
+    base: percent ? "basic" : "",
+    defaultValue: 0,
+    detail: detail || "Detectado en tabla separada de adicionales de la escala. Validar tratamiento y base antes de aprobar.",
+    source: source || "",
+    sourceFiles: sourceFiles || [],
+    subjectToSocialSecurity: inferredRowType !== "nonRemunerative",
+    requiresHumanValidation: true
+  };
+}
+
+function parseGenericDocumentConcepts(documentText, period, { sourceType = "documento", sourceFileName = "" } = {}) {
+  const lines = String(documentText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const concepts = [];
+  const seen = new Set();
+  let inConceptSection = false;
+  let currentGroup = sourceType === "cct" ? "Conceptos del CCT" : "Adicionales de escala";
+  let sectionRowType = null;
+  let skipImplicitConcepts = false;
+  for (const line of lines) {
+    if (isSalarySectionHeader(line)) {
+      inConceptSection = false;
+      sectionRowType = null;
+      skipImplicitConcepts = false;
+      continue;
+    }
+    const section = conceptSectionHeader(line);
+    if (section) {
+      inConceptSection = true;
+      currentGroup = section.group;
+      sectionRowType = section.rowType;
+      skipImplicitConcepts = false;
+      continue;
+    }
+    if (isNonConceptSectionHeader(line)) {
+      inConceptSection = false;
+      sectionRowType = null;
+      skipImplicitConcepts = true;
+      continue;
+    }
+    const values = moneyValuesFromText(line);
+    if (!values.length && !/\d+(?:[.,]\d+)?\s*%/.test(line)) continue;
+    const label = conceptLabelBeforeValue(line);
+    if (!label || label.length < 3 || label.length > 95) continue;
+    if (!inConceptSection && (sourceType === "cct" || skipImplicitConcepts || !isLikelyAdditionalLabel(label))) continue;
+    const origin = sourceType === "cct" ? "CCT" : sourceType === "salaryScale" ? "escala salarial" : sourceType;
+    const concept = scaleAdditionalConcept({
+      label,
+      rawText: line,
+      values,
+      period,
+      group: currentGroup,
+      rowType: sectionRowType,
+      detail: `Detectado en ${origin}${sourceFileName ? ` (${sourceFileName})` : ""}. Validar tratamiento y base antes de aprobar.`,
+      source: origin,
+      sourceFiles: sourceFileName ? [sourceFileName] : []
+    });
+    if (!concept || seen.has(concept.id)) continue;
+    seen.add(concept.id);
+    concepts.push(concept);
+  }
+  return concepts;
+}
+
+function financialDocumentSectionHeader(line) {
+  const folded = asciiFold(line).replace(/\s+/g, " ").replace(/:$/, "").trim();
+  if (/^(?:DESCUENTOS?|DEDUCCIONES?)(?: DEL TRABAJADOR| CONVENCIONALES?)?$/.test(folded)) return "deduction";
+  if (/^APORTES?(?: DEL TRABAJADOR| CONVENCIONALES?)?$/.test(folded)) return "deduction";
+  if (/^RETENCIONES?(?: DEL TRABAJADOR| CONVENCIONALES?)?$/.test(folded)) return "retention";
+  if (/^(?:APORTES? Y RETENCIONES?|EMBARGOS?(?: JUDICIALES?)?)$/.test(folded)) return "retention";
+  return null;
+}
+
+function isGeneralStatutoryDeduction(label) {
+  const folded = asciiFold(label).replace(/\s+/g, " ").trim();
+  return /(JUBILACION|SIPA|PAMI|LEY\s*19\.?032|OBRA SOCIAL|GANANCIAS)/.test(folded);
+}
+
+function documentFinancialItem({ label, rawText, values, period, kind, sourceFileName }) {
+  if (isGeneralStatutoryDeduction(label)) return null;
+  const percent = Number(String(rawText).match(/(\d+(?:[.,]\d+)?)\s*%/)?.[1]?.replace(",", ".")) || 0;
+  const amount = percent ? null : Math.max(...(values || []).map(Number).filter((value) => Number.isFinite(value) && value > 0), 0);
+  if (!percent && !amount) return null;
+  const folded = asciiFold(rawText);
+  const base = /NO\s+REMUNERATIV/.test(folded)
+    ? "nonRemunerative"
+    : /BRUTO|TOTAL\s+HABERES/.test(folded)
+      ? "gross"
+      : /BASIC/.test(folded) ? "basic" : "remunerative";
+  return {
+    id: normalizeText(label),
+    label,
+    percent,
+    amount,
+    amountByPeriod: amount ? { [period]: amount } : {},
+    base,
+    defaultValue: kind === "retention" ? false : true,
+    appliesWhen: kind === "retention" ? "Segun legajo y documentacion respaldatoria" : "Segun alcance del convenio",
+    detail: `Detectado en CCT${sourceFileName ? ` (${sourceFileName})` : ""}. Validar alcance, base y vigencia antes de aprobar.`,
+    source: "CCT",
+    sourceFiles: sourceFileName ? [sourceFileName] : [],
+    requiresHumanValidation: true
+  };
+}
+
+function parseGenericDocumentDeductions(documentText, period, { sourceFileName = "" } = {}) {
+  const lines = String(documentText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const deductions = [];
+  const retentions = [];
+  const seen = { deduction: new Set(), retention: new Set() };
+  let section = null;
+  for (const line of lines) {
+    const nextSection = financialDocumentSectionHeader(line);
+    if (nextSection) {
+      section = nextSection;
+      continue;
+    }
+    if (conceptSectionHeader(line) || isSalarySectionHeader(line) || isNonConceptSectionHeader(line)) {
+      section = null;
+      continue;
+    }
+    if (/^(REGLAS?|CONDICIONES?|VALIDACIONES?)(?:\s+DE\s+LIQUIDACION)?\s*:?$/i.test(line)) {
+      section = null;
+      continue;
+    }
+    if (!section) continue;
+    const values = moneyValuesFromText(line);
+    if (!values.length && !/\d+(?:[.,]\d+)?\s*%/.test(line)) continue;
+    const label = conceptLabelBeforeValue(line);
+    if (!label || label.length < 3 || label.length > 95) continue;
+    const item = documentFinancialItem({ label, rawText: line, values, period, kind: section, sourceFileName });
+    if (!item || seen[section].has(item.id)) continue;
+    seen[section].add(item.id);
+    (section === "retention" ? retentions : deductions).push(item);
+  }
+  return { deductions, retentions };
+}
+
+function decimalRuleValue(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function findDocumentRule(lines, pattern) {
+  for (const line of lines) {
+    const match = asciiFold(line).replace(/\s+/g, " ").match(pattern);
+    const value = decimalRuleValue(match?.[1]);
+    if (value !== null) return { value, evidence: line.replace(/\s+/g, " ").trim() };
+  }
+  return null;
+}
+
+function findJoinedDocumentRule(lines, pattern) {
+  const text = asciiFold(lines.join(" ")).replace(/\s+/g, " ");
+  const match = text.match(pattern);
+  const value = decimalRuleValue(match?.[1]);
+  if (value === null) return null;
+  let evidence = match[0].trim();
+  const assignmentIndex = evidence.lastIndexOf("ASIGNACION COMPLEMENTARIA");
+  if (assignmentIndex > 0 && evidence.includes("PRESENTISMO")) {
+    evidence = `PRESENTISMO: ${evidence.slice(assignmentIndex)}`;
+  }
+  if (evidence.includes("(") && !evidence.includes(")")) evidence += ")";
+  return { value, evidence: evidence.slice(0, 260).trim() };
+}
+
+function parseGenericDocumentRules(documentText, { sourceFileName = "", sourceType = "CCT" } = {}) {
+  const lines = String(documentText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const rules = {};
+  const liquidationRules = {};
+  const evidence = [];
+  const register = (id, label, parsed, apply) => {
+    if (!parsed) return;
+    apply(parsed.value);
+    evidence.push({
+      id,
+      label,
+      value: parsed.value,
+      evidence: parsed.evidence,
+      source: sourceType,
+      sourceFileName,
+      requiresHumanValidation: true
+    });
+  };
+
+  register("jornada-semanal", "Jornada semanal", findDocumentRule(lines, /\bJORNADA\b[^.\n]{0,120}?(\d{1,2}(?:[.,]\d+)?)\s*(?:HS|HORAS?)\s+SEMANALES?\b/), (value) => {
+    rules.weeklyHours = value;
+    liquidationRules.weeklyHours = value;
+  });
+  register("divisor-mensual", "Divisor mensual", findDocumentRule(lines, /\bDIVISOR\s+(?:MENSUAL|DE\s+INASISTENCIAS?|SUELDO)[^\d\n]{0,30}(\d{2,3})\b/), (value) => {
+    rules.monthDivisor = value;
+    rules.dayDivisor = value;
+    liquidationRules.monthDivisor = value;
+  });
+  register("divisor-vacaciones", "Divisor vacaciones", findDocumentRule(lines, /\bDIVISOR\s+(?:DE\s+)?VACACIONES?[^\d\n]{0,30}(\d{2,3})\b/), (value) => {
+    rules.vacationDivisor = value;
+  });
+  register("divisor-horas-extra", "Divisor horas extra", findDocumentRule(lines, /\bDIVISOR\s+(?:DE\s+)?HORAS?(?:\s+EXTRAS?)?[^\d\n]{0,30}(\d{2,3})\b/), (value) => {
+    rules.hourDivisor = value;
+    liquidationRules.hourDivisor = value;
+    liquidationRules.overtime = { ...(liquidationRules.overtime || {}), divisor: value };
+  });
+  register("antiguedad", "Antiguedad", findDocumentRule(lines, /\bANTIGUEDAD\b[^.\n]{0,160}?(\d+(?:[.,]\d+)?)\s*%\s*(?:POR|X)\s+(?:CADA\s+)?ANO\b/), (value) => {
+    liquidationRules.seniority = { enabled: true, percentPerYear: value };
+  });
+  register("presentismo", "Presentismo", findDocumentRule(lines, /\bPRESENTISMO\b[^.\n]{0,160}?(\d+(?:[.,]\d+)?)\s*%/)
+    || findJoinedDocumentRule(lines, /\bPRESENTISMO\b.{0,500}?(\d+(?:[.,]\d+)?)\s*%/), (value) => {
+    liquidationRules.presentism = { enabled: true, percent: value };
+  });
+
+  const joinedText = asciiFold(lines.join(" ")).replace(/\s+/g, " ");
+  const sharedNonRemApplication = /\bANTIGUEDAD\b.{0,180}\bPRESENTISMO\b.{0,220}\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?\b/.test(joinedText)
+    || /\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?\b.{0,220}\bANTIGUEDAD\b.{0,180}\bPRESENTISMO\b/.test(joinedText);
+  const noRemSeniority = findJoinedDocumentRule(lines, /\bANTIGUEDAD(?:\s+NO\s+REMUNERATIVA|.{0,160}\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?)\b.{0,100}?(\d+(?:[.,]\d+)?)\s*%/);
+  const noRemPresentism = findJoinedDocumentRule(lines, /\bPRESENTISMO(?:\s+NO\s+REMUNERATIVO|.{0,160}\b(?:SUMAS?\s+)?NO\s+REMUNERATIVAS?)\b.{0,100}?(\d+(?:[.,]\d+)?)\s*%/);
+  const nonRemunerativeScale = {};
+  const nonRemSeniorityValue = noRemSeniority?.value ?? (sharedNonRemApplication ? liquidationRules.seniority?.percentPerYear : null);
+  const nonRemPresentismValue = noRemPresentism?.value ?? (sharedNonRemApplication ? liquidationRules.presentism?.percent : null);
+  if (nonRemSeniorityValue != null) {
+    nonRemunerativeScale.enabled = true;
+    nonRemunerativeScale.seniorityEnabled = true;
+    nonRemunerativeScale.seniorityPercentPerYear = nonRemSeniorityValue;
+    evidence.push({
+      id: "antiguedad-no-remunerativa",
+      label: "Antiguedad no remunerativa",
+      value: nonRemSeniorityValue,
+      evidence: noRemSeniority?.evidence || "El documento indica que la antiguedad aplica tambien sobre sumas no remunerativas.",
+      source: sourceType,
+      sourceFileName,
+      requiresHumanValidation: true
+    });
+  }
+  if (nonRemPresentismValue != null) {
+    nonRemunerativeScale.enabled = true;
+    nonRemunerativeScale.presentismEnabled = true;
+    nonRemunerativeScale.presentismPercent = nonRemPresentismValue;
+    evidence.push({
+      id: "presentismo-no-remunerativo",
+      label: "Presentismo no remunerativo",
+      value: nonRemPresentismValue,
+      evidence: noRemPresentism?.evidence || "El documento indica que el presentismo aplica tambien sobre sumas no remunerativas.",
+      source: sourceType,
+      sourceFileName,
+      requiresHumanValidation: true
+    });
+  }
+  if (Object.keys(nonRemunerativeScale).length) liquidationRules.nonRemunerativeScale = nonRemunerativeScale;
+
+  return { rules, liquidationRules, evidence };
+}
+
+function mergeFinancialItems(...groups) {
+  const items = new Map();
+  groups.flat().filter(Boolean).forEach((item) => {
+    const id = normalizeText(item.id || item.label);
+    if (!id) return;
+    const existing = items.get(id);
+    items.set(id, existing ? {
+      ...existing,
+      ...item,
+      id,
+      amountByPeriod: { ...(existing.amountByPeriod || {}), ...(item.amountByPeriod || {}) },
+      sourceFiles: Array.from(new Set([...(existing.sourceFiles || []), ...(item.sourceFiles || [])].filter(Boolean)))
+    } : { ...item, id });
+  });
+  return Array.from(items.values());
+}
+
+function mergeRuleObjects(base, extra) {
+  const merged = { ...(base || {}) };
+  Object.entries(extra || {}).forEach(([key, value]) => {
+    merged[key] = value && typeof value === "object" && !Array.isArray(value)
+      ? mergeRuleObjects(merged[key], value)
+      : value;
+  });
+  return merged;
+}
+
+function parseGenericScaleAdditionals(scaleText, period) {
+  const lines = String(scaleText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const concepts = [];
+  const seen = new Set();
+  let inAdditionalSection = false;
+  let currentGroup = "Adicionales de escala";
+  for (const line of lines) {
+    if (isSalarySectionHeader(line)) {
+      inAdditionalSection = false;
+      continue;
+    }
+    if (isAdditionalSectionHeader(line)) {
+      inAdditionalSection = true;
+      currentGroup = line.replace(/\s+/g, " ").trim();
+      continue;
+    }
+    const values = moneyValuesFromText(line);
+    if (!values.length && !/\d+(?:[.,]\d+)?\s*%/.test(line)) continue;
+    const label = labelBeforeFirstAmount(line);
+    if (!label || label.length < 3 || label.length > 95) continue;

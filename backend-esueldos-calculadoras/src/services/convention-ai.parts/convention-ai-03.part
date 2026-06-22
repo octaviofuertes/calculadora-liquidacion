@@ -1,0 +1,450 @@
+﻿    || /^\d+$/.test(clean)
+    || clean.startsWith("FAECYS")
+    || clean.startsWith("REMUNERACIONES")
+    || clean.startsWith("DE ABRIL")
+    || clean.startsWith("ACUERDO")
+    || clean.startsWith("CON LA")
+    || clean.startsWith("PRESENTISMO")
+    || clean.startsWith("ANTIGUEDAD")
+    || clean.startsWith("NO REMUNERATIVAS")
+    || clean.startsWith("SALUDOS");
+}
+
+function commerceTitle(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/\bY\b/g, "y");
+}
+
+function normalizeCommerceGroup(value) {
+  const folded = asciiFold(value).replace(/\s+/g, " ").trim();
+  if (folded.includes("JORNADA DE 6 HORAS")) return "Jornada de 6 horas";
+  if (folded.includes("MAESTRANZA")) return "Maestranza";
+  if (folded.includes("ADMINISTRATIVO")) return "Administrativo";
+  if (folded.includes("CAJER")) return "Cajeros";
+  if (folded === "AUXILIAR" || folded.includes("PERSONAL AUXILIAR")) return "Auxiliar";
+  if (folded.includes("AUXILIAR ESPECIALIZADO")) return "Auxiliar Especializado";
+  if (folded.includes("VENDEDOR")) return "Vendedor";
+  return commerceTitle(value || "Categoria");
+}
+
+function parseCommerceHeader(lines, index) {
+  const context = lines.slice(Math.max(0, index - 8), index).filter((line) => !isCommerceHeaderNoise(line));
+  const foldedContext = context.map(asciiFold);
+  const minor = foldedContext.some((line) => line.includes("MENORES"));
+  const ageLineIndex = foldedContext.findIndex((line) => line.includes("ANOS"));
+  const ageLine = ageLineIndex >= 0 ? foldedContext[ageLineIndex] : "";
+  const age = ageLine.match(/\b(16|17)\s*ANOS\b/)?.[1] || "";
+  let letter = context.find((line) => /^[A-F]$/i.test(String(line).trim()))?.trim().toUpperCase() || "";
+  letter = ageLine.match(/:\s*([A-F])\b/)?.[1] || letter;
+
+  const groupCandidates = context.filter((line) => {
+    const folded = asciiFold(line);
+    return !folded.includes("MENORES")
+      && !folded.includes("ANOS")
+      && !/^[A-F]$/.test(folded.trim());
+  });
+  let group = normalizeCommerceGroup(groupCandidates[groupCandidates.length - 1] || context[context.length - 2] || "Categoria");
+  if (minor && !groupCandidates.length) {
+    group = normalizeCommerceGroup(context.find((line) => asciiFold(line).includes("JORNADA DE")) || "Jornada de 6 horas");
+  }
+
+  const label = minor
+    ? `Menores ${age || ""} aÃ±os - ${commerceTitle(group)}${letter ? ` ${letter}` : ""}`.replace(/\s+/g, " ").trim()
+    : `${commerceTitle(group)}${letter ? ` ${letter}` : ""}`.replace(/\s+/g, " ").trim();
+  return label;
+}
+
+function parseCommerceCategories(scaleText) {
+  const lines = String(scaleText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const compactCategories = parseCompactCommerceCategories(lines);
+  if (compactCategories.categories.length) return compactCategories;
+  const categories = [];
+  const warnings = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].includes("BASICOAUM")) continue;
+    const label = parseCommerceHeader(lines, index);
+    const rows = [];
+    for (let rowIndex = index + 1; rowIndex < Math.min(lines.length, index + 10); rowIndex += 1) {
+      const parsed = parseCommerceScaleRow(lines[rowIndex]);
+      if (parsed) rows.push(parsed);
+    }
+    if (rows.length < 2) continue;
+
+    rows.forEach((row) => {
+      if (row.total && Math.abs((row.basic + row.nonRem) - row.total) > 2) {
+        warnings.push(`Revisar total de ${label} ${row.period}: basico + no remunerativo no coincide con total.`);
+      }
+    });
+
+    const monthlyByPeriod = {};
+    const nonRem = {};
+    rows.forEach((row) => {
+      monthlyByPeriod[row.period] = row.basic;
+      nonRem[row.period] = row.nonRem;
+    });
+    const orderedPeriods = rows.map((row) => row.period).sort();
+    const lastPeriod = orderedPeriods[orderedPeriods.length - 1];
+    categories.push({
+      id: normalizeText(label),
+      label,
+      monthly: monthlyByPeriod[lastPeriod] || rows[rows.length - 1]?.basic || 0,
+      monthlyByPeriod,
+      nonRem,
+      notes: ["Basico remunerativo tomado de circular FAECYS acuerdo 04/2026."]
+    });
+  }
+
+  return { categories, warnings };
+}
+
+const COMMERCE_PERIOD_MONTHS = {
+  ENE: "01",
+  ENERO: "01",
+  FEB: "02",
+  FEBRERO: "02",
+  MAR: "03",
+  MARZO: "03",
+  ABR: "04",
+  ABRIL: "04",
+  MAY: "05",
+  MAYO: "05",
+  JUN: "06",
+  JUNIO: "06",
+  JUL: "07",
+  JULIO: "07",
+  AGO: "08",
+  AGOSTO: "08",
+  SEP: "09",
+  SEPTIEMBRE: "09",
+  SET: "09",
+  SETIEMBRE: "09",
+  OCT: "10",
+  OCTUBRE: "10",
+  NOV: "11",
+  NOVIEMBRE: "11",
+  DIC: "12",
+  DICIEMBRE: "12"
+};
+
+function commercePeriodsFromLines(lines) {
+  for (const line of lines) {
+    const periods = [...asciiFold(line).matchAll(/\b(ENE(?:RO)?|FEB(?:RERO)?|MAR(?:ZO)?|ABR(?:IL)?|MAY(?:O)?|JUN(?:IO)?|JUL(?:IO)?|AGO(?:STO)?|SEP(?:TIEMBRE)?|SET(?:IEMBRE)?|OCT(?:UBRE)?|NOV(?:IEMBRE)?|DIC(?:IEMBRE)?)\s*\/?\s*(20)?(\d{2})\b/g)]
+      .map((match) => `${match[2] || "20"}${match[3]}-${COMMERCE_PERIOD_MONTHS[match[1]]}`)
+      .filter(Boolean);
+    if (periods.length === 3 && new Set(periods).size === 3) return periods;
+  }
+  const year = String(lines.join(" ").match(/PARITARIAS?\s+(20\d{2})/i)?.[1] || new Date().getFullYear());
+  return [`${year}-04`, `${year}-05`, `${year}-06`];
+}
+
+function compactCommerceCategoryRow(line, periods) {
+  const match = String(line || "").match(/^(.+?)(?=\d{1,3}(?:\.\s*\d{3})+)/);
+  if (!match) return null;
+  const rawLabel = match[1].replace(/["â€œâ€]/g, "").replace(/\s+/g, " ").trim();
+  const foldedLabel = asciiFold(rawLabel);
+  if (!/(MAESTRANZA|ADMINISTR|CAJER|AUXILIAR|VENDEDOR)/.test(foldedLabel)) return null;
+  let rest = String(line).slice(match[1].length);
+  const values = [];
+  for (let index = 0; index < periods.length * 4; index += 1) {
+    const parsed = takeCommerceAmount(rest);
+    if (!parsed.value || parsed.rest === rest) return null;
+    values.push(parsed.value);
+    rest = parsed.rest;
+  }
+  const label = commerceTitle(rawLabel).replace(/Administratativo/gi, "Administrativo");
+  const group = normalizeCommerceGroup(label.replace(/\s+[A-F]$/i, ""));
+  const monthlyByPeriod = {};
+  const nonRem = {};
+  periods.forEach((period, index) => {
+    const offset = index * 4;
+    monthlyByPeriod[period] = values[offset];
+    nonRem[period] = values[offset + 1] + values[offset + 2] + values[offset + 3];
+  });
+  const lastPeriod = periods[periods.length - 1];
+  return {
+    id: normalizeText(label),
+    label,
+    group,
+    monthly: monthlyByPeriod[lastPeriod],
+    monthlyByPeriod,
+    nonRem,
+    notes: ["Basico remunerativo y sumas fijas no remunerativas tomados de escala FAECYS."]
+  };
+}
+
+function parseCompactCommerceCategories(lines) {
+  const periods = commercePeriodsFromLines(lines);
+  const categories = lines.map((line) => compactCommerceCategoryRow(line, periods)).filter(Boolean);
+  const warnings = [];
+  if (categories.length && categories.length < 21) {
+    warnings.push(`La escala de Comercio se reconstruyo parcialmente: se detectaron ${categories.length} de 21 categorias esperadas.`);
+  }
+  return { categories, warnings, periods };
+}
+
+const COMMERCE_ADDITIONAL_ROWS = [
+  { test: /^ART\.?\s*23\s+ARMADO DE VIDRIERA/i, id: "adicional-armado-vidriera", label: "Adicional Armado de Vidriera" },
+  { test: /^ART\.?\s*30\s+CAJEROS?\s+["â€œ]?A["â€]?\s+Y\s+["â€œ]?C["â€]?/i, id: "compensacion-faltantes-caja-cajeros-a-c", label: "Compensacion Faltantes de Caja (Cajeros A y C)" },
+  { test: /^ART\.?\s*30\s+CAJEROS?\s+["â€œ]?B["â€]?/i, id: "compensacion-faltantes-caja-cajero-b", label: "Compensacion Faltantes de Caja (Cajero B)" },
+  { test: /^ART\.?\s*18\s+AC\.?\s*JUN\/11/i, id: "adicional-art-18-ac-jun-11", label: "Adicional Art. 18 Ac. Jun/11" },
+  { test: /^ART\.?\s*36\s+AYUD\.?\s*CHOF\.?\s*1/i, id: "adicional-ayudante-chofer-hasta-100-km", label: "Adicional Ayudante Chofer (hasta 100 Km)", amountPerUnit: true },
+  { test: /^ART\.?\s*36\s+AYUD\.?\s*CHOF\.?\s*\+/i, id: "adicional-ayudante-chofer-mas-100-km", label: "Adicional Ayudante Chofer (mas de 100 Km)", amountPerUnit: true },
+  { test: /^ART\.?\s*36\s+CHOFER\s*1/i, id: "adicional-chofer-hasta-100-km", label: "Adicional Chofer (hasta 100 Km)", amountPerUnit: true },
+  { test: /^ART\.?\s*36\s+CHOFER\s*\+/i, id: "adicional-chofer-mas-100-km", label: "Adicional Chofer (mas de 100 Km)", amountPerUnit: true }
+];
+
+function parseCommerceScaleAdditionals(scaleText, periods) {
+  const lines = String(scaleText || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const concepts = [];
+  COMMERCE_ADDITIONAL_ROWS.forEach((definition) => {
+    const line = lines.find((candidate) => definition.test.test(asciiFold(candidate)));
+    if (!line) return;
+    const values = moneyValuesFromText(line).slice(0, periods.length);
+    if (values.length !== periods.length) return;
+    const amountByPeriod = Object.fromEntries(periods.map((period, index) => [period, values[index]]));
+    const amount = amountByPeriod[periods[periods.length - 1]];
+    concepts.push({
+      id: definition.id,
+      label: definition.label,
+      group: "Adicionales de escala",
+      inputType: definition.amountPerUnit ? "number" : "checkbox",
+      rowType: "remunerative",
+      calculation: definition.amountPerUnit ? "amountPerUnit" : "fixed",
+      amount: definition.amountPerUnit ? null : amount,
+      amountByPeriod: definition.amountPerUnit ? {} : amountByPeriod,
+      unitAmount: definition.amountPerUnit ? amount : null,
+      unitAmountByPeriod: definition.amountPerUnit ? amountByPeriod : {},
+      base: "",
+      defaultValue: 0,
+      detail: "Detectado en tabla separada de adicionales de la escala FAECYS. Validar tratamiento antes de aprobar.",
+      subjectToSocialSecurity: true,
+      requiresHumanValidation: true
+    });
+  });
+  return concepts;
+}
+
+function moneyValuesFromText(value) {
+  const normalized = String(value || "").replace(/\.\s+(?=\d{3}(?:\D|$))/g, ".");
+  return [...normalized.matchAll(/\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{1,3},\d{2}/g)].map((match) => parseArgMoney(match[0]));
+}
+
+function looksLikePharmacyMendoza({ draftName, notes, cctText, scaleText, cctPdf, scalePdf }) {
+  const haystack = asciiFold([
+    draftName,
+    notes,
+    cctPdf?.sourceFileName,
+    scalePdf?.sourceFileName,
+    cctText.slice(0, 12000),
+    scaleText.slice(0, 5000)
+  ].join(" "));
+  return haystack.includes("429/2005")
+    || haystack.includes("429-2005")
+    || haystack.includes("CCT 429")
+    || haystack.includes("FARMACIA DE MENDOZA")
+    || haystack.includes("ASOCIACION DE EMPLEADOS DE FARMACIA DE MENDOZA")
+    || haystack.includes("ADEF");
+}
+
+const PHARMACY_CATEGORY_ROWS = [
+  { test: /^CAT\.?\s*INICIAL\s*"A"/i, id: "inicialA", label: "Categoria inicial A" },
+  { test: /^CAT\.?\s*INICIAL\s*"B"/i, id: "inicialB", label: "Categoria inicial B" },
+  { test: /^CAJERO/i, id: "cajeroPerfAdmin", label: "Cajero, perfumeria y administrativo" },
+  { test: /^EMPL\.?\s*DE\s*FCIA/i, id: "empleadoFarmacia", label: "Empleado de farmacia" },
+  { test: /^EMPL\.?\s*ESP\.?\s*DE\s*FCIA/i, id: "empleadoEspFarmacia", label: "Empleado especializado de farmacia" },
+  { test: /^FARMAC/i, id: "farmaceutico", label: "Farmaceutico" }
+];
+
+const PHARMACY_ADDITIONAL_ROWS = [
+  { test: /^ADIC\.?\s*T[ÃI]TULO/i, id: "tituloFarmaceutico", label: "Adicional titulo farmaceutico" },
+  { test: /^ADIC\.?\s*ADSCRIP/i, id: "adscripcion", label: "Adicional adscripcion" },
+  { test: /^ADIC\.?\s*BLOQUEO/i, id: "bloqueo", label: "Adicional bloqueo direccion tecnica" }
+];
+
+function collectRowValues(lines, startIndex, stopTests) {
+  const chunks = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const next = lines[index] || "";
+    if (stopTests.some((test) => test.test(next))) break;
+    chunks.push(next);
+  }
+  return moneyValuesFromText(chunks.join(" "));
+}
+
+function findPharmacyScaleRow(lines, definition, stopDefinitions) {
+  const index = lines.findIndex((line) => definition.test.test(line));
+  if (index < 0) return null;
+  const values = collectRowValues(lines, index, stopDefinitions.map((item) => item.test));
+  return { ...definition, values };
+}
+
+function parsePharmacyScale(scaleText) {
+  const lines = String(scaleText || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const allDefinitions = [...PHARMACY_CATEGORY_ROWS, ...PHARMACY_ADDITIONAL_ROWS];
+  const periods = [
+    { id: "2026-04", label: "Abril 2026" },
+    { id: "2026-05", label: "Mayo 2026" },
+    { id: "2026-06", label: "Junio 2026" }
+  ];
+  const categories = [];
+  const warnings = [];
+
+  PHARMACY_CATEGORY_ROWS.forEach((definition) => {
+    const row = findPharmacyScaleRow(lines, definition, allDefinitions);
+    if (!row || row.values.length < 13) {
+      warnings.push(`No se pudo leer completa la fila de escala para ${definition.label}.`);
+      return;
+    }
+    const basicApril = row.values[9];
+    const nonRemApril = row.values[10];
+    const nonRemMay = row.values[11];
+    const nonRemJune = row.values[12];
+    categories.push({
+      id: row.id,
+      label: row.label,
+      monthly: basicApril,
+      monthlyByPeriod: {
+        "2026-04": basicApril,
+        "2026-05": basicApril,
+        "2026-06": basicApril
+      },
+      nonRem: {
+        "2026-04": nonRemApril,
+        "2026-05": nonRemMay,
+        "2026-06": nonRemJune
+      },
+      notes: ["Escala vigente desde 1 de abril de 2026."]
+    });
+  });
+
+  const additionals = {};
+  PHARMACY_ADDITIONAL_ROWS.forEach((definition) => {
+    const row = findPharmacyScaleRow(lines, definition, allDefinitions);
+    if (!row || row.values.length < 11) {
+      warnings.push(`No se pudo leer completo el adicional ${definition.label}.`);
+      return;
+    }
+    additionals[definition.id] = {
+      label: definition.label,
+      monthly: row.values[7],
+      nonRem: {
+        "2026-04": row.values[8],
+        "2026-05": row.values[9],
+        "2026-06": row.values[10]
+      }
+    };
+  });
+
+  const contributionLineIndex = lines.findIndex((line) => /oct-25nov-25dic-25/i.test(line));
+  const contributionValues = contributionLineIndex >= 0 ? moneyValuesFromText(lines.slice(contributionLineIndex + 1, contributionLineIndex + 3).join(" ")) : [];
+  const extraordinaryContribution = {
+    "2026-04": contributionValues[6] || 0,
+    "2026-05": contributionValues[7] || 0,
+    "2026-06": contributionValues[8] || 0
+  };
+
+  return { periods, categories, additionals, extraordinaryContribution, warnings };
+}
+
+function buildPharmacyConvention({ draftName, notes, cctPdf, scalePdf, scaleText }) {
+  const parsedScale = parsePharmacyScale(scaleText);
+  if (parsedScale.categories.length < 6) return null;
+  const warnings = parsedScale.warnings.filter(Boolean);
+  const sourceNotes = [
+    "Estructurado con lector local para Farmacia Mendoza CCT 429/2005.",
+    "Se toma Basico Abril 2026 como basico vigente para abril, mayo y junio 2026, y los no remunerativos mensuales indicados en la escala.",
+    "Las observaciones del CCT se enviaron a auditoria/checklist; las alertas quedan reservadas para faltantes reales de datos.",
+    notes
+  ].filter(Boolean);
+
+  return normalizeConvention({
+    convention: {
+      id: "farmacia",
+      name: "Farmacia Mendoza - CCT 429/2005",
+      shortName: "Farmacia Mendoza",
+      source: "CON-CCT-429-2005-A y Escala Abril 2026",
+      type: "monthly",
+      periods: parsedScale.periods,
+      zones: [{ id: "mendoza", label: "Ambito Mendoza", coef: 1 }],
+      categories: parsedScale.categories,
+      additionals: parsedScale.additionals,
+      extraordinaryContribution: parsedScale.extraordinaryContribution,
+      rules: {
+        weeklyHours: 45,
+        insalubreWeeklyHours: 33,
+        insalubrePaidWeeklyHours: 45,
+        dayDivisor: 30,
+        vacationDivisor: 25,
+        hourDivisor: 200,
+        nightPct: 100,
+        cajeroPct: 10,
+        tareasAdministrativasPct: 5,
+        adminTenurePctInitial: 5,
+        adminTenurePctOver2Years: 10,
+        perfumeriaPct: 10,
+        bikePct: 10,
+        languagePct: 10,
+        auxTitlePct: 20,
+        fallaCajaPct: 10,
+        adefSolidarityPct: 2,
+        unionPct: 2,
+        cajaCompensadoraPct: 1,
+        proEdificioPct: 1,
+        pharmacyEmployeeDay: "6 de septiembre"
+      },
+      liquidationModel: {
+        version: "generic-v1",
+        rules: {
+          salaryType: "monthly",
+          monthDivisor: 30,
+          hourDivisor: 200,
+          weeklyHours: 45,
+          seniority: { enabled: true, percentPerYear: 0, capYears: 0, base: "basic" },
+          presentism: { enabled: false, percent: 0, requiresNoUnjustifiedAbsence: false },
+          nonRemunerativeScale: { enabled: true },
+          overtime: { enabled: true, divisor: 200 }
+        },
+        concepts: [
+          { id: "titulo-farmaceutico", label: "Adicional titulo farmaceutico", group: "Adicionales escala", inputType: "checkbox", rowType: "remunerative", calculation: "fixed", amountByPeriod: { "2026-04": parsedScale.additionals.tituloFarmaceutico?.monthly || 0, "2026-05": parsedScale.additionals.tituloFarmaceutico?.monthly || 0, "2026-06": parsedScale.additionals.tituloFarmaceutico?.monthly || 0 }, detail: "Escala abril 2026.", subjectToSocialSecurity: true },
+          { id: "adscripcion", label: "Adicional adscripcion", group: "Adicionales escala", inputType: "checkbox", rowType: "remunerative", calculation: "fixed", amountByPeriod: { "2026-04": parsedScale.additionals.adscripcion?.monthly || 0, "2026-05": parsedScale.additionals.adscripcion?.monthly || 0, "2026-06": parsedScale.additionals.adscripcion?.monthly || 0 }, detail: "Escala abril 2026.", subjectToSocialSecurity: true },
+          { id: "bloqueo", label: "Adicional bloqueo direccion tecnica", group: "Adicionales escala", inputType: "checkbox", rowType: "remunerative", calculation: "fixed", amountByPeriod: { "2026-04": parsedScale.additionals.bloqueo?.monthly || 0, "2026-05": parsedScale.additionals.bloqueo?.monthly || 0, "2026-06": parsedScale.additionals.bloqueo?.monthly || 0 }, detail: "Escala abril 2026.", subjectToSocialSecurity: true },
+          { id: "falla-caja", label: "Fondo falla de caja", group: "Adicionales", inputType: "checkbox", rowType: "nonRemunerative", calculation: "percentOfBase", percent: 10, base: "seniorityBase", detail: "Art. 19 CCT 429/2005.", subjectToSocialSecurity: false },
+          { id: "adicional-cajero", label: "Adicional cajero", group: "Adicionales", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 10, base: "basic", detail: "Art. 18 CCT 429/2005.", subjectToSocialSecurity: true },
+          { id: "adicional-perfumeria", label: "Adicional perfumeria", group: "Adicionales", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 10, base: "basic", detail: "Art. 18 CCT 429/2005.", subjectToSocialSecurity: true },
+          { id: "adicional-administrativo", label: "Adicional tareas administrativas", group: "Adicionales", inputType: "checkbox", rowType: "remunerative", calculation: "percentOfBase", percent: 5, base: "basic", detail: "Art. 18 CCT 429/2005.", subjectToSocialSecurity: true }
+        ],
+        deductions: [],
+        employerContributions: []
+      },
+      auditChecklist: [
+        "Controlar que la escala vigente sea Abril 2026 y que el periodo liquidado sea abril, mayo o junio 2026.",
+        "Validar categoria del trabajador contra tareas reales y legajo.",
+        "Verificar jornada semanal: base 45 horas, insalubre hasta 33 horas pagada como jornada completa cuando corresponda.",
+        "Validar escalafon de antiguedad segun fecha de ingreso.",
+        "Activar solo los adicionales acreditados: titulo farmaceutico, adscripcion, bloqueo, cajero, perfumeria, administracion, idioma, moto/bici.",
+        "Controlar que los no remunerativos correspondan al mes liquidado.",
+        "Revisar aporte solidario ADEF, cuota sindical, caja compensadora y contribucion extraordinaria de escala.",
+        "Controlar dia del empleado de farmacia el 6 de septiembre y feriados trabajados/no trabajados."
+      ],
+      confidence: warnings.length ? 92 : 96,
+      warnings,
+      notes: sourceNotes,
+      sourceFiles: [cctPdf?.sourceFileName, scalePdf?.sourceFileName].filter(Boolean)
+    }
+  }, { fallbackName: draftName || "Farmacia Mendoza - CCT 429/2005" });
+}
+
+function detectMainPeriodFromText({ text, fileName, fallback }) {
+  const sources = [fileName, text].filter(Boolean);
+  for (const source of sources) {

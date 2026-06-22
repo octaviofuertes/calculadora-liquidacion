@@ -1,0 +1,450 @@
+﻿        confidence: 0,
+        categories: [],
+        additionals: [],
+        zones: [],
+        nonRemunerative: [],
+        notes: [],
+        warnings: ["Carga pendiente de lectura por IA."]
+      }];
+
+      if (apiKey) {
+        try {
+          const pdfBuffer = await fs.promises.readFile(file.path);
+          const result = await extractScalesFromPdf({
+            apiKey,
+            model: process.env.GEMINI_SCALE_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+            fallbackModels: geminiFallbackModels(),
+            convention,
+            period,
+            periodLabel,
+            pdfBuffer,
+            mimeType: file.mimetype,
+            sourceFileName: file.originalname
+          });
+          parsedScales = result.parsedScales?.length ? result.parsedScales : parsedScales;
+          aiStatus = "DETECTADA_POR_IA";
+          aiModel = result.model;
+          aiModelsTried = result.modelsTried;
+        } catch (error) {
+          aiStatus = "ERROR_IA";
+          aiError = error.message || "No se pudo leer el PDF con leIA.";
+          aiModel = error.model || null;
+          aiModelsTried = error.modelsTried || [];
+          parsedScales[0].warnings = [aiError];
+        }
+      }
+
+      docs.push(...parsedScales.map((parsedScale) => ({
+        conventionId: convention.id,
+        conventionName: convention.name,
+        shortName: convention.shortName || convention.name,
+        cct: convention.source || "",
+        period: normalizePeriod(parsedScale.period) || period,
+        periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period),
+        status: "PENDIENTE_REVISION",
+        aiStatus,
+        aiError,
+        aiModel,
+        aiModelsTried,
+        sourceFileName: file.originalname,
+        storedFileName: file.filename,
+        filePath: file.path,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        parsedScale: {
+          ...parsedScale,
+          period: normalizePeriod(parsedScale.period) || period,
+          periodLabel: parsedScale.periodLabel || monthLabel(normalizePeriod(parsedScale.period) || period)
+        },
+        auditNote: req.body.auditNote || "",
+        uploadedBatchId: batchId,
+        createdAt: now,
+        updatedAt: now
+      })));
+    }
+
+    const insertResult = await db.collection("salaryScales").insertMany(docs);
+    const created = docs.map((doc, index) => serializeScale({ _id: insertResult.insertedIds[index], ...doc }));
+    res.status(201).json({
+      created,
+      count: created.length,
+      detectedPeriods: created.map((doc) => ({ id: doc.id, period: doc.period, periodLabel: doc.periodLabel }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/scales/:id", async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ error: "ID invalido" });
+      return;
+    }
+
+    const update = { updatedAt: new Date() };
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedScale")) {
+      update.parsedScale = req.body.parsedScale;
+      update.humanEdited = true;
+      update.humanEditedAt = new Date();
+    }
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "auditNote")) {
+      update.auditNote = String(req.body.auditNote || "");
+    }
+
+    const result = await db.collection("salaryScales").findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      res.status(404).json({ error: "Escala no encontrada" });
+      return;
+    }
+    res.json(serializeScale(result));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/scales/:id/approve", async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ error: "ID invalido" });
+      return;
+    }
+
+    const now = new Date();
+    const update = {
+      status: "APROBADA",
+      approvedAt: now,
+      reviewedAt: now,
+      reviewedBy: req.body?.reviewedBy || "Auditoria humana",
+      reviewNote: req.body?.note || "",
+      updatedAt: now
+    };
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedScale")) {
+      update.parsedScale = req.body.parsedScale;
+      update.humanEdited = true;
+      update.humanEditedAt = now;
+    }
+
+    const result = await db.collection("salaryScales").findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      res.status(404).json({ error: "Escala no encontrada" });
+      return;
+    }
+    res.json(serializeScale(result));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/scales/:id/reject", async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ error: "ID invalido" });
+      return;
+    }
+
+    const now = new Date();
+    const result = await db.collection("salaryScales").findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      {
+        $set: {
+          status: "RECHAZADA",
+          rejectedAt: now,
+          reviewedAt: now,
+          reviewedBy: req.body?.reviewedBy || "Auditoria humana",
+          reviewNote: req.body?.note || "",
+          updatedAt: now
+        }
+      },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      res.status(404).json({ error: "Escala no encontrada" });
+      return;
+    }
+    res.json(serializeScale(result));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/leia/chat", async (req, res, next) => {
+  try {
+    const apiKey = geminiConventionApiKey();
+    if (!apiKey) {
+      res.status(503).json({ error: "Falta configurar GEMINI_CONVENTION_API_KEY en el backend." });
+      return;
+    }
+
+    const { message, history, state } = req.body || {};
+    if (!message || typeof message !== "string") {
+      res.status(400).json({ error: "Falta el mensaje para leIA." });
+      return;
+    }
+
+    const catalog = await getCatalogPayload();
+    const systemInstruction = buildSystemInstruction({
+      catalog,
+      selectedConventionId: state?.convention?.id,
+      clientState: state
+    });
+
+    const result = await askGemini({
+      apiKey,
+      model: geminiPrimaryModel(),
+      fallbackModels: geminiFallbackModels(),
+      systemInstruction,
+      message,
+      history
+    });
+
+    res.json({
+      answer: result.answer,
+      convention: state?.convention?.id || null,
+      model: result.model,
+      modelsTried: result.modelsTried
+    });
+  } catch (error) {
+    if (error.name === "GeminiRequestError") {
+      const rawMessage = String(error.message || "");
+      const isUnavailableModel = /not found|not supported|generateContent|ListModels/i.test(rawMessage);
+      res.status(error.status || 502).json({
+        error: isUnavailableModel
+          ? "leIA detecto un modelo de Gemini viejo o no disponible. Reinicia el backend para tomar la configuracion actualizada y volve a intentar."
+          : error.message,
+        code: error.code,
+        model: error.model,
+        modelsTried: error.modelsTried
+      });
+      return;
+    }
+    next(error);
+  }
+});
+
+app.post("/api/leia/audit-liquidation", async (req, res, next) => {
+  try {
+    const payload = req.body || {};
+    const liquidation = payload.liquidation || {};
+    const conventionId = liquidation.conventionId || liquidation.convention;
+    const period = liquidation.period;
+
+    if (!conventionId || !period || !liquidation.totals) {
+      res.status(400).json({ error: "Faltan conventionId/convention, period o totals para auditar." });
+      return;
+    }
+
+    const activeDoc = await findActiveScale(conventionId, period);
+    const activeScale = serializeScale(activeDoc);
+    const precheck = deterministicLiquidationAudit({ liquidation, activeScale });
+    const catalog = await getCatalogPayload();
+    const apiKey = geminiConventionApiKey();
+    let audit = fallbackAuditFromPrecheck(precheck);
+    let aiStatus = "SIN_API_KEY";
+    let aiError = null;
+    let aiModel = null;
+    let aiModelsTried = [];
+
+    if (apiKey) {
+      try {
+        const result = await askGemini({
+          apiKey,
+          model: geminiPrimaryModel(),
+          fallbackModels: geminiFallbackModels(),
+          systemInstruction: "Sos leIA, auditora de liquidaciones de eSueldos. RespondÃ©s solamente JSON vÃ¡lido.",
+          message: buildLiquidationAuditPrompt({ liquidation, precheck, activeScale, catalog }),
+          history: [],
+          maxOutputTokens: 5000,
+          temperature: 0.12
+        });
+        const parsed = parseJsonObject(result.answer);
+        audit = {
+          verdict: parsed.verdict || precheck.verdict,
+          score: Number.isFinite(Number(parsed.score)) ? Math.max(0, Math.min(100, Number(parsed.score))) : precheck.score,
+          summary: parsed.summary || fallbackAuditFromPrecheck(precheck).summary,
+          findings: Array.isArray(parsed.findings) ? parsed.findings : precheck.findings,
+          checklist: Array.isArray(parsed.checklist) ? parsed.checklist : precheck.checklist,
+          nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : fallbackAuditFromPrecheck(precheck).nextSteps
+        };
+        aiStatus = "OK";
+        aiModel = result.model;
+        aiModelsTried = result.modelsTried;
+      } catch (error) {
+        aiStatus = "ERROR_IA";
+        aiError = error.message || "No se pudo auditar con leIA.";
+        aiModel = error.model || null;
+        aiModelsTried = error.modelsTried || [];
+        audit = fallbackAuditFromPrecheck(precheck, aiError);
+      }
+    }
+
+    const doc = {
+      conventionId,
+      period,
+      employee: liquidation.employee || null,
+      category: liquidation.category || null,
+      zone: liquidation.zone || null,
+      totals: liquidation.totals,
+      activeScale: activeScale ? { id: activeScale.id, period: activeScale.period, periodLabel: activeScale.periodLabel, approvedAt: activeScale.approvedAt } : null,
+      precheck,
+      audit,
+      aiStatus,
+      aiError,
+      aiModel,
+      aiModelsTried,
+      createdAt: new Date()
+    };
+    const inserted = await db.collection("liquidationAudits").insertOne(doc);
+
+    res.json({
+      id: inserted.insertedId.toString(),
+      audit,
+      precheck,
+      activeScale,
+      aiStatus,
+      aiError,
+      aiModel,
+      aiModelsTried,
+      createdAt: doc.createdAt
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/conventions", async (req, res, next) => {
+  try {
+    const conventions = await db.collection("conventions").find({}).sort({ order: 1, name: 1 }).toArray();
+    res.json(conventions.map(({ _id, order, updatedAt, ...convention }) => (
+      convention.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(convention) : convention
+    )));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/conventions/:id", async (req, res, next) => {
+  try {
+    const convention = await db.collection("conventions").findOne({ id: req.params.id });
+    if (!convention) {
+      res.status(404).json({ error: "Convenio no encontrado" });
+      return;
+    }
+    const { _id, order, updatedAt, ...payload } = convention;
+    res.json(payload.schemaVersion === EXCEL_SCHEMA_VERSION ? toRuntimeConvention(payload) : payload);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/conventions/:id/edit-draft", async (req, res, next) => {
+  try {
+    const convention = await db.collection("conventions").findOne({ id: req.params.id });
+    if (!convention) {
+      res.status(404).json({ error: "Convenio no encontrado" });
+      return;
+    }
+    const existingDraft = await db.collection("conventionDrafts").findOne({
+      status: "APROBADO",
+      approvedConventionId: convention.id
+    });
+    if (existingDraft) {
+      res.json(serializeConventionDraft(existingDraft));
+      return;
+    }
+    const { _id, order, updatedAt, approvedAt, sourceDraftId, ...rawConvention } = convention;
+    const parsedConvention = conventionToEditableDraft(rawConvention);
+    const now = new Date();
+    const doc = {
+      name: parsedConvention.convenio?.denominacion || parsedConvention.name || convention.id,
+      status: "APROBADO",
+      aiStatus: "EDITABLE_DESDE_CONVENIO",
+      aiError: null,
+      aiModel: null,
+      aiModelsTried: [],
+      parsedConvention,
+      approvedConventionId: convention.id,
+      processingPipeline: null,
+      tokenUsage: null,
+      auditNote: "",
+      files: [],
+      reviewedAt: approvedAt || now,
+      reviewedBy: "Convenio cargado",
+      reviewNote: "Borrador editable creado desde convenio activo.",
+      createdAt: now,
+      updatedAt: now
+    };
+    const insertResult = await db.collection("conventionDrafts").insertOne(doc);
+    res.status(201).json(serializeConventionDraft({ _id: insertResult.insertedId, ...doc }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/conventions/:id", async (req, res, next) => {
+  try {
+    const conventionId = String(req.params.id || "").trim();
+    if (!conventionId) {
+      res.status(400).json({ error: "Falta id de convenio" });
+      return;
+    }
+
+    const convention = await db.collection("conventions").findOne({ id: conventionId });
+    if (!convention) {
+      res.status(404).json({ error: "Convenio no encontrado" });
+      return;
+    }
+
+    const totalConventions = await db.collection("conventions").countDocuments();
+    if (totalConventions <= 1) {
+      res.status(409).json({ error: "No se puede borrar el ultimo convenio disponible." });
+      return;
+    }
+
+    const conventionResult = await db.collection("conventions").deleteOne({ id: conventionId });
+    const scalesResult = await db.collection("salaryScales").deleteMany({ conventionId });
+
+    res.json({
+      ok: true,
+      deletedConventionId: conventionId,
+      deletedScales: scalesResult.deletedCount || 0,
+      deletedCount: conventionResult.deletedCount || 0
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/liquidations", async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const docs = await db.collection("liquidations").find({}).sort({ createdAt: -1 }).limit(limit).toArray();
+    res.json(docs.map(({ _id, ...doc }) => ({ id: _id.toString(), ...doc })));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/liquidations/:id", async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) {
+      res.status(400).json({ error: "ID invalido" });
+      return;
+    }
+    const doc = await db.collection("liquidations").findOne({ _id: new ObjectId(req.params.id) });
+    if (!doc) {
+      res.status(404).json({ error: "Liquidacion no encontrada" });
+      return;
+    }
+    const { _id, ...payload } = doc;

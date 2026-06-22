@@ -1,0 +1,387 @@
+
+.leia-launch-text small {
+  color: #7785a8;
+}
+
+/* Match dashboard mockup proportions */
+.topbar {
+  height: 48px;
+  min-height: 48px;
+}
+
+.topbar-inner {
+  padding: 0 28px;
+}
+
+.brand-logo-img {
+  width: 132px;
+  max-height: 30px;
+}
+
+.nav-link {
+  min-height: 30px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.nav-link svg {
+  width: 15px;
+  height: 15px;
+}
+
+.main-nav {
+  gap: 22px;
+}
+
+.top-icon-btn {
+  height: 30px;
+}
+
+.page-shell {
+  padding: 10px 18px 20px;
+}
+
+.app-shell {
+  grid-template-columns: minmax(420px, 37.6%) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.form-panel {
+  padding: 18px;
+}
+
+.payroll-head {
+  margin-bottom: 14px;
+  padding-bottom: 0;
+}
+
+.payroll-head::before {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+
+.payroll-head h2 {
+  font-size: 16px;
+}
+
+.payroll-head p {
+  font-size: 11px;
+}
+
+.wizard-steps {
+  margin-bottom: 14px;
+}
+
+.wizard-step-btn {
+  min-height: 33px;
+  padding: 5px 8px;
+}
+
+.wizard-step-btn span {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+}
+
+.wizard-step-btn strong {
+  font-size: 10px;
+}
+
+.step-copy {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+
+.step-copy h3 {
+  font-size: 13px;
+}
+
+.step-copy p {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.form-panel .convention-grid {
+  gap: 10px;
+}
+
+.form-panel .convention-card {
+  min-height: 226px;
+  max-height: 236px;
+}
+
+.convention-content {
+  padding: 12px;
+}
+
+.convention-visual {
+  margin-bottom: 10px;
+}
+
+.convention-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+}
+
+.convention-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.selection-check {
+  width: 18px;
+  height: 18px;
+}
+
+.selection-check::before {
+  width: 8px;
+  height: 5px;
+}
+
+.convention-title {
+  font-size: 15px;
+}
+
+.convention-code {
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+
+.convention-copy {
+  margin-top: 8px;
+  font-size: 9.7px;
+  line-height: 1.46;
+  -webkit-line-clamp: 5;
+}
+
+.convention-meta {
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.convention-meta span {
+  min-height: 16px;
+  padding: 2px 5px;
+  font-size: 8px;
+}
+
+.wizard-nav {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.nav-action,
+.primary-action {
+  min-height: 30px;
+}
+
+.nav-action {
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.wizard-nav span {
+  font-size: 10px;
+}
+
+.primary-action {
+  margin-top: 10px;
+  min-height: 36px;
+  font-size: 13px;
+}
+
+.results {
+  padding-top: 0;
+}
+
+.summary-grid {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.metric {
+  min-height: 74px;
+  padding: 13px 14px 12px 58px;
+  border-radius: 12px;
+}
+
+.metric::before {
+  left: 13px;
+  top: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.metric::after {
+  right: 14px;
+  bottom: 8px;
+  width: 88px;
+  height: 15px;
+}
+
+.metric span {
+  margin-bottom: 2px;
+  font-size: 8.5px;
+}
+
+.metric strong {
+  font-size: 18px;
+}
+
+.result-panel {
+  min-height: 600px;
+}
+
+.result-actions {
+  padding: 14px 14px 12px;
+  gap: 12px;
+}
+
+.result-actions .icon-btn,
+.result-actions .audit-action {
+  min-height: 36px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.result-actions .icon-btn {
+  min-width: 108px;
+  padding: 0 12px;
+}
+
+.result-actions .icon-btn::before,
+.result-actions .audit-action::before {
+  display: inline-grid;
+  width: 17px;
+  height: 17px;
+  margin-right: 6px;
+  place-items: center;
+  border-radius: 5px;
+  color: currentColor;
+  font-size: 13px;
+  line-height: 1;
+}
+
+#saveBtn::before {
+  content: "▣";
+}
+
+#exportBtn::before {
+  content: "⇩";
+}
+
+#printBtn::before {
+  content: "▤";
+}
+
+#auditBtn::before {
+  content: "✧";
+}
+
+.tabs {
+  padding: 0 18px;
+}
+
+.tab {
+  min-height: 42px;
+  padding: 0 18px;
+  font-size: 11px;
+}
+
+.tab-pane {
+  padding: 14px 18px 18px;
+}
+
+.audit-empty {
+  min-height: 236px;
+  border-radius: 12px;
+}
+
+.audit-empty-visual {
+  width: 64px;
+  height: 64px;
+  border-radius: 15px;
+  font-size: 38px;
+}
+
+.audit-empty h3 {
+  font-size: 16px;
+}
+
+.audit-empty p {
+  font-size: 12px;
+}
+
+.audit-inline-action {
+  min-width: 150px;
+  min-height: 36px;
+  font-size: 12px;
+}
+
+.leia-launcher {
+  right: 12px;
+  min-width: 164px;
+  min-height: 136px;
+  padding: 10px;
+  border-radius: 15px;
+}
+
+.leia-launcher .leia-logo {
+  --logo-size: 78px;
+}
+
+.leia-launch-text strong {
+  font-size: 18px;
+}
+
+.leia-launch-text small {
+  max-width: 78px;
+  font-size: 9px;
+}
+
+/* Final mockup alignment */
+.step-copy {
+  padding: 10px 14px;
+}
+
+.step-copy h3 {
+  margin: 0 0 4px;
+}
+
+.step-copy p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.results {
+  padding: 12px;
+  border: 1px solid rgba(193, 210, 239, 0.82);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 46px rgba(50, 79, 145, 0.12);
+}
+
+.summary-grid {
+  margin-bottom: 12px;
+}
+
+.result-panel {
+  min-height: 576px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.result-actions .icon-btn::before,
+.result-actions .audit-action::before {
+  content: "";
+}

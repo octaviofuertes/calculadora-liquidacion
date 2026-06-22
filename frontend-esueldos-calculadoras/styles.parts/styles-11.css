@@ -1,0 +1,363 @@
+@media (min-width: 1181px) {
+  body {
+    background: linear-gradient(180deg, #eef5ff 0%, #eaf3ff 100%);
+  }
+
+  .topbar {
+    height: 60px;
+    min-height: 60px;
+    background: #0b1d6f;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 16px 38px rgba(33, 54, 119, 0.16);
+  }
+
+  .topbar-inner {
+    padding: 0 48px;
+    grid-template-columns: 260px 1fr 260px;
+  }
+
+  .brand-logo-img {
+    width: 134px;
+    max-height: 30px;
+  }
+
+  .main-nav {
+    justify-self: center;
+    gap: 46px;
+  }
+
+  .nav-link {
+    min-width: 118px;
+    min-height: 36px;
+    padding: 0 20px;
+    border-radius: 9px;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .nav-link.active {
+    background: linear-gradient(135deg, #3d82ff, #335dff);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 10px 26px rgba(49, 88, 255, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .nav-link svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .topbar-tools {
+    gap: 14px;
+  }
+
+  .top-icon-btn {
+    height: 34px;
+  }
+
+  .page-shell {
+    width: 100%;
+    max-width: none;
+    padding: 14px 87px 32px 65px;
+  }
+
+  .app-shell {
+    grid-template-columns: 674px minmax(0, 1fr);
+    gap: 5px;
+    align-items: start;
+  }
+
+  .panel,
+  .metric,
+  .results {
+    border-color: #c7d6f2;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 24px 54px rgba(44, 74, 134, 0.12);
+  }
+
+  .form-panel {
+    width: 674px;
+    min-height: 597px;
+    padding: 22px;
+    border-radius: 17px;
+  }
+
+  .payroll-head {
+    min-height: 62px;
+    margin-bottom: 0;
+    padding-bottom: 18px;
+    align-items: center;
+  }
+
+  .payroll-head::before {
+    width: 37px;
+    height: 37px;
+    border-radius: 9px;
+  }
+
+  .payroll-head h2 {
+    font-size: 18px;
+    line-height: 1.1;
+  }
+
+  .payroll-head p {
+    margin-top: 7px;
+    font-size: 12px;
+    line-height: 1.1;
+  }
+
+  .wizard-steps {
+    height: 51px;
+    margin-bottom: 19px;
+    padding: 5px;
+    border-radius: 13px;
+  }
+
+  .wizard-step-btn {
+    min-height: 39px;
+    gap: 10px;
+    padding: 0 16px;
+    border-radius: 9px;
+  }
+
+  .wizard-step-btn span {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+
+  .wizard-step-btn strong {
+    font-size: 12px;
+  }
+
+  .step-copy {
+    height: 67px;
+    margin-bottom: 14px;
+    padding: 14px 18px;
+    border-radius: 12px;
+  }
+
+  .step-copy h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .step-copy p {
+    font-size: 12px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .form-panel .convention-grid {
+    gap: 12px;
+  }
+
+  .form-panel .convention-card {
+    min-height: 283px;
+    max-height: 283px;
+    border-radius: 13px;
+  }
+
+  .convention-content {
+    padding: 14px;
+  }
+
+  .convention-ghost,
+  .convention-bars,
+  .use-btn {
+    display: none;
+  }
+
+  .convention-visual {
+    margin-bottom: 13px;
+  }
+
+  .convention-mark {
+    width: 49px;
+    height: 49px;
+    border-radius: 10px;
+  }
+
+  .convention-icon {
+    width: 25px;
+    height: 25px;
+  }
+
+  .selection-check {
+    width: 22px;
+    height: 22px;
+  }
+
+  .convention-title {
+    font-size: 20px;
+    line-height: 0.98;
+  }
+
+  .convention-code {
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .convention-copy {
+    margin-top: 14px;
+    font-size: 12px;
+    line-height: 1.42;
+    -webkit-line-clamp: 5;
+  }
+
+  .convention-meta {
+    gap: 6px;
+    padding-top: 12px;
+  }
+
+  .convention-meta span {
+    min-height: 20px;
+    padding: 3px 8px;
+    font-size: 9px;
+    border-radius: 999px;
+  }
+
+  .wizard-nav {
+    height: 45px;
+    margin-top: 11px;
+    padding-top: 11px;
+  }
+
+  .nav-action {
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .wizard-nav span {
+    font-size: 12px;
+  }
+
+  .results {
+    min-height: 762px;
+    padding: 15px;
+    border-radius: 17px 17px 0 0;
+  }
+
+  .summary-grid {
+    height: 88px;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .metric {
+    min-height: 88px;
+    padding: 22px 18px 16px 70px;
+    border-radius: 13px;
+    box-shadow: none;
+  }
+
+  .metric::before {
+    left: 16px;
+    top: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+
+  .metric::after {
+    right: 36px;
+    bottom: 11px;
+    width: 90px;
+    height: 18px;
+  }
+
+  .metric span {
+    font-size: 10px;
+  }
+
+  .metric strong {
+    font-size: 20px;
+  }
+
+  .result-actions {
+    height: 43px;
+    margin: 0 16px 16px;
+    padding: 0;
+    gap: 16px;
+  }
+
+  .result-actions .icon-btn,
+  .result-actions .audit-action {
+    min-height: 43px;
+    border-radius: 7px;
+    font-size: 13px;
+  }
+
+  .result-actions .icon-btn {
+    min-width: 130px;
+  }
+
+  .result-panel {
+    min-height: 572px;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.74);
+  }
+
+  .tabs {
+    height: 51px;
+    padding: 0 22px;
+  }
+
+  .tab {
+    min-height: 51px;
+    min-width: 90px;
+    padding: 0 22px;
+    font-size: 13px;
+  }
+
+  .tab-pane {
+    padding: 18px 22px;
+  }
+
+  .empty-state {
+    min-height: 241px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  .leia-widget {
+    right: 34px;
+    bottom: 32px;
+  }
+
+  .leia-launcher {
+    min-width: 228px;
+    min-height: 166px;
+    padding: 15px;
+    border-radius: 16px;
+  }
+
+  .leia-launcher .leia-logo {
+    --logo-size: 96px;
+  }
+
+  .leia-launch-text strong {
+    font-size: 24px;
+  }
+
+  .leia-launch-text small {
+    max-width: 84px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .convention-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scale-layout {
+    grid-template-columns: 1fr;
+  }
+}

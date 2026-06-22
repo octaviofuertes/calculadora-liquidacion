@@ -1,0 +1,450 @@
+﻿const ENGINE_VERSION = "backend-payroll-engine-v2";
+
+function amount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function round2(value) {
+  return Math.round((amount(value) + Number.EPSILON) * 100) / 100;
+}
+
+function addRow(list, label, value, detail = "") {
+  if (!Number.isFinite(Number(value)) || Math.abs(Number(value)) < 0.005) return;
+  list.push({ label, amount: round2(Number(value)), detail });
+}
+
+function sumRows(rows = []) {
+  return rows.reduce((total, row) => total + amount(row.amount), 0);
+}
+
+function inputValue(inputs, key, fallback = 0) {
+  const value = inputs?.[key];
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  const normalized = Number(String(value).replace(",", "."));
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function inputString(inputs, key, fallback = "") {
+  const value = inputs?.[key];
+  return value === undefined || value === null ? fallback : String(value);
+}
+
+function inputBool(inputs, key, fallback = false) {
+  const value = inputs?.[key];
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  return ["true", "1", "on", "si", "yes"].includes(String(value).toLowerCase());
+}
+
+function yearsFromEntry(entryDate, now = new Date()) {
+  if (!entryDate) return 0;
+  const start = new Date(`${entryDate}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return 0;
+  let years = now.getFullYear() - start.getFullYear();
+  const month = now.getMonth() - start.getMonth();
+  if (month < 0 || (month === 0 && now.getDate() < start.getDate())) years -= 1;
+  return Math.max(0, years);
+}
+
+function firstFinite(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+  return null;
+}
+
+function normalizeMatchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeZoneMatchText(value) {
+  const normalized = normalizeMatchText(value);
+  return [
+    "general",
+    "base",
+    "zona general",
+    "zona base",
+    "base general",
+    "general base",
+    "sin adicional",
+    "sin adicional zonal",
+    "sin adicional de zona"
+  ].includes(normalized) ? "general" : normalized;
+}
+
+function scaleRowMatchesZone(row, zone) {
+  const rowZone = normalizeZoneMatchText(row?.zone);
+  const zoneId = normalizeZoneMatchText(zone?.id);
+  const zoneLabel = normalizeZoneMatchText(zone?.label);
+  return Boolean(rowZone && ((zoneId && rowZone === zoneId) || (zoneLabel && rowZone === zoneLabel)));
+}
+
+function findScaleRow(rows, item, zone) {
+  if (!Array.isArray(rows) || !item) return null;
+  const itemId = normalizeMatchText(item.id);
+  const itemLabel = normalizeMatchText(item.label);
+  const zoneId = normalizeZoneMatchText(zone?.id);
+  const zoneLabel = normalizeZoneMatchText(zone?.label);
+  const candidates = rows.filter((row) => {
+    const rowId = normalizeMatchText(row.id);
+    const rowLabel = normalizeMatchText(row.label);
+    return (itemId && rowId === itemId)
+      || (itemLabel && rowLabel === itemLabel)
+      || (itemLabel && rowLabel.includes(itemLabel))
+      || (itemLabel && itemLabel.includes(rowLabel));
+  });
+  if (!candidates.length) return null;
+  return candidates.find((row) => {
+    const rowZone = normalizeZoneMatchText(row.zone);
+    return rowZone && ((zoneId && rowZone.includes(zoneId)) || (zoneLabel && rowZone.includes(zoneLabel)));
+  }) || candidates.find((row) => !row.zone) || candidates[0];
+}
+
+function scaleCategoryRow(activeScale, category, zone) {
+  return activeScale ? findScaleRow(activeScale.parsedScale?.categories, category, zone) : null;
+}
+
+function scaleAdditionalRow(activeScale, key, additional) {
+  return activeScale ? findScaleRow(activeScale.parsedScale?.additionals, { id: key, label: additional?.label }, null) : null;
+}
+
+function periodAmountValue(source, period, names) {
+  if (!source) return null;
+  for (const name of names) {
+    const map = source[name];
+    if (map && typeof map === "object" && !Array.isArray(map) && Object.prototype.hasOwnProperty.call(map, period)) {
+      const value = Number(map[period]);
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  return null;
+}
+
+function periodNonRemValue(source, period) {
+  if (!source) return 0;
+  if (source.nonRem && typeof source.nonRem === "object") return Number(source.nonRem[period] || 0) || 0;
+  if (source.nonRemunerativeByPeriod && typeof source.nonRemunerativeByPeriod === "object") return Number(source.nonRemunerativeByPeriod[period] || 0) || 0;
+  return Number(source.nonRemunerative || 0) || 0;
+}
+
+function calculateGanancias(constants, inputs, remunerative, civilStatus) {
+  if (!inputBool(inputs, "estimateGanancias", false)) return 0;
+  const annual = remunerative * 13;
+  const deductions = amount(constants.gananciasDedEspecialAnual) + amount(constants.gananciasMniAnual) + (civilStatus !== "soltero" ? amount(constants.conyugeDedAnual) : 0);
+  const taxable = annual - deductions;
+  if (taxable <= 0) return 0;
+  let tax = 0;
+  (constants.gananciasScale || []).forEach((step) => {
+    if (taxable > step.from) tax = amount(step.fixed) + (Math.min(taxable, step.to) - step.from) * amount(step.pct);
+  });
+  return Math.max(0, tax / 13);
+}
+
+function commonContext({ catalog, convention, payload, activeScale }) {
+  const category = (convention.categories || []).find((item) => item.id === payload.categoryId) || (convention.categories || [])[0] || {};
+  const zone = (convention.zones || []).find((item) => item.id === payload.zoneId) || (convention.zones || [])[0] || { id: "general", label: "General", coef: 1 };
+  const employee = {
+    legajo: payload.employee?.legajo || "",
+    name: payload.employee?.name || "Sin nombre",
+    cuil: payload.employee?.cuil || "-",
+    entryDate: payload.employee?.entryDate || "-",
+    civilStatus: payload.employee?.civilStatus || "soltero",
+    years: yearsFromEntry(payload.employee?.entryDate)
+  };
+  return { constants: catalog.constants || {}, convention, category, zone, employee, inputs: payload.inputs || {}, activeScale };
+}
+
+function applyManualRows(ctx, rows) {
+  addRow(rows.remRows, "Otros remunerativos", inputValue(ctx.inputs, "otherRem", 0), "Carga manual");
+  addRow(rows.noRemRows, "Otros no remunerativos", inputValue(ctx.inputs, "otherNoRem", 0), "Carga manual");
+  addRow(rows.deductionRows, "Descuentos varios", inputValue(ctx.inputs, "otherDeductions", 0), "Carga manual");
+}
+
+function applyWorkerDeductions(ctx, rows, remTotal, osBase) {
+  const c = ctx.constants;
+  const worker = c.worker || {};
+  addRow(rows.deductionRows, "Jubilacion SIPA 11%", remTotal * amount(worker.jubilacion), "Base seguridad social");
+  addRow(rows.deductionRows, "Ley 19.032 (PAMI) 3%", remTotal * amount(worker.pami), "Base seguridad social");
+  addRow(rows.deductionRows, "Obra social 3%", osBase * amount(worker.obraSocial), "Base obra social");
+
+  if (ctx.convention.id === "uocra") {
+    if (inputBool(ctx.inputs, "uocraAfiliado", false)) addRow(rows.deductionRows, "Cuota sindical UOCRA 2,5%", remTotal * 0.025, "Afiliado");
+    else if (["abr26", "may26"].includes(ctx.payloadPeriod)) addRow(rows.deductionRows, "Aporte solidario UOCRA 2%", remTotal * 0.02, "No afiliado");
+    addRow(rows.deductionRows, "Aporte UOCRA 1,8%", remTotal * 0.018, "CCT 76/75");
+    addRow(rows.deductionRows, "ISTIC 0,5%", remTotal * 0.005, "CCT 76/75");
+  }
+
+  if (ctx.convention.id === "farmacia") {
+    const rules = ctx.convention.rules || {};
+    if (inputBool(ctx.inputs, "farmAdefSolidarity", true)) addRow(rows.deductionRows, `Aporte solidario ADEF ${rules.adefSolidarityPct || 2}%`, remTotal * ((rules.adefSolidarityPct || 2) / 100), "Art. 46");
+    if (inputBool(ctx.inputs, "farmUnionContribution", false)) addRow(rows.deductionRows, `Cuota sindical ADEF ${rules.unionPct || 2}%`, remTotal * ((rules.unionPct || 2) / 100), "Afiliado");
+    if (inputBool(ctx.inputs, "farmCajaCompensadora", false)) addRow(rows.deductionRows, `Caja compensadora ${rules.cajaCompensadoraPct || 1}%`, remTotal * ((rules.cajaCompensadoraPct || 1) / 100), "CCT 429/05");
+    if (inputBool(ctx.inputs, "farmProEdificio", false)) addRow(rows.deductionRows, `Pro edificio ${rules.proEdificioPct || 1}%`, remTotal * ((rules.proEdificioPct || 1) / 100), "CCT 429/05");
+    if (inputBool(ctx.inputs, "farmContribution", true)) addRow(rows.deductionRows, "Contribucion extraordinaria escala", amount(ctx.convention.extraordinaryContribution?.[ctx.payloadPeriod]), "Valor de escala");
+  }
+
+  if (ctx.convention.id === "camioneros") {
+    if (inputBool(ctx.inputs, "camUnionFee", true)) addRow(rows.deductionRows, "Cuota sindical Camioneros 2%", remTotal * 0.02, "Afiliado");
+    if (inputBool(ctx.inputs, "camSolidarityContribution", true)) addRow(rows.deductionRows, "Contribucion solidaria Camioneros 3%", remTotal * 0.03, "Item 8.1.1");
+    if (inputBool(ctx.inputs, "camFuneralInsurance", true)) addRow(rows.deductionRows, "Seguro de Sepelio 1,5%", remTotal * 0.015, "Item 8.1.6");
+  }
+
+  addRow(rows.deductionRows, "Ganancias 4ta categoria", calculateGanancias(c, ctx.inputs, remTotal, ctx.employee.civilStatus), "Estimacion anualizada");
+}
+
+function genericConventionItemBase(item, remTotal, noRemTotal, basic) {
+  const base = normalizeMatchText(item?.base || "remunerative");
+  if (["gross", "bruto", "total haberes"].includes(base)) return remTotal + noRemTotal;
+  if (["nonremunerative", "non remunerative", "no remunerativo"].includes(base)) return noRemTotal;
+  if (["basic", "basico"].includes(base)) return basic;
+  return remTotal;
+}
+
+function genericConceptSignature(concept) {
+  return normalizeMatchText([
+    concept?.id,
+    concept?.label,
+    concept?.group,
+    concept?.calculation,
+    concept?.unidad_calculo,
+    concept?.formula_base,
+    concept?.base,
+    concept?.detail,
+    concept?.naturaleza
+  ].filter(Boolean).join(" "));
+}
+
+function genericConceptUsesQuantity(concept) {
+  const signature = genericConceptSignature(concept);
+  return concept?.calculation === "amountPerUnit"
+    || /\b(cantidad|valor unitario|por dia|diario|valor dia|por hora|valor hora|kilometr|km|viaje|traslado|viatic|pernoct|comida)\b/.test(signature);
+}
+
+function genericConceptUsesNumberInput(concept) {
+  return concept?.inputType === "number" || genericConceptUsesQuantity(concept);
+}
+
+function genericConceptUnitAmount(ctx, concept, period) {
+  const configured = periodAmountValue(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"]) ?? amount(concept?.unitAmount || concept?.amount);
+  return configured || inputValue(ctx.inputs, `gen_${concept.id}_unit`, 0);
+}
+
+function genericConceptRowType(concept) {
+  const signature = genericConceptSignature(concept);
+  if (/(no remunerativo|non remunerative|nonremunerative)/.test(signature)) return "nonRemunerative";
+  if (/(deduction|deduccion|descuento|retencion|retention)/.test(signature)) return "deduction";
+  return concept?.rowType || "remunerative";
+}
+
+function applyGenericConventionDeductions(ctx, rows, remTotal, noRemTotal, basic) {
+  const model = ctx.convention.liquidationModel || {};
+  const applyItems = (items, targetRows, fallbackDetail, userSelectable = false, inputPrefix = "gen_deduction") => {
+    (items || []).forEach((item) => {
+      if (userSelectable && !inputBool(ctx.inputs, `${inputPrefix}_${item.id}`, item.defaultValue !== false)) return;
+      const base = genericConventionItemBase(item, remTotal, noRemTotal, basic);
+      const fixedAmount = periodAmountValue(item, ctx.payloadPeriod, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(item.amount);
+      const value = fixedAmount || base * ((Number(item.percent || 0) || 0) / 100);
+      addRow(targetRows, item.label, value, item.detail || fallbackDetail);
+    });
+  };
+  applyItems(model.deductions, rows.deductionRows, "Aporte propio del convenio", true);
+  applyItems(model.retentions, rows.deductionRows, "Retencion propia del convenio", true, "gen_retention");
+  applyItems(model.employerContributions, rows.employerRows, "Contribucion propia del convenio");
+}
+
+function applyEmployerContribs(ctx, rows, remTotal, osBase, baseSalary = remTotal) {
+  const c = ctx.constants;
+  const er = c.employerBase || {};
+  const baseSS = Math.max(0, remTotal - amount(c.detss));
+  addRow(rows.employerRows, "Jubilacion empleador 10,77%", baseSS * amount(er.jubilacion), "Base SS");
+  addRow(rows.employerRows, "PAMI empleador 1,58%", baseSS * amount(er.pami), "Base SS");
+  addRow(rows.employerRows, "Obra social empleador 6%", osBase * amount(er.obraSocial), "Base OS");
+  addRow(rows.employerRows, "Asignaciones familiares 4,70%", baseSS * amount(er.asignaciones), "Base SS");
+  addRow(rows.employerRows, "Fondo nacional de empleo 0,95%", baseSS * amount(er.fondoEmpleo), "Base SS");
+  addRow(rows.employerRows, `ART variable ${c.artVariablePct || 0}%`, remTotal * (amount(c.artVariablePct) / 100), "Configurable");
+  addRow(rows.employerRows, "ART cuota fija", amount(c.artFixed), "Configurable");
+  addRow(rows.employerRows, "SCVO", amount(c.scvo), "Configurable");
+  if (ctx.convention.id === "uocra") {
+    addRow(rows.employerRows, "Contribucion UOCRA 2,30%", remTotal * 0.023, "CCT 76/75");
+    addRow(rows.employerRows, "ISTIC empleador 0,50%", remTotal * 0.005, "CCT 76/75");
+    if (["abr26", "may26"].includes(ctx.payloadPeriod)) addRow(rows.employerRows, "Contribucion empresarial UOCRA", 6000, "Escala 2026");
+  }
+  if (ctx.convention.id === "camioneros") {
+    addRow(rows.employerRows, "Aporte empresario sindical 2%", baseSalary * 0.02, "Item 8.1.2");
+    addRow(rows.employerRows, "Aporte capacitacion Federacion 0,5%", baseSalary * 0.005, "Item 8.1.4");
+    addRow(rows.employerRows, "Aporte profesionalizacion 2%", baseSalary * 0.02, "Item 8.1.5");
+  }
+}
+
+function emptyRows() {
+  return { remRows: [], noRemRows: [], deductionRows: [], employerRows: [], details: [] };
+}
+
+function buildResult(ctx, rows, warnings = []) {
+  const remTotal = round2(sumRows(rows.remRows));
+  const noRemTotal = round2(sumRows(rows.noRemRows));
+  const gross = round2(remTotal + noRemTotal);
+  const deductions = round2(sumRows(rows.deductionRows));
+  const employerContribs = round2(sumRows(rows.employerRows));
+  const net = round2(gross - deductions);
+  return {
+    conventionId: ctx.convention.id,
+    conventionName: ctx.convention.name,
+    conv: ctx.convention,
+    period: ctx.payloadPeriod,
+    employee: ctx.employee,
+    category: ctx.category,
+    zone: ctx.zone,
+    activeScale: ctx.activeScale ? {
+      id: ctx.activeScale.id,
+      period: ctx.activeScale.period,
+      periodLabel: ctx.activeScale.periodLabel,
+      approvedAt: ctx.activeScale.approvedAt
+    } : null,
+    remunerative: rows.remRows,
+    nonRemunerative: rows.noRemRows,
+    deductions: rows.deductionRows,
+    employer: rows.employerRows,
+    details: rows.details,
+    remRows: rows.remRows,
+    noRemRows: rows.noRemRows,
+    deductionRows: rows.deductionRows,
+    employerRows: rows.employerRows,
+    totals: { remTotal, noRemTotal, gross, deductions, employerContribs, net, employerCost: round2(gross + employerContribs) },
+    calculation: {
+      engine: ctx.convention.calculationMode || ctx.convention.id || "generic-v1",
+      version: ENGINE_VERSION,
+      calculatedAt: new Date().toISOString(),
+      warnings
+    }
+  };
+}
+
+function calcGeneric(ctx) {
+  const rows = emptyRows();
+  const period = ctx.payloadPeriod;
+  const activeCatRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
+  const model = ctx.convention.liquidationModel || {};
+  const rules = { ...(ctx.convention.rules || {}), ...(model.rules || {}) };
+  rules.nonRemunerativeScale = {
+    ...(rules.nonRemunerativeScale || {}),
+    ...(ctx.activeScale?.parsedScale?.nonRemunerativeRules || ctx.activeScale?.parsedScale?.reglasNoRemunerativas || {})
+  };
+  const salaryType = rules.salaryType || ctx.category.salaryType || ctx.convention.type || "monthly";
+  const zoneCoef = Number(ctx.zone?.coef || 1) || 1;
+  const scaleCoef = scaleRowMatchesZone(activeCatRow, ctx.zone) ? 1 : zoneCoef;
+  const monthPct = Math.max(0, Math.min(100, inputValue(ctx.inputs, "genMonthPct", 100))) / 100;
+  const monthDivisor = Number(rules.monthDivisor || 30) || 30;
+  const hourDivisor = Number(rules.overtime?.divisor || rules.hourDivisor || 200) || 200;
+  const workUnits = Math.max(0, inputValue(ctx.inputs, "genWorkUnits", salaryType === "hourly" ? 0 : monthDivisor));
+  const absentDays = Math.max(0, inputValue(ctx.inputs, "genAbsentDays", 0));
+  const categoryMonthlyRaw = firstFinite(activeCatRow?.monthly, periodAmountValue(activeCatRow, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]), periodAmountValue(ctx.category, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]), ctx.category.monthly);
+  const categoryDayRaw = firstFinite(activeCatRow?.day, periodAmountValue(activeCatRow, period, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]), periodAmountValue(ctx.category, period, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]), ctx.category.day);
+  const categoryHourlyRaw = firstFinite(activeCatRow?.hourly, periodAmountValue(activeCatRow, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]), periodAmountValue(ctx.category, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]), ctx.category.hourly);
+  const categoryMonthly = (categoryMonthlyRaw || 0) * scaleCoef;
+  const categoryDay = (firstFinite(categoryDayRaw, categoryMonthly ? categoryMonthly / monthDivisor : null) || 0) * (activeCatRow?.day || ctx.category.day ? scaleCoef : 1);
+  const categoryHourly = (firstFinite(categoryHourlyRaw, categoryDay ? categoryDay / 8 : null, categoryMonthly ? categoryMonthly / hourDivisor : null) || 0) * (activeCatRow?.hourly || ctx.category.hourly ? scaleCoef : 1);
+  let basic = salaryType === "daily" ? categoryDay * workUnits : salaryType === "hourly" ? categoryHourly * workUnits : categoryMonthly * monthPct;
+  addRow(rows.remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} unidades`);
+  addRow(rows.remRows, "Inasistencia injustificada", -(salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays), `${absentDays} dias`);
+  const seniorityRule = rules.seniority || {};
+  let seniority = 0;
+  if (inputBool(ctx.inputs, "genSeniority", seniorityRule.enabled !== false)) {
+    const yearsForCalc = seniorityRule.capYears ? Math.min(ctx.employee.years, Number(seniorityRule.capYears)) : ctx.employee.years;
+    seniority = basic * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
+    addRow(rows.remRows, "Antiguedad", seniority, `${seniorityRule.percentPerYear || 0}% x ${yearsForCalc} aÃ±os`);
+  }
+  const presentismRule = rules.presentism || {};
+  if (inputBool(ctx.inputs, "genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0) && (!presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0)) {
+    addRow(rows.remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`);
+  }
+  const hourValue = (sumRows(rows.remRows) || basic) / hourDivisor;
+  addRow(rows.remRows, "Horas extra 50%", hourValue * inputValue(ctx.inputs, "genExtra50", 0) * 1.5, `/${hourDivisor} x 1,5`);
+  addRow(rows.remRows, "Horas extra 100%", hourValue * inputValue(ctx.inputs, "genExtra100", 0) * 2, `/${hourDivisor} x 2`);
+  const noRemScaleBase = (firstFinite(activeCatRow?.nonRemunerative, periodNonRemValue(ctx.category, period)) || 0) * monthPct * scaleCoef;
+  (model.concepts || []).forEach((concept) => {
+    const key = `gen_${concept.id}`;
+    const enabled = genericConceptUsesNumberInput(concept) ? inputValue(ctx.inputs, key, 0) : (inputBool(ctx.inputs, key, !!concept.defaultValue) ? 1 : 0);
+    if (!enabled) return;
+    const base = concept.base === "remunerative" ? sumRows(rows.remRows) : concept.base === "nonRemunerativeScale" ? noRemScaleBase : concept.base === "seniorityBase" ? basic + seniority : basic;
+    const usesQuantity = genericConceptUsesQuantity(concept);
+    const unitAmount = genericConceptUnitAmount(ctx, concept, period);
+    let value = usesQuantity
+      ? unitAmount * enabled
+      : concept.calculation === "fixed"
+        ? (periodAmountValue(concept, period, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(concept.amount)) * enabled
+        : concept.calculation === "amountPerUnit"
+          ? unitAmount * enabled
+          : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
+    if (!value) {
+      const scaleVal = activeCatRow?.conceptValues?.[concept.id] ?? periodAmountValue(ctx.category, period, [`concept_${concept.id}`]);
+      if (scaleVal) value = scaleVal * monthPct * enabled;
+    }
+    const rowType = genericConceptRowType(concept);
+    const detail = usesQuantity ? `${unitAmount} x ${enabled}` : concept.detail || concept.group || "Concepto del convenio";
+    addRow(rowType === "nonRemunerative" ? rows.noRemRows : rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, detail);
+  });
+  if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {
+    addRow(rows.noRemRows, "Suma no remunerativa escala", noRemScaleBase, ctx.activeScale ? "Escala aprobada" : "Escala base");
+    const noRemRule = rules.nonRemunerativeScale || {};
+    const noRemSeniorityPct = Number(noRemRule.seniorityPercentPerYear || 0) || 0;
+    const noRemPresentismPct = Number(noRemRule.presentismPercent || 0) || 0;
+    const noRemYears = noRemRule.seniorityCapYears ? Math.min(ctx.employee.years, Number(noRemRule.seniorityCapYears)) : ctx.employee.years;
+    const applyNoRemSeniority = noRemRule.seniorityEnabled !== false
+      && inputBool(ctx.inputs, "genSeniority", seniorityRule.enabled !== false || noRemSeniorityPct > 0);
+    const noRemSeniority = applyNoRemSeniority ? noRemScaleBase * ((noRemSeniorityPct * noRemYears) / 100) : 0;
+    addRow(rows.noRemRows, "Antiguedad no remunerativa", noRemSeniority, `${noRemSeniorityPct}% x ${noRemYears} aÃ±os`);
+    const allowNoRemPresentism = !noRemRule.presentismRequiresNoUnjustifiedAbsence || absentDays === 0;
+    const applyNoRemPresentism = noRemRule.presentismEnabled !== false
+      && inputBool(ctx.inputs, "genPresentism", presentismRule.enabled === true || noRemPresentismPct > 0);
+    if (applyNoRemPresentism && allowNoRemPresentism) {
+      addRow(rows.noRemRows, "Presentismo no remunerativo", (noRemScaleBase + noRemSeniority) * (noRemPresentismPct / 100), `${noRemPresentismPct}%`);
+    }
+  }
+  applyManualRows(ctx, rows);
+  const remTotal = sumRows(rows.remRows);
+  const noRemTotal = sumRows(rows.noRemRows);
+  applyWorkerDeductions(ctx, rows, remTotal, remTotal + noRemTotal);
+  applyGenericConventionDeductions(ctx, rows, remTotal, noRemTotal, basic);
+  applyEmployerContribs(ctx, rows, remTotal, remTotal + noRemTotal, basic);
+  addRow(rows.details, "Basico de escala", categoryMonthly || categoryDay || categoryHourly, ctx.activeScale ? "Escala aprobada" : "Escala base");
+  addRow(rows.details, "Base obra social", remTotal + noRemTotal, "Remunerativo + no remunerativo sujeto a OS");
+  return buildResult(ctx, rows);
+}
+
+function farmaciaAntiquityPct(years) {
+  if (years >= 20) return 35;
+  if (years >= 15) return 30;
+  if (years >= 10) return 25;
+  if (years >= 5) return 20;
+  if (years >= 2) return 10;
+  if (years >= 1) return 5;
+  return 0;
+}
+
+function calcUocra(ctx) {
+  const rows = emptyRows();
+  const period = ctx.payloadPeriod;
+  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
+  const staticScale = amount(ctx.convention.scales?.[period]?.[ctx.zone.id]?.[ctx.category.id]);
+  const scale = firstFinite(ctx.category.monthly ? activeRow?.monthly : activeRow?.day, activeRow?.monthly, staticScale) || 0;
+  const snrMonthly = firstFinite(activeRow?.nonRemunerative, ctx.convention.nonRem?.[period]?.[ctx.zone.id]?.[ctx.category.id]) || 0;
+  const isMonthly = !!ctx.category.monthly;
+  const hourValue = isMonthly ? 0 : scale / 8;
+  const quin = inputString(ctx.inputs, "uocraPeriodMode", "1");
+  const normalHours = inputValue(ctx.inputs, "uocraHours", quin === "mensual" ? 176 : 88);
+  const baseGross = isMonthly ? (quin === "mensual" ? scale : scale / 2) : hourValue * normalHours;
+  const absenceDiscount = hourValue * inputValue(ctx.inputs, "uocraAbsence", 0);
+  const base = Math.max(0, baseGross - absenceDiscount);
+  addRow(rows.remRows, "Basico", base, isMonthly ? "Sereno mensual proporcional" : `${normalHours} hs`);
+  const seniority = inputBool(ctx.inputs, "uocraSeniority", true) ? base * (ctx.employee.years / 100) : 0;
+  addRow(rows.remRows, "Antiguedad", seniority, `${ctx.employee.years}%`);
+  if (inputBool(ctx.inputs, "uocraPresentism", true) && absenceDiscount === 0) addRow(rows.remRows, "Presentismo", (base + seniority) * 0.20, "20%");

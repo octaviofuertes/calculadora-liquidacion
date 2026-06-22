@@ -1,0 +1,450 @@
+﻿    periods,
+    zones,
+    categories,
+    additionals: source.additionals && typeof source.additionals === "object" ? source.additionals : {},
+    rules,
+    liquidationModel: {
+      version: "generic-v1",
+      rules: liquidationRules,
+      concepts,
+      deductions,
+      retentions,
+      employerContributions
+    },
+    auditChecklist: Array.isArray(source.auditChecklist) ? source.auditChecklist.filter(Boolean).map(String) : [],
+    confidence: 0,
+    warnings,
+    notes: Array.isArray(source.notes || source.observaciones) ? (source.notes || source.observaciones).filter(Boolean).map(String) : []
+  };
+  [
+    "metadata",
+    "legalFramework",
+    "scope",
+    "documents",
+    "variables",
+    "payrollBases",
+    "calendar",
+    "employeeRequirements",
+    "employerObligations",
+    "validation",
+    "extractedRules",
+    "automationHints",
+    "ui",
+    "extraction"
+  ].forEach((key) => {
+    if (source[key] !== undefined) normalized[key] = source[key];
+  });
+  if (source.extraordinaryContribution && typeof source.extraordinaryContribution === "object" && !Array.isArray(source.extraordinaryContribution)) {
+    normalized.extraordinaryContribution = normalizeMoneyMap(source.extraordinaryContribution);
+  }
+  if (source.sourceFiles && Array.isArray(source.sourceFiles)) {
+    normalized.sourceFiles = source.sourceFiles.filter(Boolean).map(String);
+  }
+  polishConventionWarnings(normalized);
+  normalized.confidence = scoreConvention(normalized);
+  return normalized;
+}
+
+const {
+  universalConventionTemplateForPrompt,
+  conventionExtractionContractForPrompt,
+  buildConventionPrompt,
+  buildConventionCorePrompt,
+  buildScalePrompt,
+  buildScaleCompactPrompt
+} = require("./convention-prompts");
+function conventionAttachmentParts({ cctPdf, scalePdf } = {}) {
+  const parts = [];
+
+  if (cctPdf) {
+    parts.push({
+      text: `ARCHIVO 1 - CCT, ACTA O DOCUMENTO PRINCIPAL. Nombre: ${cctPdf.sourceFileName || "archivo"}`
+    });
+    parts.push({
+      inlineData: {
+        type: "attachment",
+        mimeType: cctPdf.mimeType || "application/octet-stream",
+        fileName: cctPdf.sourceFileName || "cct",
+        data: Buffer.isBuffer(cctPdf.buffer) ? cctPdf.buffer.toString("base64") : Buffer.from(cctPdf.buffer || "").toString("base64")
+      }
+    });
+  }
+
+  if (scalePdf) {
+    parts.push({
+      text: `ARCHIVO 2 - ESCALA SALARIAL. Nombre: ${scalePdf.sourceFileName || "archivo"}`
+    });
+    parts.push({
+      inlineData: {
+        type: "attachment",
+        mimeType: scalePdf.mimeType || "application/octet-stream",
+        fileName: scalePdf.sourceFileName || "scale",
+        data: Buffer.isBuffer(scalePdf.buffer) ? scalePdf.buffer.toString("base64") : Buffer.from(scalePdf.buffer || "").toString("base64")
+      }
+    });
+  }
+
+  return parts;
+}
+
+async function requestConventionOnceLegacy({ apiKey, model, cctPdf, scalePdf, draftName, notes }) {
+  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
+  if (cctPdf?.buffer) {
+    parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+    parts.push({ inline_data: { mime_type: cctPdf.mimeType || "application/pdf", data: cctPdf.buffer.toString("base64") } });
+  }
+  if (scalePdf?.buffer) {
+    parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+    parts.push({ inline_data: { mime_type: scalePdf.mimeType || "application/pdf", data: scalePdf.buffer.toString("base64") } });
+  }
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        temperature: 0.08,
+        topP: 0.72,
+        maxOutputTokens: 30000,
+        responseMimeType: "application/json"
+      }
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new GeminiConventionError(payload?.error?.message || `Gemini respondio HTTP ${response.status}`, {
+      status: response.status,
+      model,
+      code: payload?.error?.status
+    });
+  }
+
+  // Print token usage metrics
+  const usage = payload?.usageMetadata || null;
+  if (usage) {
+    const promptTokens = usage.promptTokenCount || 0;
+    const candidateTokens = usage.candidatesTokenCount || usage.outputTokenCount || 0;
+    const totalTokens = usage.totalTokenCount || 0;
+    console.log("\nâ”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”");
+    console.log(`â”‚ METRICAS DE CONSUMO DE TOKENS - Borrador de Convenio   â”‚`);
+    console.log("â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤");
+    console.log(`â”‚ Modelo: ${model.padEnd(46)} â”‚`);
+    console.log(`â”‚ Tokens de Entrada (Prompt): ${String(promptTokens).padStart(26)} â”‚`);
+    console.log(`â”‚ Tokens de Salida (Respuesta): ${String(candidateTokens).padStart(23)} â”‚`);
+    console.log(`â”‚ Tokens Totales: ${String(totalTokens).padStart(35)} â”‚`);
+    console.log("â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜\n");
+  }
+
+  const text = extractGeminiText(payload);
+  if (!text) {
+    throw new GeminiConventionError("Gemini no devolvio texto para el convenio.", { status: 502, model });
+  }
+  const parsed = normalizeConvention(parseGeminiJson(text), { fallbackName: draftName });
+  return parsed;
+}
+
+async function requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes }) {
+  const parts = [{ text: buildConventionPrompt({ draftName, notes }) }];
+  if (cctPdf?.sourceFileName) {
+    parts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+  }
+  if (cctPdf?.buffer) {
+    parts.push(pdfInlinePart(cctPdf));
+  }
+  if (cctMarkdown) {
+    parts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
+  }
+  let result;
+  try {
+    result = await callGeminiJson({ apiKey, model, parts, label: "convenio" });
+  } catch (error) {
+    if (error.code !== "INVALID_JSON") throw error;
+    console.warn("[Gemini convenio] JSON invalido. Reintentando extraccion compacta de convenio.");
+    const retryParts = [{ text: buildConventionCorePrompt({ draftName, notes }) }];
+    if (cctPdf?.sourceFileName) retryParts.push({ text: `Archivo CCT original: ${cctPdf.sourceFileName || "cct"}` });
+    if (cctPdf?.buffer) retryParts.push(pdfInlinePart(cctPdf));
+    if (cctMarkdown) retryParts.push({ text: `Texto del CCT extraido en formato Markdown:\n\n${cctMarkdown}` });
+    result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "convenio-core" });
+  }
+  return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
+}
+
+async function requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories = [], baseConcepts = [] }) {
+  if (!scaleMarkdown && !scalePdf) {
+    return { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
+  }
+  const parts = [{ text: buildScalePrompt({ draftName, notes, baseCategories, baseConcepts }) }];
+  if (scalePdf?.sourceFileName) {
+    parts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+  }
+  if (scalePdf?.buffer) {
+    parts.push(pdfInlinePart(scalePdf));
+  }
+  if (scaleMarkdown) {
+    parts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
+  }
+  let result;
+  try {
+    result = await callGeminiJson({ apiKey, model, parts, label: "escala" });
+  } catch (error) {
+    if (error.code !== "INVALID_JSON") throw error;
+    console.warn("[Gemini escala] JSON invalido. Reintentando extraccion compacta de escala.");
+    const retryParts = [{ text: buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts }) }];
+    if (scalePdf?.sourceFileName) retryParts.push({ text: `Archivo escala salarial original: ${scalePdf.sourceFileName || "escala"}` });
+    if (scalePdf?.buffer) retryParts.push(pdfInlinePart(scalePdf));
+    if (scaleMarkdown) retryParts.push({ text: `Texto de la escala salarial extraida en formato Markdown:\n\n${scaleMarkdown}` });
+    result = await callGeminiJson({ apiKey, model, parts: retryParts, label: "escala-core" });
+  }
+  return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
+}
+
+function mergeExcelConventionParts(conventionPart = {}, scalePart = {}, { draftName } = {}) {
+  const base = normalizeConvention(conventionPart, { fallbackName: draftName });
+  const scale = normalizeConvention(scalePart, { fallbackName: draftName });
+  const keyFor = (item, fields) => fields.map((field) => normalizeText(item?.[field])).find(Boolean) || "";
+  const mergeUnique = (left, right, fields) => {
+    const seen = new Set();
+    return [...(left || []), ...(right || [])].filter((item) => {
+      const key = keyFor(item, fields) || JSON.stringify(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  return normalizeConvention({
+    schemaVersion: EXCEL_SCHEMA_VERSION,
+    convenio: { ...(scale.convenio || {}), ...(base.convenio || {}) },
+    ambitos: mergeUnique(base.ambitos, scale.ambitos, ["ambito_id", "ambito_nombre", "zona"]),
+    categorias: mergeUnique(base.categorias, scale.categorias, ["categoria_id", "categoria_nombre"]),
+    conceptos: mergeUnique(base.conceptos, scale.conceptos, ["concepto_id", "nombre"]),
+    escalas: (scale.escalas || []).length ? scale.escalas : base.escalas,
+    adicionales: mergeUnique(base.adicionales, scale.adicionales, ["adicional_id", "adicional_nombre"])
+  }, { fallbackName: draftName });
+}
+
+function mergeTokenUsage(...usages) {
+  return usages.filter(Boolean).reduce((acc, usage) => ({
+    promptTokenCount: (acc.promptTokenCount || 0) + (usage.promptTokenCount || 0),
+    candidatesTokenCount: (acc.candidatesTokenCount || 0) + (usage.candidatesTokenCount || usage.outputTokenCount || 0),
+    totalTokenCount: (acc.totalTokenCount || 0) + (usage.totalTokenCount || 0)
+  }), {});
+}
+
+async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
+  const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
+  const baseCategories = conventionResult.parsed?.categorias || [];
+  const baseConcepts = conventionResult.parsed?.conceptos || [];
+  const scaleResult = await requestScaleStructureOnce({ apiKey, model, scaleMarkdown, scalePdf, draftName, notes, baseCategories, baseConcepts });
+  const merged = mergeExcelConventionParts(conventionResult.parsed, scaleResult.parsed, { draftName });
+  console.log(`[CCT merge] convenio: categorias=${conventionResult.parsed.categorias?.length || 0} conceptos=${conventionResult.parsed.conceptos?.length || 0} escalas=${conventionResult.parsed.escalas?.length || 0}`);
+  console.log(`[CCT merge] escala: categorias=${scaleResult.parsed.categorias?.length || 0} conceptos=${scaleResult.parsed.conceptos?.length || 0} escalas=${scaleResult.parsed.escalas?.length || 0}`);
+  console.log(`[CCT merge] final: categorias=${merged.categorias?.length || 0} conceptos=${merged.conceptos?.length || 0} escalas=${merged.escalas?.length || 0}`);
+  const parsedConvention = merged;
+  if (!hasExtractedConventionStructure(parsedConvention)) {
+    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual.", {
+      status: 422,
+      model,
+      code: "EMPTY_STRUCTURE"
+    });
+  }
+  return {
+    parsedConvention,
+    tokenUsage: mergeTokenUsage(conventionResult.tokenUsage, scaleResult.tokenUsage)
+  };
+}
+
+function hasExcelSalaryValues(convention = {}) {
+  return (convention.escalas || []).some((scale) => (
+    (scale.valores || []).some((value) => value.valor !== null && value.valor !== undefined && value.valor !== "")
+  ));
+}
+
+function hasExtractedConventionStructure(convention = {}) {
+  return Boolean(
+    (convention.categorias || []).length
+    || (convention.conceptos || []).length
+    || (convention.adicionales || []).length
+    || (convention.ambitos || []).length
+    || (convention.escalas || []).some((scale) => (scale.valores || []).length)
+  );
+}
+
+async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes }) {
+  const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
+
+  // Markdown text extraction removed â€” Gemini reads PDFs directly via multimodal
+  const cctMarkdown = await extractPdfText(cctPdf);
+  const scaleMarkdown = (await Promise.all(allScalePdfs.map(extractPdfText))).filter(Boolean).join("\n\n");
+
+  console.log(`[CCT] PDFs recibidos: cct=${cctPdf?.buffer?.length || 0} bytes (${cctPdf?.mimeType || "sin CCT"}), escalas=${allScalePdfs.length} archivo(s)`);
+
+  const models = geminiModelList(model, fallbackModels);
+  const errors = [];
+  const tryLocalFallback = (aiError) => {
+    const context = { draftName, notes, cctPdf, scalePdf, cctText: cctMarkdown, scaleText: scaleMarkdown, aiError };
+    const fallback = LOCAL_CONVENTION_FALLBACKS.find((strategy) => strategy.matches(context));
+    if (fallback) return fallback.build(context);
+    return buildGenericConventionFromScale(context);
+  };
+
+  for (const currentModel of models) {
+    try {
+      const result = await requestConventionOnce({
+        apiKey,
+        model: currentModel,
+        cctMarkdown,
+        scaleMarkdown,
+        cctPdf,
+        scalePdf,
+        draftName,
+        notes
+      });
+      return {
+        parsedConvention: result.parsedConvention || result,
+        tokenUsage: result.tokenUsage,
+        model: currentModel,
+        modelsTried: [...errors.map((item) => item.model), currentModel]
+      };
+    } catch (error) {
+      errors.push({
+        model: currentModel,
+        message: error.message,
+        status: error.status,
+        code: error.code
+      });
+      if (!isRetryable(error)) {
+        const localFallback = tryLocalFallback(error.message);
+        if (localFallback && hasExtractedConventionStructure(localFallback)) {
+          return {
+            parsedConvention: localFallback,
+            tokenUsage: null,
+            model: localFallback.extraction?.model || "local-pdf-parse",
+            modelsTried: errors.map((item) => item.model)
+          };
+        }
+        error.modelsTried = errors.map((item) => item.model);
+        throw error;
+      }
+    }
+  }
+
+  const last = errors[errors.length - 1] || {};
+  const localFallback = tryLocalFallback(last.message);
+  if (localFallback && hasExtractedConventionStructure(localFallback)) {
+    return {
+      parsedConvention: localFallback,
+      tokenUsage: null,
+      model: localFallback.extraction?.model || "local-pdf-parse",
+      modelsTried: errors.map((item) => item.model)
+    };
+  }
+  if (last.code === "EMPTY_STRUCTURE") {
+    throw new GeminiConventionError("Gemini no extrajo datos estructurables del convenio actual. Revisar PDF/modelo.", {
+      status: 422,
+      model: last.model,
+      code: "EMPTY_STRUCTURE",
+      modelsTried: errors.map((item) => item.model)
+    });
+  }
+  if (last.code === "INVALID_JSON") {
+    throw new GeminiConventionError("Gemini devolvio JSON invalido en todos los modelos probados.", {
+      status: 502,
+      model: last.model,
+      code: "INVALID_JSON",
+      modelsTried: errors.map((item) => item.model)
+    });
+  }
+  throw new GeminiConventionError("Gemini esta con alta demanda y no pudo estructurar el convenio en este momento.", {
+    status: 503,
+    model: last.model,
+    code: "MODEL_OVERLOADED",
+    modelsTried: errors.map((item) => item.model)
+  });
+}
+
+const LOCAL_CONVENTION_FALLBACKS = [
+  { matches: looksLikeHairdressers730, build: buildHairdressersConvention },
+  { matches: looksLikeCommerce130, build: buildCommerceConvention },
+  { matches: looksLikePharmacyMendoza, build: buildPharmacyConvention }
+];
+
+function asciiFold(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function looksLikeCommerce130({ draftName, notes, cctText, scaleText, cctPdf, scalePdf }) {
+  const haystack = asciiFold([
+    draftName,
+    notes,
+    cctPdf?.sourceFileName,
+    scalePdf?.sourceFileName,
+    cctText.slice(0, 8000),
+    scaleText.slice(0, 8000)
+  ].join(" "));
+  return haystack.includes("130/75")
+    || haystack.includes("13075")
+    || haystack.includes("EMPLEADOS DE COMERCIO")
+    || haystack.includes("FAECYS");
+}
+
+const COMMERCE_MONTHS = {
+  ENERO: "01",
+  FEBRERO: "02",
+  MARZO: "03",
+  ABRIL: "04",
+  MAYO: "05",
+  JUNIO: "06",
+  JULIO: "07",
+  AGOSTO: "08",
+  SEPTIEMBRE: "09",
+  SETIEMBRE: "09",
+  OCTUBRE: "10",
+  NOVIEMBRE: "11",
+  DICIEMBRE: "12"
+};
+
+function parseArgMoney(value) {
+  const normalized = normalizeMoney(value);
+  return normalized === null ? 0 : normalized;
+}
+
+function takeCommerceAmount(value) {
+  const rest = String(value || "").replace(/\s+/g, "");
+  if (!rest) return { value: 0, rest: "" };
+  if (rest[0] === "0" && rest[1] !== ".") {
+    return { value: 0, rest: rest.slice(1) };
+  }
+  const match = rest.match(/^\d{1,3}(?:\.\d{3})+(?:,\d{2})?/);
+  if (!match) return { value: 0, rest };
+  return { value: parseArgMoney(match[0]), rest: rest.slice(match[0].length) };
+}
+
+function parseCommerceScaleRow(line) {
+  const match = asciiFold(line).match(/^(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s*\/\s*(20\d{2})/);
+  if (!match) return null;
+  const period = `${match[2]}-${COMMERCE_MONTHS[match[1]]}`;
+  const rest = String(line || "").replace(/^.*\/\s*20\d{2}/i, "").replace(/\s+/g, "");
+  const basic = takeCommerceAmount(rest);
+  const nonRemOne = takeCommerceAmount(basic.rest);
+  const nonRemTwo = takeCommerceAmount(nonRemOne.rest);
+  const total = takeCommerceAmount(nonRemTwo.rest);
+  return {
+    period,
+    basic: basic.value,
+    nonRem: nonRemOne.value + nonRemTwo.value,
+    total: total.value,
+    residue: total.rest
+  };
+}
+
+function isCommerceHeaderNoise(line) {
+  const clean = asciiFold(line).replace(/\s+/g, " ").trim();
+  return !clean
