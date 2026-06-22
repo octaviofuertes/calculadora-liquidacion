@@ -1411,7 +1411,7 @@ async function generateEmbeddings(texts, apiKey) {
   for (const text of texts) {
     try {
       const response = await ai.models.embedContent({
-        model: "text-embedding-004",
+        model: "gemini-embedding-001",
         contents: text
       });
       embeddings.push(response.embeddings[0].values);
@@ -1442,7 +1442,7 @@ async function retrieveContext(query, chunks, embeddings, apiKey, topK = 15) {
   let queryEmbedding;
   try {
     const response = await ai.models.embedContent({
-      model: "text-embedding-004",
+      model: "gemini-embedding-001",
       contents: query
     });
     queryEmbedding = response.embeddings[0].values;
