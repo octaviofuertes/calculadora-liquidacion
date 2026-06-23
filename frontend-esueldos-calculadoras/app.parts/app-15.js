@@ -1,10 +1,13 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const getApiBase = () => {
+    if (window.eSueldosApi?.baseUrl !== undefined) {
+      return window.eSueldosApi.baseUrl;
+    }
     const stored = localStorage.getItem("apiBase");
     if (stored) return stored;
     const host = location.hostname === "localhost" || location.hostname === "127.0.0.1"
-      ? "http://localhost:3000"
+      ? "http://localhost:4100"
       : location.origin;
     return host;
   };
