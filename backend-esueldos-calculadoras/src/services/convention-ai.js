@@ -882,6 +882,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "ATENCION CRITICA: Revisa minuciosamente los haberes que sean 'no remunerativos'. Asegurate de separarlos correctamente asignandoles SIEMPRE naturaleza 'no_remunerativo'. BAJO NINGUN CONCEPTO los agrupes o clasifiques como 'remunerativo'.",
     "Base de calculo obligatoria y computable: sueldo_basico, total_remunerativo, haberes_remunerativos, remuneracion_sujeta_a_aporte, escala_salarial, valor_hora, valor_dia, monto_fijo o requiere_revision_manual. Si el documento da otra base, conservarla como texto breve en base_calculo.",
     "Formula de calculo obligatoria en formula_base: valor_escala_categoria, monto_fijo, porcentaje_sobre_base, porcentaje_sobre_valor_hora, cantidad_por_valor_unitario, valor_referencia_escala o requiere_revision_manual. Si el documento muestra una formula concreta, resumirla sin inventar.",
+    "Para los conceptos genéricos VALOR_HORA o VALOR_DIA, su 'formula_base' NO debe decir 'valor_escala_categoria' ni hacer referencia a la escala directamente. Usa la sintaxis matemática correspondiente a su cálculo real en el convenio, por ejemplo: (sueldo_basico / divisor_horas) o (sueldo_basico / divisor_dias), reemplazando divisor_horas o divisor_dias por el número real de horas/días que diga el convenio (ej. (sueldo_basico / 200) o (sueldo_basico / 30)). Si el convenio no especifica divisor horario, usa (sueldo_basico / 200).",
     "EXTRAER OBLIGATORIAMENTE descuentos y retenciones legales y convencionales: jubilacion, Ley 19032, obra social, seguro, cuota sindical, fondo solidario, aportes especiales y contribuciones extraordinarias. Extraer base imponible, porcentaje, tope y condiciones.",
     "EXTRAER OBLIGATORIAMENTE aportes y contribuciones patronales: fondo solidario empleador, contribuciones sindicales, aportes a camaras empresarias, seguros obligatorios y cualquier obligacion patronal creada por el convenio.",
     "NO pongas licencias, vacaciones, maternidad, nacimiento, matrimonio, fallecimiento, examenes, enfermedad o accidentes dentro de conceptos liquidables salvo que exista un adicional salarial periodico con formula/importe. Esos derechos no son haberes mensuales.",
@@ -1465,12 +1466,19 @@ async function retrieveContext(query, chunks, embeddings, apiKey, topK = 15) {
   return scored.slice(0, topK).map(s => s.chunk).join("\n\n---\n\n");
 }
 
-async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes }) {
+async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes, globalLaborLawPdf }) {
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
 
   console.log(`[CCT RAG] Iniciando extraccion RAG. CCT: ${cctPdf ? "Si" : "No"}, Escalas: ${allScalePdfs.length}`);
 
-  const cctText = await extractPdfText(cctPdf);
+  let cctText = await extractPdfText(cctPdf);
+  if (globalLaborLawPdf) {
+    const laborLawText = await extractPdfText(globalLaborLawPdf);
+    if (laborLawText) {
+      cctText = [cctText, laborLawText].filter(Boolean).join("\n\n---\n\nLEY DE TRABAJO APLICABLE (CONTEXTO BASE):\n\n");
+    }
+  }
+
   const scaleText = (await Promise.all(allScalePdfs.map(extractPdfText))).filter(Boolean).join("\n\n");
 
   let cctContext = "";

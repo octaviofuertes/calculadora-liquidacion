@@ -1,4 +1,4 @@
-﻿(async function () {
+(async function () {
   const chunks = [
     "app.parts/app-01.js",
     "app.parts/app-02.js",
@@ -13,7 +13,8 @@
     "app.parts/app-11.js",
     "app.parts/app-12.js",
     "app.parts/app-13.js",
-    "app.parts/app-14.js"
+    "app.parts/app-14.js",
+    "app.parts/app-15.js"
   ];
   const source = (await Promise.all(chunks.map(async (path) => {
     const response = await fetch(path, { cache: "no-store" });

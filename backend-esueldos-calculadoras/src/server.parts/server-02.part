@@ -1,4 +1,4 @@
-﻿  { name: "scalePdf", maxCount: 5 }
+  { name: "scalePdf", maxCount: 5 }
 ]), async (req, res, next) => {
   try {
     const cctFile = req.files?.cctPdf?.[0] || null;
@@ -9,7 +9,9 @@
     }
 
     const draftName = String(req.body.name || "").trim() || "Convenio generado por leIA";
-    const notes = String(req.body.notes || "").trim();
+    const userNotes = String(req.body.notes || "").trim();
+    const laborLaw = String(req.body.laborLaw || "").trim();
+    const notes = [userNotes, laborLaw ? `Ley de trabajo aplicable (Contexto): ${laborLaw}` : ""].filter(Boolean).join("\n\n");
     const now = new Date();
     const apiKey = geminiConventionApiKey();
     let aiStatus = "SIN_API_KEY";
@@ -55,6 +57,16 @@
       ...scalePdfs.map((file) => ({ ...file, field: "scalePdf" }))
     ]);
 
+    let globalLaborLawPdf = null;
+    const laborLawPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    if (fs.existsSync(laborLawPath)) {
+      globalLaborLawPdf = {
+        buffer: await fs.promises.readFile(laborLawPath),
+        mimeType: "application/pdf",
+        sourceFileName: "Ley de Trabajo Aplicable"
+      };
+    }
+
     if (!apiKey) {
       res.status(503).json({
         ok: false,
@@ -74,7 +86,8 @@
           scalePdf,
           scalePdfs,
           draftName,
-          notes
+          notes,
+          globalLaborLawPdf
         });
         parsedConvention = result.parsedConvention;
         tokenUsage = result.tokenUsage || null;

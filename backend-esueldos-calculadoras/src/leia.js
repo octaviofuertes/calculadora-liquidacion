@@ -31,7 +31,7 @@ function compactConvention(convention) {
   };
 }
 
-function buildSystemInstruction({ catalog, selectedConventionId, clientState }) {
+function buildSystemInstruction({ catalog, selectedConventionId, clientState, laborLawContext }) {
   const conventions = Object.values(catalog.conventions || {});
   const selected = catalog.conventions?.[selectedConventionId] || conventions[0];
   const selectedLabel = selected ? `${selected.shortName || selected.name} (${selected.name})` : "sin convenio seleccionado";
@@ -64,6 +64,10 @@ function buildSystemInstruction({ catalog, selectedConventionId, clientState }) 
     currentScreenState: clientState || {}
   };
 
+  const laborLawBlock = laborLawContext
+    ? `\nBASE DE CONOCIMIENTO LEGAL (LEY DE TRABAJO APLICABLE):\nEl administrador del sistema cargó el siguiente documento legal como base de conocimiento. Usalo como referencia autoritativa para responder consultas sobre derechos laborales, jornadas, vacaciones, indemnizaciones, licencias, y cualquier aspecto regulado por esta ley. Citá artículos específicos cuando sea pertinente.\n---\n${laborLawContext.slice(0, 15000)}\n---`
+    : "";
+
   return [
     "Sos leIA, la asistente y asesora técnica hiper-experta del sistema eSueldos.",
     "Responde siempre en español argentino, siendo clara, directa y muy precisa técnicamente.",
@@ -84,8 +88,9 @@ function buildSystemInstruction({ catalog, selectedConventionId, clientState }) 
     "1. Usa EXCLUSIVAMENTE el contexto de catálogo, escalas, parámetros y estado de pantalla recibido. No alucines montos ni porcentajes.",
     "2. Si falta una escala, advertílo y explicale cómo subir un PDF de escala para que la IA lo procese.",
     "3. Considera siempre la categoría, periodo, zona, inasistencias y el último resultado enviado por el frontend para dar respuestas contextuales exactas.",
-    `Contexto actualizado del sistema (pantalla actual, parámetros, recibo):\n${JSON.stringify(context, null, 2)}`
-  ].join("\n\n");
+    `Contexto actualizado del sistema (pantalla actual, parámetros, recibo):\n${JSON.stringify(context, null, 2)}`,
+    laborLawBlock
+  ].filter(Boolean).join("\n\n");
 }
 
 function normalizeHistory(history = []) {

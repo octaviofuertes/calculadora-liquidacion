@@ -1,4 +1,4 @@
-﻿        confidence: 0,
+        confidence: 0,
         categories: [],
         additionals: [],
         zones: [],
@@ -194,10 +194,12 @@ app.post("/api/leia/chat", async (req, res, next) => {
     }
 
     const catalog = await getCatalogPayload();
+    const laborLawContext = await getGlobalLaborLawText();
     const systemInstruction = buildSystemInstruction({
       catalog,
       selectedConventionId: state?.convention?.id,
-      clientState: state
+      clientState: state,
+      laborLawContext
     });
 
     const result = await askGemini({
@@ -258,11 +260,17 @@ app.post("/api/leia/audit-liquidation", async (req, res, next) => {
 
     if (apiKey) {
       try {
+        const laborLawContext = await getGlobalLaborLawText();
+        const baseSystemInstruction = "Sos leIA, auditora de liquidaciones de eSueldos. Respondés solamente JSON válido.";
+        const systemInstruction = laborLawContext
+          ? `${baseSystemInstruction}\n\nBASE DE CONOCIMIENTO LEGAL (LEY DE TRABAJO APLICABLE):\nEl administrador del sistema cargó el siguiente documento legal como base de conocimiento. Usalo como referencia autoritativa para responder consultas y justificar hallazgos de auditoría relacionados con derechos laborales, jornadas, vacaciones, indemnizaciones, licencias, y cualquier aspecto regulado por esta ley. Citá artículos específicos cuando sea pertinente.\n---\n${laborLawContext.slice(0, 15000)}\n---`
+          : baseSystemInstruction;
+
         const result = await askGemini({
           apiKey,
           model: geminiPrimaryModel(),
           fallbackModels: geminiFallbackModels(),
-          systemInstruction: "Sos leIA, auditora de liquidaciones de eSueldos. RespondÃ©s solamente JSON vÃ¡lido.",
+          systemInstruction,
           message: buildLiquidationAuditPrompt({ liquidation, precheck, activeScale, catalog }),
           history: [],
           maxOutputTokens: 5000,
