@@ -1,4 +1,4 @@
-﻿          <path d="M8 6V4h8v2"></path>
+          <path d="M8 6V4h8v2"></path>
           <path d="M19 6l-1 14H6L5 6"></path>
           <path d="M10 11v5"></path>
           <path d="M14 11v5"></path>
@@ -135,9 +135,9 @@
     const nextIndex = (items) => (Array.isArray(items) ? items.length + 1 : 1);
     if (section === "ambitos") parsed.ambitos = [...(parsed.ambitos || []), { ambito_id: `ambito-${nextIndex(parsed.ambitos)}`, nombre: "", tipo: "", descripcion: "" }];
     if (section === "categorias") parsed.categorias = [...(parsed.categorias || []), { categoria_id: "", categoria_nombre: "", grupo_nombre: "", descripcion: "", modalidad_aplicable: "" }];
-    if (section === "conceptos_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
-    if (section === "conceptos_no_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "no_remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
-    if (section === "conceptos_deducciones") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "descuento", naturaleza: "retencion", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
+    if (section === "conceptos_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", origen_articulo: "", tipo_concepto: "haber", naturaleza: "remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
+    if (section === "conceptos_no_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", origen_articulo: "", tipo_concepto: "haber", naturaleza: "no_remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
+    if (section === "conceptos_deducciones") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", origen_articulo: "", tipo_concepto: "descuento", naturaleza: "retencion", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "escalas") parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", moneda: "ARS", valores: [{ concepto_id: "SUELDO_BASICO", categoria_id: "", valor: "", periodicidad: "" }] }];
     if (section === "adicionales") parsed.adicionales = [...(parsed.adicionales || []), { adicional_id: `adicional-${nextIndex(parsed.adicionales)}`, concepto_id: "", nombre: "", formula: "", base_calculo: "", porcentaje: "", importe_fijo: "", condicion: "" }];
     conventionBuilderState.selected.parsedConvention = parsed;

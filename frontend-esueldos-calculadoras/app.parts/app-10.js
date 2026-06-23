@@ -1,4 +1,4 @@
-﻿    const errors = Array.isArray(payload.errores) ? payload.errores : [];
+    const errors = Array.isArray(payload.errores) ? payload.errores : [];
     if (errors.length) {
       return errors.slice(0, 5).map((item) => [item.path, item.message].filter(Boolean).join(": ") || String(item)).join(" | ");
     }
@@ -354,6 +354,7 @@
       ${auditTable("Haberes remunerativos", "conceptos_remunerativos", "Conceptos que integran la base remunerativa.", [
         { field: "concepto_id", label: "ID concepto" },
         { field: "nombre", label: "Concepto" },
+        { field: "origen_articulo", label: "Origen legal" },
         { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
         { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
         { field: "unidad_calculo", label: "Unidad" },
@@ -367,6 +368,7 @@
       ${auditTable("Haberes no remunerativos", "conceptos_no_remunerativos", "Conceptos no remunerativos extraídos de convenio o escala.", [
         { field: "concepto_id", label: "ID concepto" },
         { field: "nombre", label: "Concepto" },
+        { field: "origen_articulo", label: "Origen legal" },
         { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
         { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
         { field: "unidad_calculo", label: "Unidad" },
@@ -380,6 +382,7 @@
       ${auditTable("Deducciones", "conceptos_deducciones", "Descuentos, retenciones y aportes del trabajador.", [
         { field: "concepto_id", label: "ID concepto" },
         { field: "nombre", label: "Concepto" },
+        { field: "origen_articulo", label: "Origen legal" },
         { field: "tipo_concepto", label: "Tipo", type: "select", choices: typeChoices },
         { field: "naturaleza", label: "Naturaleza", type: "select", choices: natureChoices },
         { field: "unidad_calculo", label: "Unidad" },

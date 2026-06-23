@@ -59,7 +59,8 @@
       "importe_fijo": null,
       "aplica_a": "",
       "condicion": "",
-      "fuente_documento": ""
+      "fuente_documento": "",
+      "origen_articulo": ""
     }
   ],
   "escalas": [

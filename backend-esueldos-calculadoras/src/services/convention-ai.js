@@ -875,6 +875,8 @@ function buildConventionPrompt({ draftName, notes }) {
     "Para cada concepto extraer datos compactos: nombre, articulo, formula corta, base de calculo, porcentaje, importe fijo, condicion breve, tope y frecuencia. No copies parrafos completos.",
     "ATENCION: Toma TODOS los valores salariales y periodos correspondientes al año actual. No omitas ningun mes del año en curso.",
     "EXTRAER OBLIGATORIAMENTE haberes no remunerativos: sumas no remunerativas, no remunerativos de escala, asignaciones, bonos, gratificaciones extraordinarias, viaticos, beneficios en especie y ticket alimentacion. Extraer formula corta, condiciones breves, base, tope y vigencia.",
+    "Si un concepto legal o de liquidación estándar (como aguinaldo, presentismo, vacaciones, antigüedad) NO está explícitamente mencionado en el documento del Convenio Colectivo, pero SÍ aparece en la LEY DE TRABAJO APLICABLE provista en el contexto, debés extraerlo obligatoriamente y sumarlo a la lista de 'conceptos'.",
+    "Para todos los conceptos, si proviene de un artículo específico del CCT o de la Ley de Trabajo, indícalo en el nuevo campo 'origen_articulo' dentro de conceptos. Ejemplo: 'Art. 4 CCT' o 'Art. 122 LCT'. Si proviene de la ley laboral, dejalo claro.",
     "Todo haber no remunerativo debe ir en conceptos con tipo_concepto haber y estrictamente naturaleza no_remunerativo, unidad_calculo, formula_base, base_calculo, condicion y es_liquidable true salvo que el documento lo declare solo informativo.",
     "Clasificacion obligatoria de conceptos: tipo_concepto debe ser haber, descuento, retencion, aporte_patronal o referencia. No uses remunerativo/no_remunerativo como tipo_concepto; eso va en naturaleza.",
     "Naturaleza obligatoria: remunerativo, no_remunerativo, retencion, contribucion_patronal, referencial o requiere_revision_manual si el documento no permite determinarlo. No dejar naturaleza vacia.",
@@ -938,10 +940,12 @@ function buildConventionCorePrompt({ draftName, notes }) {
     
     // 3. CONCEPTOS LIQUIDABLES (Reglas y Motores de Cálculo)
     "CONCEPTOS: Identifica todos los conceptos remunerativos, no remunerativos y retenciones mencionados en el texto legal.",
+    "Si un concepto estándar (como SAC, presentismo, vacaciones) falta en el CCT pero figura en la LEY DE TRABAJO APLICABLE provista, DEBES extraerlo y basarlo en la ley.",
+    "Para cada concepto, completa el campo 'origen_articulo' indicando si proviene del CCT (ej. 'Art. 4 CCT') o de la Ley de Trabajo (ej. 'Art. 122 LCT').",
     "Prohibido crear conceptos dinámicos por mes o año (ej: NO crees BASICO_OCT_25). Usa ID genéricos: SUELDO_BASICO, VALOR_HORA, VALOR_DIARIO, NO_REMUNERATIVO, ADICIONAL_CONVENIO.",
     "El Sueldo Anual Complementario debe mapearse como concepto_id: 'SAC', nunca como SUELDO_BASICO.",
     "Diferencia estrictamente la NATURALEZA de los conceptos: Remunerativos (haber / remunerativo), No Remunerativos (haber / no_remunerativo), Deducciones (retencion o descuento / retencion). Es CRÍTICO que los adicionales calificados como 'no rem' tengan estrictamente esa naturaleza.",
-    "Cada concepto debe parametrizarse con: unidad_calculo (monthly, hourly, daily, percentage, fixed), formula_base, base_calculo (sueldo_basico, total_remunerativo, etc.), condicion y detail (la evidencia).",
+    "Cada concepto debe parametrizarse con: unidad_calculo (monthly, hourly, daily, percentage, fixed), formula_base, base_calculo (sueldo_basico, total_remunerativo, etc.), origen_articulo, condicion y detail (la evidencia).",
     "Viaticos, traslados, comida, pernocte, kilometraje u otros conceptos por dia, viaje, km u hora deben quedar como cantidad_por_valor_unitario o amountPerUnit, con unidad_calculo clara y valor unitario si existe. No los modeles como checkbox mensual salvo que el documento diga suma fija mensual.",
     
     // 4. LICENCIAS Y REGLAS

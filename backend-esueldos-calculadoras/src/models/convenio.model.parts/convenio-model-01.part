@@ -1,4 +1,4 @@
-﻿const { z } = require("zod");
+const { z } = require("zod");
 const { periodIds, scalePeriodIds } = require("../domain/conventions/periods");
 
 const EXCEL_SCHEMA_VERSION = "esueldos-cct-estructura-excel-v1";
@@ -448,3 +448,7 @@ function normalizeConcepto(item = {}, convenioId = "", index = 0, forcedType = "
     importe_fijo: amount(item.importe_fijo ?? item.fixedAmount ?? item.amount),
     aplica_a: text(item.aplica_a || item.appliesTo),
     condicion: text(item.condicion || item.condition || item.detail || defaults.condicion),
+    fuente_documento: text(item.fuente_documento || item.source),
+    origen_articulo: text(item.origen_articulo || item.article || item.articulo || "")
+  };
+}

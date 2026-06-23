@@ -1,4 +1,4 @@
-﻿    excel.escalas.forEach((scale) => {
+    excel.escalas.forEach((scale) => {
       const scalePeriods = scalePeriodIds(scale);
       scale.valores
         .filter((value) => value.categoria_id === category.categoria_id)
@@ -156,6 +156,7 @@ const conceptoSchema = z.object({
   aplica_a: emptyText,
   condicion: emptyText,
   fuente_documento: emptyText,
+  origen_articulo: emptyText,
   es_liquidable: z.boolean().optional().default(true)
 }).passthrough();
 
