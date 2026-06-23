@@ -58,12 +58,28 @@
     ]);
 
     let globalLaborLawPdf = null;
+    let laborLawStatus = {
+      available: false,
+      sourceFileName: "",
+      mode: "none",
+      used: false,
+      readable: false,
+      message: "No hay Sintesis/Ley de Trabajo Aplicable cargada. Los faltantes generales quedaran para revision manual."
+    };
     const laborLawPath = path.join(conventionUploadDir, "global_labor_law.pdf");
     if (fs.existsSync(laborLawPath)) {
       globalLaborLawPdf = {
         buffer: await fs.promises.readFile(laborLawPath),
         mimeType: "application/pdf",
         sourceFileName: "Ley de Trabajo Aplicable"
+      };
+      laborLawStatus = {
+        available: true,
+        sourceFileName: "Ley de Trabajo Aplicable",
+        mode: "local_pdf",
+        used: false,
+        readable: false,
+        message: "Sintesis/Ley de Trabajo Aplicable cargada localmente."
       };
     }
 
@@ -90,6 +106,7 @@
           globalLaborLawPdf
         });
         parsedConvention = result.parsedConvention;
+        laborLawStatus = result.laborLawStatus || laborLawStatus;
         tokenUsage = result.tokenUsage || null;
         aiStatus = "ESTRUCTURADO_POR_LEIA";
         aiModel = result.model;
@@ -147,6 +164,9 @@
     } else {
       parsedConvention = validation.data;
     }
+    if ((!laborLawStatus.available || !laborLawStatus.readable) && laborLawStatus.message) {
+      parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), laborLawStatus.message]));
+    }
     console.log(`[CCT final] categorias=${parsedConvention.categorias.length} conceptos=${parsedConvention.conceptos.length} escalas=${parsedConvention.escalas.length} adicionales=${parsedConvention.adicionales.length} ambitos=${parsedConvention.ambitos.length}`);
     const hasExtractedStructure = parsedConvention.categorias.length
       || parsedConvention.escalas.some((scale) => (scale.valores || []).length)
@@ -182,6 +202,7 @@
       aiError,
       aiModel,
       aiModelsTried,
+      laborLawStatus,
       parsedConvention,
       processingPipeline,
       tokenUsage: typeof tokenUsage !== "undefined" ? tokenUsage : null,

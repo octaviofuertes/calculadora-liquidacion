@@ -30,7 +30,10 @@
       if ($("builderScalePdf")) $("builderScalePdf").value = "";
       await loadConventionDrafts();
       await selectConventionDraft(payload.id);
-      setConventionBuilderStatus(payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "Convenio estructurado. Revisalo y aprobá cuando esté perfecto." : "Convenio estructurado con advertencias. Confirmá el período de las escalas antes de aprobar.", payload.aiStatus === "ESTRUCTURADO_POR_LEIA" ? "ok" : "");
+      const lawStatus = payload.laborLawStatus || {};
+      const lawNotice = lawStatus.available && lawStatus.readable ? "" : ` Aviso: ${lawStatus.message || "no hay síntesis de ley de trabajo cargada para completar faltantes generales."}`;
+      const structuredOk = payload.aiStatus === "ESTRUCTURADO_POR_LEIA";
+      setConventionBuilderStatus(structuredOk ? `Convenio estructurado. Revisalo y aprobá cuando esté perfecto.${lawNotice}` : `Convenio estructurado con advertencias. Confirmá el período de las escalas antes de aprobar.${lawNotice}`, structuredOk && !lawNotice ? "ok" : "");
     } catch (error) {
       setConventionBuilderStatus(error.message, "bad");
     } finally {

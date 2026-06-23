@@ -857,12 +857,15 @@ function buildConventionPrompt({ draftName, notes }) {
     "Actúa como un experto liquidador de sueldos en Argentina. Tu tarea es extraer todos los datos necesarios para una liquidación de sueldos.",
     "Debes extraer los haberes remunerativos, no remunerativos, retenciones y licencias (y las escalas salariales si corresponde).",
     "DEBE ESTAR SÍ O SÍ el cálculo para cada concepto; si es extraído de una tabla, indícalo explícitamente.",
-    "ATENCIÓN: No metas leyes ni nada jurídico. Extrae SOLAMENTE lo estrictamente necesario para liquidar sueldos y poder calcular cada haber.",
+    "ATENCION: No copies leyes ni texto juridico extenso. Extrae SOLAMENTE lo estrictamente necesario para liquidar sueldos y poder calcular cada haber.",
     "Debes analizar la totalidad de la documentacion enviada en esta solicitud: texto principal, actas complementarias, acuerdos salariales, escalas salariales, anexos, tablas, imagenes, cuadros, notas al pie, adendas y resoluciones homologatorias.",
     "Primero clasifica cada adjunto o bloque de texto como uno de estos tipos: CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, ESCALA_SALARIAL, ANEXO_ESCALA, ANEXO_REGLAS, RESOLUCION, OTRO. No lo agregues como campo raiz; conserva la clasificacion en documento_tipo/documento_rol/fuente_documento de los objetos extraidos.",
-    "Cada dato importante debe tener trazabilidad compacta cuando sea posible: fuente_documento, documento_tipo, pagina, evidencia y confianza. evidencia debe ser una frase o fragmento corto, no un parrafo largo.",
+    "Cada objeto dentro de ambitos, categorias, conceptos, escalas[].valores y adicionales debe tener trazabilidad compacta obligatoria: fuente_documento, documento_tipo, pagina, evidencia y confianza. evidencia debe ser una frase o fragmento corto, no un parrafo largo.",
+    "Si el dato sale del CCT/acta usa documento_tipo='CCT_BASE' o 'ACTA_ACUERDO'. Si sale de la escala salarial usa documento_tipo='ESCALA_SALARIAL' o 'ANEXO_ESCALA'. Si sale de la Ley/Sintesis de Trabajo usa documento_tipo='LEY_TRABAJO_BASE'. No dejes documento_tipo vacio.",
     "AISLAMIENTO ABSOLUTO: cada estructuracion empieza desde cero. Ignora por completo convenios anteriores, ejemplos de otros CCT, catalogos internos, memoria de conversaciones, borradores previos, datos aprobados, nombres de archivos anteriores y cualquier convenio precargado. VALORES ACTUALES: Extrae únicamente las reglas, importes, adicionales y escalas vigentes y actuales. Si la documentación contiene múltiples periodos o el historial de acuerdos anteriores, descártalos y quédate solo con los valores actuales del periodo más reciente.",
-    "Nunca completes datos usando otro CCT aunque parezca parecido. Si el documento actual no contiene el dato, escribir: Informacion no encontrada en la documentacion analizada.",
+    "Nunca completes datos usando otro CCT aunque parezca parecido. Si el documento actual no contiene el dato, usa primero la SINTESIS DE LEY DE TRABAJO APLICABLE si fue enviada en esta solicitud. Si tampoco esta alli, escribir: Informacion no encontrada en la documentacion analizada.",
+    "PRIORIDAD DOCUMENTAL OBLIGATORIA: 1) CCT, acta, homologacion y escala salarial subidos para este convenio; 2) Sintesis/Ley de Trabajo Aplicable cargada como contexto base; 3) requiere revision manual. La ley de trabajo solo puede completar reglas generales faltantes del CCT, nunca pisar una regla especifica del CCT ni inventar importes de escala.",
+    "Cuando completes un dato desde la Sintesis/Ley de Trabajo Aplicable, deja trazabilidad: fuente_documento='LEY_DE_TRABAJO_APLICABLE', documento_tipo='LEY_TRABAJO_BASE' y evidencia breve. Si no hay evidencia legal concreta, marcar requiere_revision_manual.",
     "Todo dato que afecte el calculo del sueldo debe ser identificado y clasificado. No omitir conceptos. No resumir articulos. No inventar informacion.",
     "Si una regla no puede determinarse con certeza, escribir: requiere revision manual.",
     "EXTRAER OBLIGATORIAMENTE informacion general: numero de convenio, anio, denominacion, actividad, rama, jurisdiccion, ambito territorial, ambito personal, partes firmantes, fecha de homologacion, vigencia y organismo homologante.",
@@ -901,7 +904,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "Campos raiz prohibidos: architectureVersion, processingPipeline, structuredModel, structureValidation, metadata, auditoria, flujo_liquidacion, reglas_validacion, novedades_requeridas.",
     "No crear escalas vacias. Solo crear una escala si hay nombre_escala, periodo_desde, periodo_hasta o al menos un valor salarial dentro de valores.",
     "No crear categorias sin categoria_nombre si el nombre esta disponible en el texto. Si no se identifica el nombre real, no inventar.",
-    "Estructura el convenio desde cero usando exclusivamente la documentacion enviada en esta solicitud. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
+    "Estructura el convenio desde cero usando exclusivamente la documentacion enviada en esta solicitud, incluyendo la Sintesis/Ley de Trabajo Aplicable solo como fuente supletoria para faltantes generales. No uses catalogos, convenios precargados, memoria, borradores previos ni rastros de convenios eliminados.",
     "La IA solo estructura datos. No calcules sueldos ni inventes importes, porcentajes, articulos o reglas. Si falta texto usa \"\"; si falta numero usa null; si falta lista usa [].",
     "Devuelve exclusivamente JSON valido, sin explicaciones ni bloques de formato.",
     "La respuesta debe ser compacta y completa. Prioriza JSON valido. No dejes cadenas sin cerrar. No agregues texto fuera del JSON.",
@@ -1468,6 +1471,21 @@ async function retrieveContext(query, chunks, embeddings, apiKey, topK = 15) {
 
 async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes, globalLaborLawPdf }) {
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
+  const laborLawStatus = globalLaborLawPdf ? {
+    available: true,
+    sourceFileName: globalLaborLawPdf.sourceFileName || "Ley de Trabajo Aplicable",
+    mode: "local_pdf",
+    used: false,
+    readable: false,
+    message: "Sintesis/Ley de Trabajo Aplicable recibida para completar faltantes generales."
+  } : {
+    available: false,
+    sourceFileName: "",
+    mode: "none",
+    used: false,
+    readable: false,
+    message: "No hay Sintesis/Ley de Trabajo Aplicable cargada. Los faltantes generales quedaran para revision manual."
+  };
 
   console.log(`[CCT RAG] Iniciando extraccion RAG. CCT: ${cctPdf ? "Si" : "No"}, Escalas: ${allScalePdfs.length}`);
 
@@ -1475,7 +1493,11 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   if (globalLaborLawPdf) {
     const laborLawText = await extractPdfText(globalLaborLawPdf);
     if (laborLawText) {
+      laborLawStatus.used = true;
+      laborLawStatus.readable = true;
       cctText = [cctText, laborLawText].filter(Boolean).join("\n\n---\n\nLEY DE TRABAJO APLICABLE (CONTEXTO BASE):\n\n");
+    } else {
+      laborLawStatus.message = "La Sintesis/Ley de Trabajo Aplicable esta cargada, pero no se pudo leer texto util. Revisar el PDF o volver a cargarlo.";
     }
   }
 
@@ -1515,7 +1537,8 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
         parsedConvention: result.parsedConvention || result,
         tokenUsage: result.tokenUsage,
         model: currentModel,
-        modelsTried: [...errors.map((item) => item.model), currentModel]
+        modelsTried: [...errors.map((item) => item.model), currentModel],
+        laborLawStatus
       };
     } catch (error) {
       errors.push({

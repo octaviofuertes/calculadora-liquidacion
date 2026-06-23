@@ -87,6 +87,21 @@
     return String(value);
   }
 
+  function auditOriginLabel(row = {}, defaultOrigin = "CCT") {
+    const raw = [
+      row.documento_tipo,
+      row.documento_rol,
+      row.fuente_documento,
+      row.source,
+      ...(Array.isArray(row.sourceFiles) ? row.sourceFiles : [])
+    ].filter(Boolean).join(" ");
+    const normalized = summaryKey(raw);
+    if (/(ley_trabajo|ley_de_trabajo|lct|contrato_de_trabajo|ley_20744)/.test(normalized)) return "LCT";
+    if (/(escala|anexo_escala|salarial)/.test(normalized)) return "CCT / Escala";
+    if (/(cct|convenio|acta|homologacion|resolucion)/.test(normalized)) return "CCT";
+    return raw ? "CCT" : defaultOrigin;
+  }
+
   function auditInput(field, value, options = {}) {
     const disabled = options.locked ? "disabled" : "";
     let rawValue = auditFieldValue(value);
@@ -97,6 +112,9 @@
     const placeholder = options.placeholder ? ` placeholder="${escapeHtml(options.placeholder)}"` : "";
     if (options.type === "textarea") {
       return `<textarea data-field="${escapeHtml(field)}" rows="1" ${disabled}${placeholder}>${safeValue}</textarea>`;
+    }
+    if (options.type === "readonly") {
+      return `<span class="audit-readonly-cell">${safeValue || "-"}</span>`;
     }
     if (options.type === "select") {
       const baseChoices = options.choices || [];
@@ -114,7 +132,9 @@
 
   function auditTable(title, section, description, columns, rows, options = {}) {
     const locked = !!options.locked;
-    const cleanRows = Array.isArray(rows) ? rows : [];
+    const defaultOrigin = options.defaultOrigin || "CCT";
+    const cleanRows = (Array.isArray(rows) ? rows : []).map((row) => ({ ...row, origen_dato: auditOriginLabel(row, defaultOrigin) }));
+    const displayColumns = options.hideOrigin ? columns : [...columns, { field: "origen_dato", label: "Origen", type: "readonly" }];
     const expanded = options.expanded ? "open" : "";
     return `<details class="convention-audit-table" data-audit-section="${escapeHtml(section)}" ${expanded}>
       <summary class="convention-audit-table-summary">
@@ -140,14 +160,14 @@
                   <span>Sel.</span>
                 </label>
               </th>
-              ${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
+              ${displayColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}
             </tr>
           </thead>
           <tbody>
             ${cleanRows.length ? cleanRows.map((row, index) => `<tr data-row-index="${index}">
               <td class="audit-check-cell"><input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}></td>
-              ${columns.map((column) => `<td>${auditInput(column.field, row?.[column.field], { ...column, locked })}</td>`).join("")}
-            </tr>`).join("") : `<tr class="audit-empty-row"><td colspan="${columns.length + 1}">Sin datos extraidos. Podés agregar filas manualmente.</td></tr>`}
+              ${displayColumns.map((column) => `<td>${auditInput(column.field, row?.[column.field], { ...column, locked })}</td>`).join("")}
+            </tr>`).join("") : `<tr class="audit-empty-row"><td colspan="${displayColumns.length + 1}">Sin datos extraidos. Podés agregar filas manualmente.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -195,7 +215,10 @@
       valor: value.valor,
       moneda: value.moneda || scale.moneda,
       zona: value.zona || scale.zona,
-      modalidad: value.modalidad || ""
+      modalidad: value.modalidad || "",
+      fuente_documento: value.fuente_documento || scale.fuente_documento || value.source || scale.source || "",
+      documento_tipo: value.documento_tipo || scale.documento_tipo || "",
+      sourceFiles: value.sourceFiles || scale.sourceFiles || []
     })));
   }
 
@@ -224,7 +247,10 @@
           concepto_id: value.concepto_id || "SUELDO_BASICO",
           modalidad: value.modalidad || "",
           moneda: value.moneda || "ARS",
-          zona: value.zona || ""
+          zona: value.zona || "",
+          fuente_documento: value.fuente_documento || category.fuente_documento || "",
+          documento_tipo: value.documento_tipo || category.documento_tipo || "",
+          sourceFiles: value.sourceFiles || category.sourceFiles || []
         };
       })
       .sort((a, b) => String(a.mes || "").localeCompare(String(b.mes || "")) || String(a.categoria_nombre || a.categoria_id || "").localeCompare(String(b.categoria_nombre || b.categoria_id || "")));
