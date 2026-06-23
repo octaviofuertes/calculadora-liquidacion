@@ -1,4 +1,4 @@
-﻿    }
+    }
   }
 
   async function uploadConventionDraft(event) {
@@ -39,6 +39,7 @@
   }
 
   function setupConventionBuilder() {
+
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
     $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("TODOS"));

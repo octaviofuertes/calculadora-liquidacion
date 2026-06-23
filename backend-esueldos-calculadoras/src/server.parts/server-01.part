@@ -1,4 +1,4 @@
-﻿const path = require("path");
+const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 require("dotenv").config();
 
@@ -11,6 +11,7 @@ const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
 const { extractScalesFromPdf, GeminiScaleError } = require("./services/scale-ai");
 const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./services/convention-ai");
+const { extractPdfText } = require("./services/convention-gemini");
 const { geminiPrimaryModel, geminiScaleModel, geminiConventionModel, geminiConventionApiKey, geminiScaleApiKey, geminiFallbackModels } = require("./gemini-config");
 const { EXCEL_SCHEMA_VERSION, toRuntimeConvention, normalizeAndValidateCCTJson } = require("./models/convenio.model");
 const {
@@ -48,6 +49,22 @@ const app = express();
 const port = Number(process.env.PORT || 4100);
 const backendRoot = path.resolve(__dirname, "..");
 const frontendDir = path.resolve(backendRoot, process.env.FRONTEND_DIR || "../frontend-esueldos-calculadoras");
+
+let _laborLawTextCache = null;
+let _laborLawPathMtime = null;
+async function getGlobalLaborLawText() {
+  const filePath = path.join(conventionUploadDir, "global_labor_law.pdf");
+  if (!fs.existsSync(filePath)) { _laborLawTextCache = null; return null; }
+  try {
+    const stat = fs.statSync(filePath);
+    if (_laborLawTextCache && _laborLawPathMtime === stat.mtimeMs) return _laborLawTextCache;
+    const buffer = await fs.promises.readFile(filePath);
+    const text = await extractPdfText({ buffer, mimeType: "application/pdf", sourceFileName: "Ley de Trabajo" });
+    _laborLawTextCache = text || null;
+    _laborLawPathMtime = stat.mtimeMs;
+    return _laborLawTextCache;
+  } catch { return null; }
+}
 const uploadRoot = path.join(backendRoot, "uploads");
 const scaleUploadDir = path.join(uploadRoot, "scales");
 const conventionUploadDir = path.join(uploadRoot, "conventions");
@@ -418,6 +435,43 @@ app.use(createLiquidationsRouter({
   serializeScale
 }));
 app.use(createAiRouter({ getDb: getDbInstance }));
+
+app.get("/api/settings", async (req, res, next) => {
+  try {
+    const filePath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const hasGlobalLaborLaw = fs.existsSync(filePath);
+    res.json({ hasGlobalLaborLaw });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/settings/labor-law", conventionUpload.single("laborLawPdf"), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: "Falta documento PDF." });
+      return;
+    }
+    const targetPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    await fs.promises.copyFile(req.file.path, targetPath);
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/settings/labor-law", async (req, res, next) => {
+  try {
+    const targetPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    if (fs.existsSync(targetPath)) {
+      await fs.promises.unlink(targetPath);
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get("/api/convention-drafts", async (req, res, next) => {
   try {
