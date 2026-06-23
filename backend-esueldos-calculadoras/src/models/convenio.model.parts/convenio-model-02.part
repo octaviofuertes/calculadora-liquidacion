@@ -1,9 +1,3 @@
-﻿    fuente_documento: text(item.fuente_documento || item.source),
-    es_liquidable: item.es_liquidable === undefined ? defaults.es_liquidable : Boolean(item.es_liquidable),
-    ...traceFields(item)
-  };
-}
-
 function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
   const rawConceptId = item.concepto_id || item.conceptId || item.concepto || item.nombre_concepto;
   const rawCategoryId = item.categoria_id || item.categoryId || item.categoria || item.categoria_nombre || item.nombre_categoria;
@@ -395,7 +389,7 @@ function normalizeConvenio(input = {}) {
 function runtimeSalaryField(value = {}) {
   const raw = text(`${value.modalidad} ${value.unidad_pago} ${value.periodicidad}`).toLowerCase();
   if (raw.includes("hora")) return "hourly";
-  if (raw.includes("jornal") || raw.includes("dia") || raw.includes("dÃ­a")) return "day";
+  if (raw.includes("jornal") || raw.includes("dia") || raw.includes("día")) return "day";
   return "monthly";
 }
 
