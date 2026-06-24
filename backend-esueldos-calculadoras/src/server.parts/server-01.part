@@ -9,6 +9,9 @@ const { ObjectId } = require("mongodb");
 const { getDb, closeDb } = require("./db");
 const { seedCatalog } = require("./seed");
 const { askGemini, buildSystemInstruction } = require("./leia");
+const { createGeminiClient } = require("./infrastructure/gemini/gemini-client");
+const { createGeminiFileService } = require("./infrastructure/gemini/gemini-file-service");
+const { createGeminiStoreService } = require("./infrastructure/gemini/gemini-store-service");
 const { extractScalesFromPdf, GeminiScaleError } = require("./services/scale-ai");
 const { extractConventionFromPdfs, normalizeConvention, sanitizeGenericConventionCategories, GeminiConventionError } = require("./services/convention-ai");
 const { extractPdfText } = require("./services/convention-gemini");
@@ -70,6 +73,9 @@ const scaleUploadDir = path.join(uploadRoot, "scales");
 const conventionUploadDir = path.join(uploadRoot, "conventions");
 const scaleUploadMaxBytes = Number(process.env.UPLOAD_SCALE_MAX_MB || 20) * 1024 * 1024;
 const conventionUploadMaxBytes = Number(process.env.UPLOAD_CONVENTION_MAX_MB || 25) * 1024 * 1024;
+const laborLawStoreName = process.env.GEMINI_FILE_SEARCH_STORE || "";
+const laborLawStoreDisplayName = process.env.GEMINI_FILE_SEARCH_STORE_DISPLAY_NAME || "esueldos-convenios";
+const laborLawEmbeddingModel = process.env.GEMINI_FILE_SEARCH_EMBEDDING_MODEL || "models/gemini-embedding-2";
 
 function safeFileName(name) {
   return String(name || "escala.pdf")
@@ -78,6 +84,17 @@ function safeFileName(name) {
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 140) || "escala.pdf";
+}
+
+function createLaborLawRagServices() {
+  const apiKey = geminiConventionApiKey() || geminiScaleApiKey() || geminiPrimaryModel();
+  return {
+    apiKey: geminiConventionApiKey() || geminiScaleApiKey(),
+    client: createGeminiClient({ apiKey: geminiConventionApiKey() || geminiScaleApiKey() }),
+    storeName: laborLawStoreName,
+    displayName: laborLawStoreDisplayName,
+    embeddingModel: laborLawEmbeddingModel
+  };
 }
 
 const scaleUpload = multer({
@@ -446,6 +463,44 @@ app.get("/api/settings", async (req, res, next) => {
   }
 });
 
+app.get("/api/settings/labor-law/preview", async (req, res, next) => {
+  try {
+    const filePath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ error: "No hay ley de trabajo cargada." });
+      return;
+    }
+    const buffer = await fs.promises.readFile(filePath);
+    const text = await extractPdfText({ buffer, mimeType: "application/pdf", sourceFileName: "Ley de Trabajo Aplicable" });
+    if (!text) {
+      res.status(422).json({ error: "No se pudo leer texto util del PDF." });
+      return;
+    }
+    const blocks = String(text)
+      .split(/\n\s*\n+/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+    const rows = blocks.map((block, index) => {
+      const lines = block.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      const first = lines[0] || "";
+      const rest = lines.slice(1).join(" ");
+      return {
+        concepto: first.slice(0, 120) || `Bloque ${index + 1}`,
+        regla: rest || first,
+        origin: "LEY_DE_TRABAJO_APLICABLE",
+        pagina: ""
+      };
+    });
+    res.json({
+      sourceFileName: "Ley de Trabajo Aplicable",
+      rows,
+      fullText: text
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/settings/labor-law", conventionUpload.single("laborLawPdf"), async (req, res, next) => {
   try {
     if (!req.file) {
@@ -455,6 +510,40 @@ app.post("/api/settings/labor-law", conventionUpload.single("laborLawPdf"), asyn
     const targetPath = path.join(conventionUploadDir, "global_labor_law.pdf");
     await fs.promises.copyFile(req.file.path, targetPath);
     await fs.promises.unlink(req.file.path).catch(() => {});
+    const apiKey = geminiConventionApiKey() || geminiScaleApiKey();
+    if (apiKey && laborLawStoreName) {
+      const client = createGeminiClient({ apiKey });
+      const geminiFileService = createGeminiFileService({ client });
+      const geminiStoreService = createGeminiStoreService({ client, logger });
+      const store = await geminiStoreService.getOrCreateStore({
+        storeName: laborLawStoreName,
+        displayName: laborLawStoreDisplayName,
+        embeddingModel: laborLawEmbeddingModel
+      });
+      const buffer = await fs.promises.readFile(targetPath);
+      const text = await extractPdfText({ buffer, mimeType: "application/pdf", sourceFileName: "Ley de Trabajo Aplicable" });
+      const tempMdPath = path.join(conventionUploadDir, `global_labor_law-${Date.now()}.md`);
+      await fs.promises.writeFile(tempMdPath, text || "", "utf8");
+      try {
+        const uploadedFile = await geminiFileService.uploadFile({
+          filePath: tempMdPath,
+          mimeType: "text/markdown",
+          displayName: "Ley de Trabajo Aplicable"
+        });
+        await geminiStoreService.importUploadedFile({
+          fileSearchStoreName: store.name,
+          fileName: uploadedFile.name,
+          metadata: {
+            tipo: "LEY_TRABAJO_APLICABLE",
+            fuente: "ley_laboral_global",
+            cct: "global",
+            version: "1"
+          }
+        });
+      } finally {
+        await fs.promises.unlink(tempMdPath).catch(() => {});
+      }
+    }
     res.json({ ok: true });
   } catch (error) {
     next(error);

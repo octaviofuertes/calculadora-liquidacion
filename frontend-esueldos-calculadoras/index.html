@@ -497,7 +497,7 @@
 
   <!-- Global Settings Modal -->
   <dialog id="globalSettingsModal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: 500px; background: #fff;">
       <div class="modal-header">
         <h3 class="modal-title">Configuración Global del Sistema</h3>
         <button class="modal-close-btn" aria-label="Cerrar modal">&times;</button>
@@ -515,9 +515,18 @@
                 <span id="globalLaborLawIcon" style="font-size: 18px;">📄</span>
                 <span id="globalLaborLawLabel" style="font-size: 13px; font-weight: 500;">Comprobando estado...</span>
               </div>
-              <button type="button" id="deleteGlobalLaborLawBtn" class="destructive-action" style="padding: 4px 8px; font-size: 12px; display: none;">Eliminar</button>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" id="previewGlobalLaborLawBtn" class="icon-btn" aria-label="Ver extracción" style="padding: 4px 8px; font-size: 12px; display: none;">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px;">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+                <button type="button" id="deleteGlobalLaborLawBtn" class="destructive-action" style="padding: 4px 8px; font-size: 12px; display: none;">Eliminar</button>
+              </div>
             </div>
           </div>
+          <div id="globalLaborLawPreview" style="display: none; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-1); padding: 10px; max-height: 280px; overflow: auto;"></div>
 
           <form id="globalSettingsForm">
             <label class="field">

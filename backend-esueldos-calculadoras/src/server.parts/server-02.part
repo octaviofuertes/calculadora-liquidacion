@@ -83,6 +83,15 @@
       };
     }
 
+    if (!globalLaborLawPdf) {
+      res.status(412).json({
+        ok: false,
+        errores: [{ path: "laborLaw", message: "Debes cargar la Ley de Trabajo Aplicable antes de estructurar un CCT." }],
+        data: null
+      });
+      return;
+    }
+
     if (!apiKey) {
       res.status(503).json({
         ok: false,

@@ -1,21 +1,62 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const getApiBase = () => {
-    if (window.eSueldosApi?.baseUrl !== undefined) {
-      return window.eSueldosApi.baseUrl;
-    }
+    if (window.eSueldosApi?.baseUrl !== undefined) return window.eSueldosApi.baseUrl;
     const stored = localStorage.getItem("apiBase");
     if (stored) return stored;
-    const host = location.hostname === "localhost" || location.hostname === "127.0.0.1"
-      ? "http://localhost:4100"
-      : location.origin;
-    return host;
+    return location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:4100" : location.origin;
   };
   const apiUrl = (path) => getApiBase() + path;
+
+  const escapeHtml = (value) => String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+  function renderLaborLawPreview(rows = [], sourceFileName = "", fullText = "") {
+    const preview = $("globalLaborLawPreview");
+    if (!preview) return;
+    if (!rows.length) {
+      preview.innerHTML = `<div style="font-size: 13px; color: var(--text-muted);">No hay extracción disponible.</div>`;
+      preview.style.display = "block";
+      return;
+    }
+    preview.innerHTML = `
+      <div style="font-size: 12px; margin-bottom: 8px; color: var(--text-muted);">${escapeHtml(sourceFileName)}</div>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:6px; border-bottom:1px solid var(--line);">Concepto</th>
+            <th style="text-align:left; padding:6px; border-bottom:1px solid var(--line);">Regla</th>
+            <th style="text-align:left; padding:6px; border-bottom:1px solid var(--line);">Origen</th>
+            <th style="text-align:left; padding:6px; border-bottom:1px solid var(--line);">P&aacute;gina</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td style="padding:6px; border-bottom:1px solid var(--line); vertical-align:top;">${escapeHtml(row.concepto)}</td>
+              <td style="padding:6px; border-bottom:1px solid var(--line); vertical-align:top;">${escapeHtml(row.regla)}</td>
+              <td style="padding:6px; border-bottom:1px solid var(--line); vertical-align:top;">${escapeHtml(row.origin)}</td>
+              <td style="padding:6px; border-bottom:1px solid var(--line); vertical-align:top;">${escapeHtml(row.pagina)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>`;
+    if (fullText) {
+      preview.innerHTML += `
+        <div style="margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--text-muted);">Texto completo</div>
+        <pre style="white-space: pre-wrap; font-size: 12px; line-height: 1.45; margin: 6px 0 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff;">${escapeHtml(fullText)}</pre>`;
+    }
+    preview.style.display = "block";
+  }
 
   async function loadGlobalLaborLawStatus() {
     const label = $("globalLaborLawLabel");
     const deleteBtn = $("deleteGlobalLaborLawBtn");
+    const previewBtn = $("previewGlobalLaborLawBtn");
     if (!label) return;
     try {
       const res = await fetch(apiUrl("/api/settings"));
@@ -24,14 +65,19 @@
         label.textContent = "Ley de Trabajo (PDF) cargada globalmente";
         label.style.color = "var(--ok, green)";
         if (deleteBtn) deleteBtn.style.display = "block";
+        if (previewBtn) previewBtn.style.display = "inline-flex";
       } else {
         label.textContent = "No hay Ley de Trabajo cargada";
         label.style.color = "var(--text-muted, gray)";
         if (deleteBtn) deleteBtn.style.display = "none";
+        if (previewBtn) previewBtn.style.display = "none";
+        const preview = $("globalLaborLawPreview");
+        if (preview) preview.style.display = "none";
       }
     } catch {
       label.textContent = "Error al verificar estado";
       if (deleteBtn) deleteBtn.style.display = "none";
+      if (previewBtn) previewBtn.style.display = "none";
     }
   }
 
@@ -47,6 +93,22 @@
     });
 
     modal.querySelector(".modal-close-btn")?.addEventListener("click", () => modal.close());
+
+    $("previewGlobalLaborLawBtn")?.addEventListener("click", async () => {
+      const preview = $("globalLaborLawPreview");
+      if (preview) preview.innerHTML = `<div style="font-size: 13px; color: var(--text-muted);">Cargando extracción...</div>`;
+      try {
+        const res = await fetch(apiUrl("/api/settings/labor-law/preview"));
+        if (!res.ok) throw new Error("No se pudo generar la vista previa.");
+        const data = await res.json();
+        renderLaborLawPreview(data.rows || [], data.sourceFileName || "", data.fullText || "");
+      } catch (err) {
+        if (preview) {
+          preview.innerHTML = `<div style="font-size: 13px; color: var(--red, red);">${escapeHtml(err.message)}</div>`;
+          preview.style.display = "block";
+        }
+      }
+    });
 
     $("globalSettingsForm")?.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -64,6 +126,8 @@
         feedback.textContent = "¡Ley de trabajo cargada correctamente!";
         feedback.style.color = "var(--ok, green)";
         fileInput.value = "";
+        const preview = $("globalLaborLawPreview");
+        if (preview) preview.style.display = "none";
         await loadGlobalLaborLawStatus();
         setTimeout(() => { modal.close(); feedback.textContent = ""; }, 1500);
       } catch (err) {
@@ -79,6 +143,8 @@
         const res = await fetch(apiUrl("/api/settings/labor-law"), { method: "DELETE" });
         if (!res.ok) throw new Error("Error al eliminar");
         feedback.textContent = "Documento eliminado.";
+        const preview = $("globalLaborLawPreview");
+        if (preview) preview.style.display = "none";
         await loadGlobalLaborLawStatus();
       } catch (e) {
         feedback.textContent = e.message;
