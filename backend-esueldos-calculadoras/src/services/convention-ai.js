@@ -1337,23 +1337,29 @@ function mergeExcelConventionParts(conventionPart = {}, scalePart = {}, { draftN
   const base = normalizeConvention(conventionPart, { fallbackName: draftName });
   const scale = normalizeConvention(scalePart, { fallbackName: draftName });
   const keyFor = (item, fields) => fields.map((field) => normalizeText(item?.[field])).find(Boolean) || "";
-  const mergeUnique = (left, right, fields) => {
-    const seen = new Set();
-    return [...(left || []), ...(right || [])].filter((item) => {
+  const mergeRecords = (left, right, fields, preference = "right") => {
+    const map = new Map();
+    for (const item of [...(left || []), ...(right || [])]) {
       const key = keyFor(item, fields) || JSON.stringify(item);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+      if (!map.has(key)) {
+        map.set(key, { ...item });
+        continue;
+      }
+      const current = map.get(key);
+      map.set(key, preference === "right"
+        ? { ...current, ...item }
+        : { ...item, ...current });
+    }
+    return Array.from(map.values());
   };
   return normalizeConvention({
     schemaVersion: EXCEL_SCHEMA_VERSION,
     convenio: { ...(scale.convenio || {}), ...(base.convenio || {}) },
-    ambitos: mergeUnique(base.ambitos, scale.ambitos, ["ambito_id", "ambito_nombre", "zona"]),
-    categorias: mergeUnique(base.categorias, scale.categorias, ["categoria_id", "categoria_nombre"]),
-    conceptos: mergeUnique(base.conceptos, scale.conceptos, ["concepto_id", "nombre"]),
+    ambitos: mergeRecords(base.ambitos, scale.ambitos, ["ambito_id", "ambito_nombre", "zona"], "right"),
+    categorias: mergeRecords(base.categorias, scale.categorias, ["categoria_id", "categoria_nombre"], "right"),
+    conceptos: mergeRecords(base.conceptos, scale.conceptos, ["concepto_id", "nombre"], "left"),
     escalas: (scale.escalas || []).length ? scale.escalas : base.escalas,
-    adicionales: mergeUnique(base.adicionales, scale.adicionales, ["adicional_id", "adicional_nombre"])
+    adicionales: mergeRecords(base.adicionales, scale.adicionales, ["adicional_id", "adicional_nombre"], "right")
   }, { fallbackName: draftName });
 }
 
@@ -1492,12 +1498,12 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
   console.log(`[CCT RAG] Iniciando extraccion RAG. CCT: ${cctPdf ? "Si" : "No"}, Escalas: ${allScalePdfs.length}`);
 
   let cctText = await extractPdfText(cctPdf);
+  let laborLawText = "";
   if (globalLaborLawPdf) {
-    const laborLawText = await extractPdfText(globalLaborLawPdf);
+    laborLawText = await extractPdfText(globalLaborLawPdf);
     if (laborLawText) {
       laborLawStatus.used = true;
       laborLawStatus.readable = true;
-      cctText = [cctText, laborLawText].filter(Boolean).join("\n\n---\n\nLEY DE TRABAJO APLICABLE (CONTEXTO BASE):\n\n");
     } else {
       laborLawStatus.message = "La Sintesis/Ley de Trabajo Aplicable esta cargada, pero no se pudo leer texto util. Revisar el PDF o volver a cargarlo.";
     }
@@ -1516,7 +1522,23 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   // Para las escalas salariales evitamos RAG porque las tablas numéricas pierden semántica y RAG podría omitir números vitales.
   // Enviamos el texto plano de la escala completo.
-  const scaleContext = scaleText || "";
+  let laborLawContext = "";
+  if (laborLawText) {
+    const laborLawChunks = chunkText(laborLawText, 2000, 400);
+    console.log(`[CCT RAG] Ley laboral dividida en ${laborLawChunks.length} chunks. Generando embeddings...`);
+    const laborLawEmbeddings = await generateEmbeddings(laborLawChunks, apiKey);
+    const laborLawQuery = "Extraer conceptos generales de ley laboral que puedan faltar en el CCT, bases de calculo, reglas de liquidacion, licencias, jornada, antiguedad, presentismo, horas extras, retenciones y deducciones.";
+    laborLawContext = await retrieveContext(laborLawQuery, laborLawChunks, laborLawEmbeddings, apiKey, 12);
+  }
+
+  let scaleContext = "";
+  if (scaleText) {
+    const scaleChunks = chunkText(scaleText, 1800, 300);
+    console.log(`[CCT RAG] Escala dividida en ${scaleChunks.length} chunks. Generando embeddings...`);
+    const scaleEmbeddings = await generateEmbeddings(scaleChunks, apiKey);
+    const scaleQuery = "Extraer todas las categorias de la escala salarial, todas las filas de valores, periodos, modalidades, haberes remunerativos, no remunerativos, adicionales, deducciones y formulas. No omitir categorias repetidas entre CCT y escala. Reutilizar el mismo categoria_id y conservar la formula_base del CCT cuando exista.";
+    scaleContext = await retrieveContext(scaleQuery, scaleChunks, scaleEmbeddings, apiKey, 20);
+  }
 
   const models = geminiModelList(model, fallbackModels);
   const errors = [];
@@ -1527,8 +1549,11 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctMarkdown: `Contexto recuperado CCT (RAG):\n${cctContext}`,
-        scaleMarkdown: `Contexto recuperado Escala (RAG):\n${scaleContext}`, 
+        cctMarkdown: [
+          cctContext ? `Contexto recuperado CCT (RAG):\n${cctContext}` : "",
+          laborLawContext ? `Contexto recuperado Ley laboral (RAG):\n${laborLawContext}` : ""
+        ].filter(Boolean).join("\n\n---\n\n"),
+        scaleMarkdown: `Contexto recuperado Escala (RAG):\n${scaleContext}`,
         cctPdf: null, 
         scalePdf: null,
         draftName,

@@ -346,10 +346,10 @@ function buildConventionCorePrompt({ draftName, notes }) {
 
 function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
   const baseCategoriesText = baseCategories.length 
-    ? `\nCATEGORÍAS PRE-EXTRAÍDAS DEL CCT:\n${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA PARA EVITAR DUPLICADOS: Si la fila de la tabla salarial corresponde a una categoría de esta lista, usa EXACTAMENTE su 'categoria_id'. Si la fila contiene una categoría NUEVA que no está en la lista, extráela normalmente y créale un ID nuevo.` 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS DEL CCT:\n${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA PARA EVITAR DUPLICADOS: Si la fila de la tabla salarial corresponde a una categoría de esta lista, usa EXACTAMENTE su 'categoria_id'. Si la fila contiene una categoría NUEVA que no está en la lista, extráela normalmente y créale un ID nuevo. Si la misma categoría ya apareció en el CCT, igual debe volver a aparecer en la escala con el mismo categoria_id para capturar sus valores.` 
     : "";
   const baseConceptsText = baseConcepts.length
-    ? `\nCONCEPTOS PRE-EXTRAÍDOS DEL CCT:\n${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA PARA HABERES EN TABLAS: Si el archivo de escala cuenta con haberes o adicionales (en cuadros separados o junto a la escala), relaciónalos con los 'concepto_id' de esta lista. Si hay un valor nuevo, extráelo en escalas[].valores[] usando el concepto_id. NO extraigas estos haberes o adicionales como categorías laborales, y NO los dupliques en el array raíz de conceptos.`
+    ? `\nCONCEPTOS PRE-EXTRAÍDOS DEL CCT:\n${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA PARA HABERES EN TABLAS: Si el archivo de escala cuenta con haberes o adicionales (en cuadros separados o junto a la escala), relaciónalos con los 'concepto_id' de esta lista. Si hay un valor nuevo, extráelo en escalas[].valores[] usando el concepto_id. NO extraigas estos haberes o adicionales como categorías laborales, y NO los dupliques en el array raíz de conceptos. Si la escala repite una formula o adicional ya visto en el CCT, conservá la formula_base del CCT y usá la escala solo para el valor.` 
     : "";
   return [
     "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos, específicamente las escalas salariales.",
@@ -375,7 +375,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     
     // Control de Errores Numéricos
     "CRÍTICO: En Argentina, el punto (.) separa miles y la coma (,) separa decimales en documentos legales. Procesa los números bajo este criterio estricto (ej: 860.281 es ochocientos sesenta mil doscientos ochenta y uno).",
-    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones.",
+    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones. Si una categoría ya existe en el CCT y vuelve a aparecer en la escala, mantené el mismo categoria_id y no la descartes.",
 
     draftName ? `Etiqueta informativa: ${draftName}.` : "Etiqueta informativa: sin etiqueta.",
     notes ? `Notas informativas: ${notes}.` : "Notas informativas: sin notas."
@@ -384,10 +384,10 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
 
 function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
   const baseCategoriesText = baseCategories.length 
-    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs.` 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs. Si una categoría ya existe en el CCT, volvé a emitirla en la escala con el mismo categoria_id.` 
     : "";
   const baseConceptsText = baseConcepts.length
-    ? `\nCONCEPTOS PRE-EXTRAÍDOS: ${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA: Relaciona los adicionales o haberes de la tabla con estos 'concepto_id'. NO extraigas los adicionales como categorías y NO dupliques conceptos.`
+    ? `\nCONCEPTOS PRE-EXTRAÍDOS: ${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA: Relaciona los adicionales o haberes de la tabla con estos 'concepto_id'. NO extraigas los adicionales como categorías y NO dupliques conceptos. Si el CCT ya trajo la formula_base de un concepto, conservála y usa la escala solo para el valor.`
     : "";
   return [
     "Extrae SOLO la escala salarial en JSON válido. Sé lo más compacto posible para evitar límites de tokens de salida." + baseCategoriesText + baseConceptsText,
