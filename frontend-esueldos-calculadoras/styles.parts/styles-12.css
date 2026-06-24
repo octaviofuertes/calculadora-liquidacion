@@ -239,6 +239,162 @@ dialog.modal:not([open]) {
   color: var(--ink);
 }
 
+.labor-law-editor-modal {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  padding: 22px;
+  border: 0;
+  background: rgba(18, 35, 68, 0.42);
+}
+
+.labor-law-editor-shell {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(1180px, 100%);
+  height: calc(100vh - 44px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #cbd8ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 32, 68, 0.28);
+}
+
+.labor-law-editor-head,
+.labor-law-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.labor-law-editor-head h2,
+.labor-law-editor-head p {
+  margin: 0;
+}
+
+.labor-law-editor-head h2 {
+  color: var(--ink);
+  font-size: 22px;
+}
+
+.labor-law-editor-head p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.labor-law-editor-head-actions,
+.labor-law-editor-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.labor-law-editor-mode {
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: #edf3ff;
+  color: var(--blue-dark);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.labor-law-editor-mode.is-edited {
+  background: #e8f8f1;
+  color: #087a55;
+}
+
+.labor-law-editor-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 520px) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--line);
+  background: #f7f9fd;
+}
+
+.labor-law-editor-toolbar label,
+.labor-law-editor-body {
+  display: grid;
+  gap: 6px;
+}
+
+.labor-law-editor-toolbar label > span,
+.labor-law-editor-body > label {
+  color: #3c4963;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.labor-law-editor-toolbar input {
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+}
+
+#laborLawSearchStatus {
+  align-self: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.labor-law-editor-body {
+  min-height: 0;
+  padding: 16px 22px 12px;
+}
+
+.labor-law-editor-body textarea {
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  padding: 22px 26px;
+  border: 1px solid #c9d7ed;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #202b3f;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1.75;
+  letter-spacing: 0;
+}
+
+.labor-law-editor-body textarea:focus {
+  outline: 0;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.labor-law-editor-body p,
+.labor-law-editor-footer > span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.labor-law-editor-footer {
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .labor-law-editor-modal { padding: 0; }
+  .labor-law-editor-shell { height: 100vh; border-radius: 0; }
+  .labor-law-editor-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  #laborLawSearchStatus { grid-column: 1 / -1; }
+  .labor-law-editor-footer { align-items: stretch; flex-direction: column; }
+  .labor-law-editor-footer > div { display: grid; grid-template-columns: 1fr 1fr; }
+}
+
 .modal-header {
   display: flex;
   align-items: center;

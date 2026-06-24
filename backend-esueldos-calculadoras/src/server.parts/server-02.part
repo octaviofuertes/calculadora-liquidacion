@@ -58,6 +58,7 @@
     ]);
 
     let globalLaborLawPdf = null;
+    let globalLaborLawText = "";
     let laborLawStatus = {
       available: false,
       sourceFileName: "",
@@ -67,19 +68,25 @@
       message: "No hay Sintesis/Ley de Trabajo Aplicable cargada. Los faltantes generales quedaran para revision manual."
     };
     const laborLawPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const laborLawEditedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
     if (fs.existsSync(laborLawPath)) {
       globalLaborLawPdf = {
         buffer: await fs.promises.readFile(laborLawPath),
         mimeType: "application/pdf",
         sourceFileName: "Ley de Trabajo Aplicable"
       };
+      if (fs.existsSync(laborLawEditedPath)) {
+        globalLaborLawText = await fs.promises.readFile(laborLawEditedPath, "utf8");
+      }
       laborLawStatus = {
         available: true,
         sourceFileName: "Ley de Trabajo Aplicable",
-        mode: "local_pdf",
+        mode: globalLaborLawText ? "edited_text" : "local_pdf",
         used: false,
         readable: false,
-        message: "Sintesis/Ley de Trabajo Aplicable cargada localmente."
+        message: globalLaborLawText
+          ? "Version corregida de la Ley de Trabajo Aplicable cargada y activa."
+          : "Sintesis/Ley de Trabajo Aplicable cargada localmente."
       };
     }
 
@@ -112,7 +119,8 @@
           scalePdfs,
           draftName,
           notes,
-          globalLaborLawPdf
+          globalLaborLawPdf,
+          globalLaborLawText
         });
         parsedConvention = result.parsedConvention;
         laborLawStatus = result.laborLawStatus || laborLawStatus;

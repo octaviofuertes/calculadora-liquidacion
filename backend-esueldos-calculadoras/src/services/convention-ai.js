@@ -1,4 +1,4 @@
-const { geminiModelList } = require("../gemini-config");
+const { geminiModelList, geminiAuditorApiKey, geminiAuditorModels } = require("../gemini-config");
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
 const pdfParse = require("pdf-parse");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
@@ -1370,6 +1370,7 @@ function buildConventionAuditPrompt(convention) {
     "Actua como auditor senior de liquidacion de haberes y control de CCT de Argentina.",
     "Audita el convenio ya estructurado. No lo reescribas, no inventes datos y no calcules importes nuevos.",
     "Controla coherencia entre identificacion, categorias, conceptos, escalas, periodos, modalidades, zonas, naturaleza remunerativa/no remunerativa, bases, formulas, referencias y fuentes CCT/LCT.",
+    "Controla la prioridad documental: una regla especifica del CCT nunca debe ser reemplazada por LCT. La LCT solo debe aparecer como fuente de una regla general ausente en el CCT y cada dato supletorio debe conservar fuente_documento y evidencia. Advierte si hay datos LCT sin trazabilidad o si faltan reglas generales necesarias que no aparecen ni como CCT ni como LCT.",
     "Marca como BLOQUEANTE solo un problema que impida liquidar de forma segura: escala con importes sin periodo, categoria salarial sin valor, referencia huerfana, importe invalido, concepto liquidable sin naturaleza o formula indispensable indeterminada.",
     "Usa ADVERTENCIA para inconsistencias que requieren revision humana pero permiten continuar. Usa CONSEJO para mejoras de calidad, trazabilidad o configuracion.",
     "Cada hallazgo debe indicar una seccion exacta de esta lista: general, ambitos, categorias, conceptos_remunerativos, conceptos_no_remunerativos, conceptos_deducciones, escalas, adicionales.",
@@ -1417,7 +1418,54 @@ async function requestConventionAuditOnce({ apiKey, model, convention }) {
     label: "auditoria-convenio",
     parts: [{ text: buildConventionAuditPrompt(convention) }]
   });
-  return { audit: normalizeConventionAudit(result.parsed), tokenUsage: result.tokenUsage };
+  const audit = normalizeConventionAudit(result.parsed);
+  audit.auditadoModelo = model;
+  return { audit, tokenUsage: result.tokenUsage, model };
+}
+
+function isTransientAuditError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return error?.status === 429
+    || error?.status === 503
+    || /(?:429|503|unavailable|high demand|overloaded|resource_exhausted|try again later)/i.test(message);
+}
+
+function waitForAuditRetry(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function requestConventionAudit({ convention }) {
+  const apiKey = geminiAuditorApiKey();
+  const models = geminiAuditorModels();
+  if (!apiKey) {
+    throw new GeminiConventionError("Falta configurar GEMINI_AUDITOR_API_KEY para ejecutar la auditoria.", {
+      status: 503,
+      code: "AUDITOR_API_KEY_MISSING",
+      modelsTried: []
+    });
+  }
+  const errors = [];
+  for (const model of models) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        console.log(`[CCT audit] modelo=${model} intento=${attempt}/3`);
+        return await requestConventionAuditOnce({ apiKey, model, convention });
+      } catch (error) {
+        errors.push({ model, attempt, status: error.status, message: error.message });
+        const retryable = isTransientAuditError(error);
+        console.warn(`[CCT audit] fallo modelo=${model} intento=${attempt}: ${error.message}`);
+        if (!retryable || attempt === 3) break;
+        await waitForAuditRetry(800 * (2 ** (attempt - 1)));
+      }
+    }
+  }
+  const last = errors[errors.length - 1] || {};
+  throw new GeminiConventionError("No se pudo completar la auditoria con los modelos configurados.", {
+    status: last.status || 503,
+    code: "AUDITOR_MODELS_UNAVAILABLE",
+    model: last.model,
+    modelsTried: models
+  });
 }
 
 async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
@@ -1439,7 +1487,7 @@ async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown
   }
   let auditResult;
   try {
-    auditResult = await requestConventionAuditOnce({ apiKey, model, convention: parsedConvention });
+    auditResult = await requestConventionAudit({ convention: parsedConvention });
   } catch (error) {
     console.warn(`[CCT audit] No se pudo completar la auditoria IA: ${error.message}`);
     auditResult = {
@@ -1458,7 +1506,7 @@ async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown
     };
   }
   parsedConvention.auditoriaIA = auditResult.audit;
-  console.log(`[CCT audit] riesgo=${auditResult.audit.nivelRiesgo} bloqueantes=${auditResult.audit.bloqueantes.length} advertencias=${auditResult.audit.advertencias.length} consejos=${auditResult.audit.consejos.length}`);
+  console.log(`[CCT audit] modelo=${auditResult.model || auditResult.audit.auditadoModelo || "manual"} riesgo=${auditResult.audit.nivelRiesgo} bloqueantes=${auditResult.audit.bloqueantes.length} advertencias=${auditResult.audit.advertencias.length} consejos=${auditResult.audit.consejos.length}`);
   return {
     parsedConvention,
     tokenUsage: mergeTokenUsage(conventionResult.tokenUsage, scaleResult.tokenUsage, auditResult.tokenUsage)
@@ -1548,12 +1596,13 @@ async function retrieveContext(query, chunks, embeddings, apiKey, topK = 15) {
   return scored.slice(0, topK).map(s => s.chunk).join("\n\n---\n\n");
 }
 
-async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes, globalLaborLawPdf }) {
+async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes, globalLaborLawPdf, globalLaborLawText = "" }) {
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
-  const laborLawStatus = globalLaborLawPdf ? {
+  const hasLaborLaw = !!(globalLaborLawPdf || String(globalLaborLawText || "").trim());
+  const laborLawStatus = hasLaborLaw ? {
     available: true,
-    sourceFileName: globalLaborLawPdf.sourceFileName || "Ley de Trabajo Aplicable",
-    mode: "local_pdf",
+    sourceFileName: globalLaborLawPdf?.sourceFileName || "Ley de Trabajo Aplicable",
+    mode: String(globalLaborLawText || "").trim() ? "edited_text" : "local_pdf",
     used: false,
     readable: false,
     message: "Sintesis/Ley de Trabajo Aplicable recibida para completar faltantes generales."
@@ -1568,13 +1617,15 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   console.log(`[CCT RAG] Iniciando extraccion RAG. CCT: ${cctPdf ? "Si" : "No"}, Escalas: ${allScalePdfs.length}`);
 
-  let cctText = await extractPdfText(cctPdf);
-  if (globalLaborLawPdf) {
-    const laborLawText = await extractPdfText(globalLaborLawPdf);
+  const cctText = await extractPdfText(cctPdf);
+  const laborLawText = String(globalLaborLawText || "").trim() || (globalLaborLawPdf ? await extractPdfText(globalLaborLawPdf) : "");
+  if (hasLaborLaw) {
     if (laborLawText) {
       laborLawStatus.used = true;
       laborLawStatus.readable = true;
-      cctText = [cctText, laborLawText].filter(Boolean).join("\n\n---\n\nLEY DE TRABAJO APLICABLE (CONTEXTO BASE):\n\n");
+      laborLawStatus.message = laborLawStatus.mode === "edited_text"
+        ? "Version corregida de la Ley de Trabajo utilizada como fuente supletoria."
+        : "Ley de Trabajo leida y utilizada como fuente supletoria.";
     } else {
       laborLawStatus.message = "La Sintesis/Ley de Trabajo Aplicable esta cargada, pero no se pudo leer texto util. Revisar el PDF o volver a cargarlo.";
     }
@@ -1591,6 +1642,19 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
     cctContext = await retrieveContext(cctQuery, cctChunks, cctEmbeddings, apiKey, 15);
   }
 
+  let laborLawContext = "";
+  if (laborLawText) {
+    if (laborLawText.length <= 80000) {
+      laborLawContext = laborLawText;
+    } else {
+      const laborLawChunks = chunkText(laborLawText, 2200, 350);
+      console.log(`[CCT RAG] Ley de Trabajo dividida en ${laborLawChunks.length} chunks. Generando embeddings separados...`);
+      const laborLawEmbeddings = await generateEmbeddings(laborLawChunks, apiKey);
+      const laborLawQuery = "Reglas laborales generales supletorias faltantes del CCT para liquidacion: jornada, descansos, vacaciones, licencias pagas, SAC, horas extras, feriados, remuneracion, indemnizaciones y proteccion del trabajador.";
+      laborLawContext = await retrieveContext(laborLawQuery, laborLawChunks, laborLawEmbeddings, apiKey, 18);
+    }
+  }
+
   // Para las escalas salariales evitamos RAG porque las tablas numéricas pierden semántica y RAG podría omitir números vitales.
   // Enviamos el texto plano de la escala completo.
   const scaleContext = scaleText || "";
@@ -1604,7 +1668,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
       const result = await requestConventionOnce({
         apiKey,
         model: currentModel,
-        cctMarkdown: `Contexto recuperado CCT (RAG):\n${cctContext}`,
+        cctMarkdown: `FUENTE PRIORITARIA - CCT/ACTAS:\n${cctContext}\n\nFUENTE SUPLETORIA - LEY DE TRABAJO (usar solo si el CCT no contiene la regla general):\n${laborLawContext}`,
         scaleMarkdown: `Contexto recuperado Escala (RAG):\n${scaleContext}`, 
         cctPdf: null, 
         scalePdf: null,

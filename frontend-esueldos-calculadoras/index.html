@@ -542,8 +542,6 @@
               </div>
             </div>
           </div>
-          <div id="globalLaborLawPreview" style="display: none; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-1); padding: 10px; max-height: 280px; overflow: auto;"></div>
-
           <form id="globalSettingsForm">
             <label class="field">
               <span>Subir nuevo documento (PDF)</span>
@@ -554,6 +552,42 @@
           <div id="globalSettingsFeedback" style="margin-top: 8px; font-size: 13px;"></div>
         </div>
       </div>
+    </div>
+  </dialog>
+
+  <dialog id="laborLawEditorModal" class="modal labor-law-editor-modal">
+    <div class="labor-law-editor-shell">
+      <header class="labor-law-editor-head">
+        <div>
+          <span class="eyebrow">Contexto legal global</span>
+          <h2>Ley de Trabajo</h2>
+          <p id="laborLawEditorSource">Ley de Trabajo Aplicable</p>
+        </div>
+        <div class="labor-law-editor-head-actions">
+          <span id="laborLawEditorMode" class="labor-law-editor-mode">Texto original</span>
+          <button class="modal-close-btn" id="closeLaborLawEditorBtn" type="button" aria-label="Cerrar editor">&times;</button>
+        </div>
+      </header>
+      <div class="labor-law-editor-toolbar">
+        <label>
+          <span>Buscar en el documento</span>
+          <input id="laborLawEditorSearch" type="search" placeholder="Ej: vacaciones, jornada, indemnizaci&oacute;n">
+        </label>
+        <button class="icon-btn" id="findNextLaborLawBtn" type="button">Buscar siguiente</button>
+        <span id="laborLawSearchStatus" aria-live="polite"></span>
+      </div>
+      <main class="labor-law-editor-body">
+        <label for="laborLawEditorText">Contenido utilizado por leIA</label>
+        <textarea id="laborLawEditorText" spellcheck="true" aria-describedby="laborLawEditorHelp"></textarea>
+        <p id="laborLawEditorHelp">Pod&eacute;s corregir errores de extracci&oacute;n. El PDF original se conserva como respaldo.</p>
+      </main>
+      <footer class="labor-law-editor-footer">
+        <span id="laborLawEditorCount">0 caracteres</span>
+        <div>
+          <button class="icon-btn" id="cancelLaborLawEditorBtn" type="button">Cancelar</button>
+          <button class="primary-action" id="saveLaborLawEditorBtn" type="button">Guardar versi&oacute;n corregida</button>
+        </div>
+      </footer>
     </div>
   </dialog>
 
