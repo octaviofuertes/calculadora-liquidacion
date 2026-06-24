@@ -286,9 +286,26 @@
       renderConventionDrafts();
       renderConventionJsonEditor(draft);
       updateTokenUsageUI(draft.tokenUsage);
+      showConventionWorkspaceView("audit");
     } catch (error) {
       setConventionBuilderStatus(error.message, "bad");
     }
+  }
+
+  function showConventionWorkspaceView(view) {
+    const auditActive = view === "audit";
+    const uploadView = $("conventionUploadView");
+    const auditView = $("conventionAuditView");
+    const uploadTab = $("conventionUploadTab");
+    const auditTab = $("conventionAuditTab");
+    if (!uploadView || !auditView) return;
+    uploadView.hidden = auditActive;
+    auditView.hidden = !auditActive;
+    uploadTab?.classList.toggle("is-active", !auditActive);
+    auditTab?.classList.toggle("is-active", auditActive);
+    uploadTab?.setAttribute("aria-selected", auditActive ? "false" : "true");
+    auditTab?.setAttribute("aria-selected", auditActive ? "true" : "false");
+    requestAnimationFrame(() => $("conventionsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   async function openConventionEditorFromCard(id) {
