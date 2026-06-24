@@ -319,7 +319,7 @@ function buildConventionCorePrompt({ draftName, notes }) {
     "Clasifica el origen del bloque/documento dentro de 'documento_tipo' como: CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, RESOLUCION u OTRO.",
     
     // 2. CATEGORÍAS (Estructura de Puestos)
-    "CATEGORÍAS: Identifica los puestos reales. Si el CCT divide por Ramas, Sectores o Agrupamientos y los nombres se repiten, genera un 'categoria_id' único y compuesto (ej: 'RAMA_TALLER_OPERARIO_A').",
+    "CATEGORÍAS: Identifica los puestos reales. Si el CCT divide por Ramas, Sectores o Agrupamientos y los nombres se repiten, genera un 'categoria_id' único y compuesto (ej: 'RAMA_TALLER_OPERARIO_A'). Nunca dejes vacio 'rama' o 'grupo_nombre' si el documento muestra esa separación.",
     "Variantes de jornada o modalidad (ej: Con Retiro/Sin Retiro, Completa/Media) NO deben duplicar la categoría base salvo que sean puestos jerárquicos distintos. Se diferenciarán luego en las escalas.",
     
     // 3. CONCEPTOS LIQUIDABLES (Reglas y Motores de Cálculo)
@@ -354,7 +354,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
   return [
     "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos, específicamente las escalas salariales.",
     "Debe estar sí o sí el cálculo para cada concepto. Si es extraído de una tabla, indícalo explícitamente. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
-    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto." + baseCategoriesText + baseConceptsText,
+    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto. Si dos categorías tienen el mismo nombre pero pertenecen a ramas, grupos o modalidades distintas, mantenelas separadas y diferenciadas por su rama/grupo/modalidad." + baseCategoriesText + baseConceptsText,
     "[AISLAMIENTO ABSOLUTO] No uses memoria ni otros CCT. Solo el texto y las tablas de esta escala. Si falta un dato usa null o []. No inventes valores.",
     "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques de formato. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
     
@@ -375,7 +375,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     
     // Control de Errores Numéricos
     "CRÍTICO: En Argentina, el punto (.) separa miles y la coma (,) separa decimales en documentos legales. Procesa los números bajo este criterio estricto (ej: 860.281 es ochocientos sesenta mil doscientos ochenta y uno).",
-    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones. Si una categoría ya existe en el CCT y vuelve a aparecer en la escala, mantené el mismo categoria_id y no la descartes.",
+    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones. Si una categoría ya existe en el CCT y vuelve a aparecer en la escala, mantené el mismo categoria_id y no la descartes. Si el nombre se repite en otra rama o grupo, generá una categoría distinta usando rama/grupo como parte de la identidad.",
 
     draftName ? `Etiqueta informativa: ${draftName}.` : "Etiqueta informativa: sin etiqueta.",
     notes ? `Notas informativas: ${notes}.` : "Notas informativas: sin notas."
@@ -403,7 +403,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     // Clasificación y Tratamiento Rápido
     "SUELDO_BASICO: tipo_concepto haber, naturaleza remunerativo, base escala_salarial. NO_REMUNERATIVO: tipo_concepto haber, naturaleza no_remunerativo, base escala_salarial.",
     "El Sueldo Anual Complementario (SAC) no es SUELDO_BASICO. Si aparece en la tabla, crear concepto 'SAC' por separado.",
-    "Si una categoría tiene importes separados por modalidad (ej: Con Retiro / Sin Retiro), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante.",
+    "Si una categoría tiene importes separados por modalidad o rama (ej: Con Retiro / Sin Retiro, Rama A / Rama B), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante. Cuando una tabla tenga encabezados de rama/grupo, copiá ese texto en grupo_nombre y rama. No dejes esos campos vacíos si el PDF muestra una separación por rama.",
     "Reconstruye filas partidas del PDF: una categoría seguida por varias líneas de importes numéricos corresponden a la misma fila de la matriz.",
     "Formato numérico argentino obligatorio: el punto (.) son miles y la coma (,) son decimales.",
 

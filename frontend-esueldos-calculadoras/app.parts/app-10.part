@@ -177,7 +177,9 @@
       return {
         ...category,
         categoria_nombre: name,
-        modalidad_aplicable: category.modalidad_aplicable || variant
+        modalidad_aplicable: category.modalidad_aplicable || variant,
+        grupo_nombre: category.grupo_nombre || category.group || category.grupo || category.convenio_rama || conv.convenio?.rama || "",
+        rama: category.rama || category.grupo_nombre || category.group || category.grupo || category.convenio_rama || conv.convenio?.rama || ""
       };
     });
   }

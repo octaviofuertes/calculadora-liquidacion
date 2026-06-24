@@ -1513,11 +1513,7 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   let cctContext = "";
   if (cctText) {
-    const cctChunks = chunkText(cctText, 2000, 400);
-    console.log(`[CCT RAG] CCT dividido en ${cctChunks.length} chunks. Generando embeddings...`);
-    const cctEmbeddings = await generateEmbeddings(cctChunks, apiKey);
-    const cctQuery = "Extraer categorias salariales, adicionales, jornada laboral, sumas no remunerativas y reglas de antiguedad o presentismo. Estructurar para " + (draftName || "convenio") + " " + (notes || "");
-    cctContext = await retrieveContext(cctQuery, cctChunks, cctEmbeddings, apiKey, 15);
+    cctContext = `Texto completo del CCT:\n${cctText}`;
   }
 
   // Para las escalas salariales evitamos RAG porque las tablas numéricas pierden semántica y RAG podría omitir números vitales.
@@ -1537,7 +1533,10 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
     console.log(`[CCT RAG] Escala dividida en ${scaleChunks.length} chunks. Generando embeddings...`);
     const scaleEmbeddings = await generateEmbeddings(scaleChunks, apiKey);
     const scaleQuery = "Extraer todas las categorias de la escala salarial, todas las filas de valores, periodos, modalidades, haberes remunerativos, no remunerativos, adicionales, deducciones y formulas. No omitir categorias repetidas entre CCT y escala. Reutilizar el mismo categoria_id y conservar la formula_base del CCT cuando exista.";
-    scaleContext = await retrieveContext(scaleQuery, scaleChunks, scaleEmbeddings, apiKey, 20);
+    const scaleRetrieved = await retrieveContext(scaleQuery, scaleChunks, scaleEmbeddings, apiKey, 20);
+    scaleContext = [scaleText ? `Texto completo de la escala salarial:\n${scaleText}` : "", scaleRetrieved ? `Contexto recuperado Escala (RAG):\n${scaleRetrieved}` : ""]
+      .filter(Boolean)
+      .join("\n\n---\n\n");
   }
 
   const models = geminiModelList(model, fallbackModels);

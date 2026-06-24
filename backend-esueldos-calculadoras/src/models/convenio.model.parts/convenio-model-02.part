@@ -184,7 +184,7 @@ function finalizeConvenio(normalized) {
       continue;
     }
     const nameKey = categoryIdentityKey(category);
-    if (categoryByCanonicalName.has(nameKey)) {
+    if (categoryByCanonicalName.has(nameKey) && text(category.grupo_nombre || category.rama || category.convenio_rama).trim()) {
       const existing = categoryByCanonicalName.get(nameKey);
       console.warn(`[CCT normalize] Categoria duplicada por nombre: ${category.categoria_nombre}. ${category.categoria_id} -> ${existing.categoria_id}`);
       categoryIdMap.set(category.categoria_id, existing.categoria_id);
@@ -192,7 +192,11 @@ function finalizeConvenio(normalized) {
       categoryByCanonicalName.set(nameKey, mergeCategoryData(existing, { ...category, categoria_id: canonicalId }, convenioId));
       continue;
     }
-    const finalCategory = { ...category, convenio_id: convenioId, categoria_id: canonicalId };
+    const finalCategory = { ...category, convenio_id: convenioId, categoria_id: canonicalId, convenio_rama: text(category.convenio_rama || normalized.convenio?.rama) };
+    if (categoryByCanonicalName.has(nameKey)) {
+      const suffix = slugId(`${finalCategory.convenio_rama || finalCategory.grupo_nombre || "RAMA"}_${finalCategory.categoria_id || category.categoria_id}`);
+      finalCategory.categoria_id = `${finalCategory.categoria_id}_${suffix}`;
+    }
     categoryIdMap.set(category.categoria_id, canonicalId);
     categoryIdMap.set(canonicalId, canonicalId);
     categoryByCanonicalName.set(nameKey, finalCategory);
@@ -278,7 +282,7 @@ function finalizeConvenio(normalized) {
         ? { ...value, modalidad: text(value.modalidad || value.categoria_nombre || value.categoria_id), categoria_id: "", categoria_nombre: "", grupo_nombre: "" }
         : value;
       const hasValueCategory = text(normalizedValue.categoria_id).trim() || text(normalizedValue.categoria_nombre).trim() || text(normalizedValue.grupo_nombre).trim();
-      const normalizedCategoryId = hasValueCategory ? canonCategoryId(normalizedValue.categoria_id, normalizedValue.categoria_nombre, normalizedValue.grupo_nombre || scale.zona) : "";
+      const normalizedCategoryId = hasValueCategory ? canonCategoryId(normalizedValue.categoria_id, normalizedValue.categoria_nombre, normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona) : "";
       const promotedAdditional = additionalCategoryById.get(normalizedValue.categoria_id) || additionalCategoryById.get(normalizedCategoryId);
       const categoryId = promotedAdditional ? "" : categoryIds.has(normalizedCategoryId)
         ? normalizedCategoryId
@@ -297,7 +301,10 @@ function finalizeConvenio(normalized) {
         categorias.push({
           categoria_id: finalCategoryId,
           convenio_id: convenioId,
-          grupo_nombre: text(normalizedValue.grupo_nombre || scale.zona),
+          grupo_nombre: text(normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona || normalized.convenio?.rama),
+          group: text(normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona || normalized.convenio?.rama),
+          rama: text(normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona || normalized.convenio?.rama),
+          convenio_rama: text(normalized.convenio?.rama),
           categoria_nombre: text(normalizedValue.categoria_nombre) || finalCategoryId.replace(/_/g, " "),
           descripcion: "",
           tareas_incluidas: "",
