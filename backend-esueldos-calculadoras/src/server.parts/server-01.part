@@ -86,17 +86,6 @@ function safeFileName(name) {
     .slice(0, 140) || "escala.pdf";
 }
 
-function createLaborLawRagServices() {
-  const apiKey = geminiConventionApiKey() || geminiScaleApiKey() || geminiPrimaryModel();
-  return {
-    apiKey: geminiConventionApiKey() || geminiScaleApiKey(),
-    client: createGeminiClient({ apiKey: geminiConventionApiKey() || geminiScaleApiKey() }),
-    storeName: laborLawStoreName,
-    displayName: laborLawStoreDisplayName,
-    embeddingModel: laborLawEmbeddingModel
-  };
-}
-
 const scaleUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
