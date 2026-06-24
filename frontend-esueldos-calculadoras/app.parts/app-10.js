@@ -145,7 +145,8 @@
     ].filter(Boolean).join(" ");
     const explicit = summaryKey(sourceText);
     const contextual = summaryKey(`${sourceText} ${evidenceText}`);
-    if (/(ley_trabajo|ley_de_trabajo|lct|contrato_de_trabajo|ley_20744|ley_20_744|ley_20744)/.test(contextual)) return "LCT";
+    if (/(ley_trabajo|ley_de_trabajo|ley_de_trabajo_aplicable|ley_trabajo_base|lct|contrato_de_trabajo|ley_20744|ley_20_744|ley_20744)/.test(contextual)) return "Ley de Trabajo";
+    if (/(ley_trabajo|ley_de_trabajo|ley_de_trabajo_aplicable|ley_trabajo_base)/.test(explicit)) return "Ley de Trabajo";
     if (/(escala|anexo_escala|salarial)/.test(explicit)) return "CCT / Escala";
     if (/(cct|convenio|acta|homologacion|resolucion)/.test(explicit)) return "CCT";
     if (sourceText) return "Revisar fuente";

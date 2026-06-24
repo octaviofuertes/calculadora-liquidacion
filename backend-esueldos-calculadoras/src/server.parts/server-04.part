@@ -64,7 +64,7 @@ app.get("*", (req, res) => {
 
 app.use((error, req, res, next) => {
   logger.error(error);
-  if (error instanceof multer.MulterError) {
+  if (multer?.MulterError && error instanceof multer.MulterError) {
     const message = error.code === "LIMIT_FILE_COUNT"
       ? "PodÃ©s subir 1 archivo CCT y hasta 5 archivos de escala salarial."
       : error.message || "No se pudo subir el archivo.";
