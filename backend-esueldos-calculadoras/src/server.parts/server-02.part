@@ -143,6 +143,7 @@
       return;
     }
 
+    const aiAudit = parsedConvention.auditoriaIA || null;
     const internalConvention = parsedConvention.categories
       ? sanitizeGenericConventionCategories(applyConventionArchitecture(parsedConvention, processingPipeline))
       : parsedConvention;
@@ -163,6 +164,23 @@
       aiError = "Las escalas fueron extraidas, pero falta confirmar su periodo de vigencia antes de aprobar.";
     } else {
       parsedConvention = validation.data;
+    }
+    if (aiAudit) parsedConvention.auditoriaIA = aiAudit;
+    if (!validation.ok && aiAudit) {
+      const blockers = Array.isArray(parsedConvention.auditoriaIA.bloqueantes) ? parsedConvention.auditoriaIA.bloqueantes : [];
+      if (!blockers.some((item) => item.codigo === "ESCALA_PERIODO_FALTANTE")) {
+        blockers.push({
+          codigo: "ESCALA_PERIODO_FALTANTE",
+          mensaje: "Hay escalas con importes pero sin periodo de vigencia detectable.",
+          seccion: "escalas",
+          rowId: "",
+          campo: "mes",
+          recomendacion: "Completar el mes o periodo de cada escala antes de aprobar.",
+          fuente: "CCT / Escala"
+        });
+      }
+      parsedConvention.auditoriaIA.bloqueantes = blockers;
+      parsedConvention.auditoriaIA.nivelRiesgo = "ALTO";
     }
     if ((!laborLawStatus.available || !laborLawStatus.readable) && laborLawStatus.message) {
       parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), laborLawStatus.message]));
@@ -226,6 +244,7 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
     }
     const update = { updatedAt: new Date() };
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedConvention")) {
+      const aiAudit = req.body.parsedConvention?.auditoriaIA || null;
       update.parsedConvention = normalizeConvention(req.body.parsedConvention, {
         fallbackName: req.body.parsedConvention?.name || "Convenio pendiente de identificacion documental",
         useFallbackDefaults: false
@@ -236,6 +255,7 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
         return;
       }
       update.parsedConvention = validation.data;
+      if (aiAudit) update.parsedConvention.auditoriaIA = aiAudit;
       update.humanEdited = true;
       update.humanEditedAt = new Date();
     }

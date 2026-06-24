@@ -66,6 +66,44 @@
     }
   }
 
+  function conventionAiAuditHtml(conv = {}) {
+    const audit = conv.auditoriaIA || {};
+    const blockers = Array.isArray(audit.bloqueantes) ? audit.bloqueantes : [];
+    const auditWarnings = Array.isArray(audit.advertencias) ? audit.advertencias : [];
+    const advice = Array.isArray(audit.consejos) ? audit.consejos : [];
+    const hasAudit = !!audit.resumen;
+    const verdict = !hasAudit ? { label: "Auditoría pendiente", tone: "pending", detail: "Todavía no hay un resultado de auditoría automática para este convenio." }
+      : blockers.length ? { label: "Aprobación bloqueada", tone: "blocking", detail: "Corregí los errores críticos antes de aprobar el convenio." }
+        : auditWarnings.length ? { label: "Requiere revisión", tone: "warning", detail: "El convenio puede continuar cuando confirmes las advertencias." }
+          : { label: "Auditoría correcta", tone: "clear", detail: "No se detectaron errores críticos ni advertencias pendientes." };
+    const findingsHtml = (title, items, severity) => items.length ? `<section class="ai-audit-group is-${severity}">
+      <h4>${escapeHtml(title)} <span>${items.length}</span></h4>
+      <div class="ai-audit-findings">${items.map((item) => `<article class="ai-audit-finding">
+        <div><strong>${escapeHtml(item.mensaje || item.codigo || title)}</strong>
+        <p>${escapeHtml(item.recomendacion || "Revisar el dato contra su fuente.")}</p>
+        <small>${escapeHtml([item.fuente, item.campo].filter(Boolean).join(" · ") || "Control de consistencia")}</small></div>
+        <button class="icon-btn ai-audit-go" type="button" data-ai-audit-go="${escapeHtml(item.seccion || "general")}" data-ai-audit-row="${escapeHtml(item.rowId || "")}" data-ai-audit-field="${escapeHtml(item.campo || "")}">Ir</button>
+      </article>`).join("")}</div>
+    </section>` : "";
+    return `<section class="ai-audit-verdict is-${verdict.tone}">
+      <div class="ai-audit-verdict-icon" aria-hidden="true">${verdict.tone === "clear" ? "✓" : verdict.tone === "blocking" ? "!" : "i"}</div>
+      <div><span>Resultado de la auditor&iacute;a de leIA</span><strong>${escapeHtml(verdict.label)}</strong><p>${escapeHtml(verdict.detail)}</p></div>
+      <em>Riesgo ${escapeHtml(audit.nivelRiesgo || "-")}</em>
+    </section>
+    <div class="ai-audit-counters">
+      <div class="is-blocking"><span>Errores bloqueantes</span><strong>${blockers.length}</strong></div>
+      <div class="is-warning"><span>Advertencias</span><strong>${auditWarnings.length}</strong></div>
+      <div class="is-advice"><span>Consejos</span><strong>${advice.length}</strong></div>
+    </div>
+    <section class="ai-audit-panel is-risk-${escapeHtml(String(audit.nivelRiesgo || "medio").toLowerCase())}">
+      <header><div><span>Resumen de Gemini</span><strong>${escapeHtml(audit.resumen || "Auditoría pendiente de ejecución.")}</strong></div><em>${escapeHtml(audit.auditadoPor || "leIA")}</em></header>
+      ${findingsHtml("Errores bloqueantes", blockers, "blocking")}
+      ${findingsHtml("Advertencias", auditWarnings, "warning")}
+      ${findingsHtml("Consejos", advice, "advice")}
+      ${hasAudit && !blockers.length && !auditWarnings.length && !advice.length ? `<div class="ai-audit-clear">No se detectaron observaciones pendientes.</div>` : ""}
+    </section>`;
+  }
+
   function conventionQualityHtml(conv = {}) {
     const warnings = conv.warnings || [];
     const checklist = conv.auditChecklist || [];
@@ -112,6 +150,10 @@
     if (/(cct|convenio|acta|homologacion|resolucion)/.test(explicit)) return "CCT";
     if (sourceText) return "Revisar fuente";
     return defaultOrigin;
+  }
+
+  function auditRowIdentity(row = {}) {
+    return row.categoria_id || row.concepto_id || row.escala_id || row.adicional_id || row.ambito_id || row.valor_id || "";
   }
 
   function auditInput(field, value, options = {}) {
@@ -176,7 +218,7 @@
             </tr>
           </thead>
           <tbody>
-            ${cleanRows.length ? cleanRows.map((row, index) => `<tr data-row-index="${index}">
+            ${cleanRows.length ? cleanRows.map((row, index) => `<tr data-row-index="${index}" data-audit-row-id="${escapeHtml(auditRowIdentity(row))}">
               <td class="audit-check-cell"><input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}></td>
               ${displayColumns.map((column) => `<td>${auditInput(column.field, row?.[column.field], { ...column, locked })}</td>`).join("")}
             </tr>`).join("") : `<tr class="audit-empty-row"><td colspan="${displayColumns.length + 1}">Sin datos extraidos. Podés agregar filas manualmente.</td></tr>`}
@@ -454,11 +496,16 @@
   function renderConventionJsonEditor(draft) {
     const editor = $("conventionJsonEditor");
     const tablesArea = $("conventionAuditTablesArea");
+    const auditSummary = $("conventionAiAuditSummary");
     if (!editor) return;
     if (!draft) {
       editor.className = "scale-editor empty-state";
       editor.innerHTML = "Seleccion&aacute; un convenio generado para revisar los datos extra&iacute;dos.";
       if (tablesArea) tablesArea.innerHTML = "";
+      if (auditSummary) {
+        auditSummary.className = "convention-ai-audit-summary empty-state";
+        auditSummary.innerHTML = "Seleccion&aacute; un convenio para ver el resultado de la auditoría automática.";
+      }
       updateTokenUsageUI(null);
       return;
     }
@@ -466,6 +513,11 @@
     const convName = conv.convenio?.denominacion || conv.name || draft.name;
     const isPending = draft.status === "PENDIENTE_REVISION";
     const isApproved = draft.status === "APROBADO";
+    const blockingFindings = conv.auditoriaIA?.bloqueantes || [];
+    if (auditSummary) {
+      auditSummary.className = "convention-ai-audit-summary";
+      auditSummary.innerHTML = conventionAiAuditHtml(conv);
+    }
     editor.className = "scale-editor convention-json-editor";
     editor.innerHTML = `<div class="scale-editor-head">
       <div>
@@ -481,7 +533,7 @@
     const auditActions = `<div class="scale-editor-actions convention-audit-bottom-actions">
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar respaldo</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button">Guardar revisión</button>
-      ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
+      ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button" ${blockingFindings.length ? `disabled title="Resolve los ${blockingFindings.length} errores bloqueantes antes de aprobar"` : ""}>Aprobar y activar convenio</button>
       <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
       <button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
         <svg viewBox="0 0 24 24" aria-hidden="true">
