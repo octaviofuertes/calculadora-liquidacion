@@ -169,7 +169,7 @@
                 <input class="convention-file-input" id="builderCctPdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
                 <label class="convention-folder-picker" for="builderCctPdf" title="Seleccionar CCT o acta">
                   <span class="convention-folder-icon" aria-hidden="true"></span>
-                  <strong>Seleccionar CCT o acta</strong>
+                  <strong>Seleccionar CCT</strong>
                   <small id="builderCctPdfStatus">Ning&uacute;n archivo seleccionado</small>
                 </label>
               </div>
@@ -185,7 +185,7 @@
             </div>
 
             <div class="scale-actions">
-              <button class="primary-action" id="buildConventionBtn" type="submit">Estructurar convenio</button>
+              <button class="primary-action convention-structure-button" id="buildConventionBtn" type="submit"><span aria-hidden="true">&#10022;</span> Estructurar convenio</button>
               <span id="conventionBuilderStatus" class="scale-status">Sin cargas en curso.</span>
             </div>
 
@@ -216,6 +216,26 @@
               </div>
             </div>
           </form>
+
+          <aside class="convention-upload-guide" aria-label="Guia para estructurar convenios">
+            <section class="convention-guide-card">
+              <h3><span aria-hidden="true">&#10022;</span> &iquest;C&oacute;mo funciona?</h3>
+              <ol class="convention-guide-steps">
+                <li><span>1</span><div><strong>Sub&iacute; los documentos</strong><small>Carg&aacute; el CCT, acta y las escalas salariales.</small></div></li>
+                <li><span>2</span><div><strong>leIA analiza</strong><small>Extrae y organiza la informaci&oacute;n clave del convenio.</small></div></li>
+                <li><span>3</span><div><strong>Auditor&iacute;a humana</strong><small>Revis&aacute;, valid&aacute; y public&aacute; el convenio con trazabilidad.</small></div></li>
+              </ol>
+              <div class="convention-guide-tips">
+                <strong><span aria-hidden="true">&#9737;</span> Consejos</strong>
+                <span>Us&aacute; PDFs legibles y completos.</span>
+                <span>Inclu&iacute; todas las escalas vigentes.</span>
+              </div>
+            </section>
+            <section class="convention-guide-card convention-security-card">
+              <h3><span aria-hidden="true">&#9672;</span> Seguridad y trazabilidad</h3>
+              <p>Tus documentos est&aacute;n protegidos. Cada cambio queda registrado.</p>
+            </section>
+          </aside>
         </div>
         </div>
 
@@ -419,35 +439,6 @@
       </div>
 
       <div class="panel result-panel">
-        <div class="result-actions">
-          <button class="icon-btn" id="saveBtn" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 4h12l2 2v14H5z"/>
-              <path d="M8 4v6h8V4"/>
-              <path d="M8 20v-6h8v6"/>
-            </svg>
-            Guardar
-          </button>
-          <button class="icon-btn" id="exportBtn" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 3h7l4 4v14H7z"/>
-              <path d="M14 3v5h5"/>
-              <path d="M10 13 8 15l2 2"/>
-              <path d="M14 13l2 2-2 2"/>
-            </svg>
-            Exportar JSON
-          </button>
-          <button class="icon-btn" id="printBtn" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 8V4h10v4"/>
-              <path d="M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1-2 2v4a2 2 0 0 1-2 2h-2"/>
-              <path d="M7 14h10v6H7z"/>
-              <path d="M17 12h.01"/>
-            </svg>
-            Imprimir
-          </button>
-          <button class="primary-action audit-action" id="auditBtn" type="button" disabled>Auditar con leIA</button>
-        </div>
         <div class="tabs" role="tablist">
           <button class="tab" data-tab="receipt" type="button">Recibo</button>
           <button class="tab" data-tab="calculation" type="button">C&aacute;lculo</button>
