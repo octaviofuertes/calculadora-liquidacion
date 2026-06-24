@@ -143,7 +143,13 @@
           <button class="icon-btn" id="refreshConventionDraftsBtn" type="button">Actualizar</button>
         </div>
 
-        <div class="convention-builder-layout">
+        <div class="convention-workspace-nav" role="tablist" aria-label="Flujo de convenios">
+          <button class="convention-workspace-tab is-active" id="conventionUploadTab" type="button" role="tab" aria-selected="true" aria-controls="conventionUploadView">1. Carga de documentos</button>
+          <button class="convention-workspace-tab" id="conventionAuditTab" type="button" role="tab" aria-selected="false" aria-controls="conventionAuditView">2. Auditor&iacute;a del convenio</button>
+        </div>
+
+        <div class="convention-workspace-view" id="conventionUploadView" role="tabpanel" aria-labelledby="conventionUploadTab">
+        <div class="convention-builder-layout convention-builder-upload-layout">
           <form class="scale-card convention-builder-upload" id="conventionBuilderForm">
             <div class="scale-card-head">
               <span class="scale-icon convention-builder-icon">IA</span>
@@ -153,23 +159,29 @@
               </div>
             </div>
 
-            <div class="grid two">
+            <div class="convention-builder-fields">
               <label class="field">
                 <span>Nombre del convenio</span>
                 <input id="builderConventionName" type="text" placeholder="Ej: Sanidad CCT 122/75">
               </label>
-              <label class="field">
+              <div class="field convention-file-field">
                 <span>Documento o imagen CCT / acta</span>
-                <input id="builderCctPdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
-              </label>
-              <label class="field">
+                <input class="convention-file-input" id="builderCctPdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+                <label class="convention-folder-picker" for="builderCctPdf" title="Seleccionar CCT o acta">
+                  <span class="convention-folder-icon" aria-hidden="true"></span>
+                  <strong>Seleccionar CCT o acta</strong>
+                  <small id="builderCctPdfStatus">Ning&uacute;n archivo seleccionado</small>
+                </label>
+              </div>
+              <div class="field convention-file-field">
                 <span>Documento o imagen de escala salarial</span>
-                <input id="builderScalePdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
-              </label>
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>Notas para leIA (opcional)</span>
-                <input id="builderNotes" type="text" placeholder="Ej: respetar zona Patagonia, adicionales por rama...">
-              </label>
+                <input class="convention-file-input" id="builderScalePdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
+                <label class="convention-folder-picker" for="builderScalePdf" title="Seleccionar escalas salariales">
+                  <span class="convention-folder-icon" aria-hidden="true"></span>
+                  <strong>Seleccionar escalas salariales</strong>
+                  <small id="builderScalePdfStatus">Ning&uacute;n archivo seleccionado</small>
+                </label>
+              </div>
             </div>
 
             <div class="scale-actions">
@@ -204,7 +216,18 @@
               </div>
             </div>
           </form>
+        </div>
+        </div>
 
+        <div class="convention-workspace-view" id="conventionAuditView" role="tabpanel" aria-labelledby="conventionAuditTab" hidden>
+          <div class="convention-audit-page-head">
+            <button class="icon-btn" id="backToConventionUploadBtn" type="button" aria-label="Volver a carga de documentos">&larr; Volver a carga</button>
+            <div>
+              <strong>Revisi&oacute;n del convenio estructurado</strong>
+              <span>Valid&aacute; la informaci&oacute;n antes de aprobarla y activarla.</span>
+            </div>
+          </div>
+          <div class="convention-builder-layout convention-builder-audit-layout">
           <div class="scale-card convention-builder-audit">
             <div class="scale-card-head">
               <span class="scale-icon scale-icon-audit">IA</span>
@@ -224,8 +247,9 @@
             <div id="conventionDraftList" class="scale-audit-list convention-draft-list"></div>
             <div id="conventionJsonEditor" class="scale-editor empty-state">Seleccion&aacute; un convenio generado para revisar los datos extra&iacute;dos.</div>
           </div>
+          </div>
+          <div id="conventionAuditTablesArea" class="convention-audit-tables-area"></div>
         </div>
-        <div id="conventionAuditTablesArea" class="convention-audit-tables-area"></div>
       </section>
 
       <section class="panel form-panel" id="payrollFormPanel" aria-label="Carga de liquidacion">
@@ -540,6 +564,19 @@
       </div>
     </div>
   </dialog>
+
+  <div id="conventionThinkingOverlay" class="convention-thinking-overlay" aria-hidden="true">
+    <div class="convention-thinking-card" role="status" aria-live="polite">
+      <div class="convention-brain" aria-hidden="true">
+        <span class="convention-brain-symbol">&#129504;</span>
+        <i class="convention-brain-ring convention-brain-ring-one"></i>
+        <i class="convention-brain-ring convention-brain-ring-two"></i>
+      </div>
+      <strong>leIA est&aacute; pensando</strong>
+      <span>Analizando documentos, escalas y reglas de liquidaci&oacute;n</span>
+      <div class="convention-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  </div>
 
   <script src="data.js?v=6"></script>
   <script src="modules/api-client.js?v=1"></script>

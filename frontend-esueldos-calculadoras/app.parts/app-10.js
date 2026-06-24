@@ -88,18 +88,30 @@
   }
 
   function auditOriginLabel(row = {}, defaultOrigin = "CCT") {
-    const raw = [
+    const sourceText = [
       row.documento_tipo,
       row.documento_rol,
       row.fuente_documento,
       row.source,
       ...(Array.isArray(row.sourceFiles) ? row.sourceFiles : [])
     ].filter(Boolean).join(" ");
-    const normalized = summaryKey(raw);
-    if (/(ley_trabajo|ley_de_trabajo|lct|contrato_de_trabajo|ley_20744)/.test(normalized)) return "LCT";
-    if (/(escala|anexo_escala|salarial)/.test(normalized)) return "CCT / Escala";
-    if (/(cct|convenio|acta|homologacion|resolucion)/.test(normalized)) return "CCT";
-    return raw ? "CCT" : defaultOrigin;
+    const evidenceText = [
+      row.evidencia,
+      row.detalle_fuente,
+      row.condicion,
+      row.formula_base,
+      row.base_calculo,
+      row.articulo_anexo,
+      row.legalReference,
+      ...(Array.isArray(row.legalReferences) ? row.legalReferences : [])
+    ].filter(Boolean).join(" ");
+    const explicit = summaryKey(sourceText);
+    const contextual = summaryKey(`${sourceText} ${evidenceText}`);
+    if (/(ley_trabajo|ley_de_trabajo|lct|contrato_de_trabajo|ley_20744|ley_20_744|ley_20744)/.test(contextual)) return "LCT";
+    if (/(escala|anexo_escala|salarial)/.test(explicit)) return "CCT / Escala";
+    if (/(cct|convenio|acta|homologacion|resolucion)/.test(explicit)) return "CCT";
+    if (sourceText) return "Revisar fuente";
+    return defaultOrigin;
   }
 
   function auditInput(field, value, options = {}) {
@@ -425,7 +437,7 @@
         { field: "modalidad", label: "Jornada / Modalidad" },
         { field: "zona", label: "Zona" },
         { field: "sueldo_base", label: salaryLabel }
-      ], salaryRowsData, { locked })}
+      ], salaryRowsData, { locked, defaultOrigin: "CCT / Escala" })}
       ${auditTable("Adicionales y reglas particulares", "adicionales", "Adicionales detectados que pueden alimentar conceptos o controles humanos.", [
         { field: "adicional_id", label: "ID adicional" },
         { field: "concepto_id", label: "Concepto vinculado" },

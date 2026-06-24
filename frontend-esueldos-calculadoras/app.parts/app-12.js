@@ -13,10 +13,10 @@
     if (cctFile) formData.append("cctPdf", cctFile);
     scaleFiles.forEach((file) => formData.append("scalePdf", file));
     formData.append("name", $("builderConventionName")?.value || "");
-    formData.append("notes", $("builderNotes")?.value || "");
 
     const button = $("buildConventionBtn");
     if (button) button.disabled = true;
+    setConventionThinking(true);
     setConventionBuilderStatus("leIA está estructurando el convenio para auditoría humana...", "");
     try {
       const response = await fetch(apiUrl("/api/convention-drafts/upload"), {
@@ -28,6 +28,8 @@
       conventionBuilderState.selected = payload;
       if ($("builderCctPdf")) $("builderCctPdf").value = "";
       if ($("builderScalePdf")) $("builderScalePdf").value = "";
+      updateConventionFilePicker("builderCctPdf", "builderCctPdfStatus");
+      updateConventionFilePicker("builderScalePdf", "builderScalePdfStatus");
       await loadConventionDrafts();
       await selectConventionDraft(payload.id);
       const lawStatus = payload.laborLawStatus || {};
@@ -38,12 +40,37 @@
       setConventionBuilderStatus(error.message, "bad");
     } finally {
       if (button) button.disabled = false;
+      setConventionThinking(false);
     }
+  }
+
+  function setConventionThinking(active) {
+    const overlay = $("conventionThinkingOverlay");
+    if (!overlay) return;
+    overlay.classList.toggle("is-visible", !!active);
+    overlay.setAttribute("aria-hidden", active ? "false" : "true");
+    document.body.classList.toggle("convention-thinking-active", !!active);
+  }
+
+  function updateConventionFilePicker(inputId, statusId) {
+    const input = $(inputId);
+    const status = $(statusId);
+    const files = Array.from(input?.files || []);
+    if (!input || !status) return;
+    status.textContent = files.length === 0
+      ? "Ningun archivo seleccionado"
+      : files.length === 1 ? files[0].name : `${files.length} archivos seleccionados`;
+    input.nextElementSibling?.classList.toggle("has-files", files.length > 0);
   }
 
   function setupConventionBuilder() {
 
     $("conventionBuilderForm")?.addEventListener("submit", uploadConventionDraft);
+    $("conventionUploadTab")?.addEventListener("click", () => showConventionWorkspaceView("upload"));
+    $("conventionAuditTab")?.addEventListener("click", () => showConventionWorkspaceView("audit"));
+    $("backToConventionUploadBtn")?.addEventListener("click", () => showConventionWorkspaceView("upload"));
+    $("builderCctPdf")?.addEventListener("change", () => updateConventionFilePicker("builderCctPdf", "builderCctPdfStatus"));
+    $("builderScalePdf")?.addEventListener("change", () => updateConventionFilePicker("builderScalePdf", "builderScalePdfStatus"));
     $("refreshConventionDraftsBtn")?.addEventListener("click", loadConventionDrafts);
     $("deleteApprovedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("TODOS"));
     $("deleteRejectedDraftsBtn")?.addEventListener("click", () => deleteConventionDraftsByStatus("RECHAZADO"));
