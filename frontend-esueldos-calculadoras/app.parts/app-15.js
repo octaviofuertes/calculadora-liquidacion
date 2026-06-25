@@ -56,6 +56,35 @@
   let laborLawOriginalText = "";
   let laborLawSearchOffset = 0;
 
+  function renderLaborLawEditorRows(rows = []) {
+    const tbody = $("laborLawRowsTable");
+    const count = $("laborLawRowsCount");
+    if (count) count.textContent = `${rows.length.toLocaleString("es-AR")} bloques`;
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="labor-law-empty-row">No hay contenido estructurado disponible.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map((row) => `
+      <tr>
+        <td><strong>${escapeHtml(row.concepto || "Sin concepto")}</strong></td>
+        <td>${escapeHtml(row.regla || "")}</td>
+        <td><span class="labor-law-source-chip">${escapeHtml(row.origin || "LCT")}</span></td>
+        <td>${escapeHtml(row.pagina || "-")}</td>
+      </tr>
+    `).join("");
+  }
+
+  function setLaborLawEditorView(view) {
+    const selected = view === "text" ? "text" : "table";
+    document.querySelectorAll("[data-labor-law-view]").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.laborLawView === selected);
+    });
+    $("laborLawTablePanel")?.classList.toggle("is-active", selected === "table");
+    $("laborLawTextPanel")?.classList.toggle("is-active", selected === "text");
+    if (selected === "text") $("laborLawEditorText")?.focus();
+  }
+
   function updateLaborLawEditorCount() {
     const text = $("laborLawEditorText")?.value || "";
     if ($("laborLawEditorCount")) $("laborLawEditorCount").textContent = `${text.length.toLocaleString("es-AR")} caracteres`;
@@ -68,6 +97,8 @@
     laborLawOriginalText = String(data.fullText || "");
     laborLawSearchOffset = 0;
     editor.value = laborLawOriginalText;
+    renderLaborLawEditorRows(data.rows || []);
+    setLaborLawEditorView("table");
     $("laborLawEditorSource").textContent = data.sourceFileName || "Ley de Trabajo Aplicable";
     $("laborLawEditorMode").textContent = data.isEdited ? "Versión editada" : "Texto original";
     $("laborLawEditorMode").classList.toggle("is-edited", !!data.isEdited);
@@ -160,6 +191,9 @@
     });
 
     $("laborLawEditorText")?.addEventListener("input", updateLaborLawEditorCount);
+    document.querySelectorAll("[data-labor-law-view]").forEach((button) => {
+      button.addEventListener("click", () => setLaborLawEditorView(button.dataset.laborLawView));
+    });
     $("findNextLaborLawBtn")?.addEventListener("click", findNextLaborLawMatch);
     $("laborLawEditorSearch")?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") { event.preventDefault(); findNextLaborLawMatch(); }

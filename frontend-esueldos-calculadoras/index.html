@@ -328,6 +328,10 @@
                 <span>Categoria</span>
                 <select id="category"></select>
               </label>
+              <label class="field" id="modalityField" hidden>
+                <span>Modalidad</span>
+                <select id="modality"></select>
+              </label>
               <label class="field">
                 <span>Zona</span>
                 <select id="zone"></select>
@@ -577,9 +581,39 @@
         <span id="laborLawSearchStatus" aria-live="polite"></span>
       </div>
       <main class="labor-law-editor-body">
-        <label for="laborLawEditorText">Contenido utilizado por leIA</label>
-        <textarea id="laborLawEditorText" spellcheck="true" aria-describedby="laborLawEditorHelp"></textarea>
-        <p id="laborLawEditorHelp">Pod&eacute;s corregir errores de extracci&oacute;n. El PDF original se conserva como respaldo.</p>
+        <div class="labor-law-editor-tabs" role="tablist" aria-label="Vista de Ley de Trabajo">
+          <button id="laborLawTableTab" class="labor-law-editor-tab is-active" type="button" data-labor-law-view="table">Vista estructurada</button>
+          <button id="laborLawTextTab" class="labor-law-editor-tab" type="button" data-labor-law-view="text">Texto para leIA</button>
+        </div>
+        <section id="laborLawTablePanel" class="labor-law-editor-panel is-active" aria-label="Vista estructurada de la ley">
+          <div class="labor-law-document-card">
+            <div class="labor-law-document-card-head">
+              <div>
+                <span>Contenido detectado</span>
+                <strong id="laborLawRowsCount">0 bloques</strong>
+              </div>
+              <span class="labor-law-source-pill">LCT</span>
+            </div>
+            <div class="labor-law-table-wrap">
+              <table class="labor-law-table">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th>Regla / detalle</th>
+                    <th>Origen</th>
+                    <th>P&aacute;gina</th>
+                  </tr>
+                </thead>
+                <tbody id="laborLawRowsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section id="laborLawTextPanel" class="labor-law-editor-panel" aria-label="Texto editable utilizado por leIA">
+          <label for="laborLawEditorText">Contenido utilizado por leIA</label>
+          <textarea id="laborLawEditorText" spellcheck="true" aria-describedby="laborLawEditorHelp"></textarea>
+          <p id="laborLawEditorHelp">Pod&eacute;s corregir errores de extracci&oacute;n. El PDF original se conserva como respaldo.</p>
+        </section>
       </main>
       <footer class="labor-law-editor-footer">
         <span id="laborLawEditorCount">0 caracteres</span>

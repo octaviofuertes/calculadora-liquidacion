@@ -873,7 +873,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "EXTRAER OBLIGATORIAMENTE informacion general: numero de convenio, anio, denominacion, actividad, rama, jurisdiccion, ambito territorial, ambito personal, partes firmantes, fecha de homologacion, vigencia y organismo homologante.",
     "EXTRAER OBLIGATORIAMENTE todas las categorias laborales: nombre, codigo si existe, descripcion, tareas, nivel jerarquico, rama y modalidad.",
     "Distinguir categoria laboral de concepto/adicional: Adicional, Plus, Premio, Bono, Viatico, Asignacion, Presentismo, Antiguedad, Titulo, Falla/Quebranto de caja, Movilidad, Refrigerio, No Remunerativo, Aporte, Cuota, Fondo, Seguro y Contribucion no son categorias laborales salvo que el documento diga explicitamente que son puestos/categorias.",
-    "Si una misma categoria tiene variantes liquidatorias con valores distintos por modalidad, jornada, alcance, rama o condicion de trabajo, NO las compactes. Deben quedar como categorias separadas con categoria_id diferenciado y modalidad_aplicable clara. Ejemplos genericos: CATEGORIA_X_CON_RETIRO y CATEGORIA_X_SIN_RETIRO; CATEGORIA_X_JORNADA_8H y CATEGORIA_X_JORNADA_6H.",
+    "Si una misma categoria tiene variantes liquidatorias por modalidad, jornada, alcance o condicion de trabajo, NO crees categorias nuevas por esa variante. Conserva una sola categoria laboral real y guarda la diferencia en modalidad_aplicable o en escalas[].valores[].modalidad. Solo duplica categorias cuando cambia la rama/grupo/puesto real.",
     "NO extraigas tablas salariales completas en esta llamada. Las escalas salariales se extraen en una segunda llamada separada. En esta llamada deja escalas: [] salvo que el texto principal contenga una regla salarial sin tabla separada.",
     "EXTRAER OBLIGATORIAMENTE haberes remunerativos: sueldo basico, antiguedad, presentismo, puntualidad, titulo, funcion, caja, zona, altura, riesgo, horas extras, nocturnidad, feriados, francos trabajados, guardias, disponibilidad, productividad, comisiones y premios.",
     "SUELDO_BASICO es solo salario basico de escala. Sueldo Anual Complementario, SAC o Aguinaldo debe ir como concepto SAC, nunca como SUELDO_BASICO.",
@@ -965,7 +965,7 @@ function buildConventionCorePrompt({ draftName, notes }) {
 
 function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
   const baseCategoriesText = baseCategories.length 
-    ? `\nCATEGORÍAS PRE-EXTRAÍDAS DEL CCT:\n${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA PARA EVITAR DUPLICADOS: Si la fila de la tabla salarial corresponde a una categoría de esta lista, usa EXACTAMENTE su 'categoria_id'. Si la fila contiene una categoría NUEVA que no está en la lista, extráela normalmente y créale un ID nuevo.` 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS DEL CCT:\n${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre, grupo_nombre: c.grupo_nombre || "", modalidad_aplicable: c.modalidad_aplicable || ""})))}\nREGLA PARA EVITAR DUPLICADOS: Si la fila de la tabla salarial corresponde a una categoría de esta lista, usa EXACTAMENTE su 'categoria_id'. Si la fila contiene una categoría NUEVA que no está en la lista, extráela normalmente y créale un ID nuevo. No crees categorías nuevas solo por modalidad, jornada, zona o alcance.` 
     : "";
   const baseConceptsText = baseConcepts.length
     ? `\nCONCEPTOS PRE-EXTRAÍDOS DEL CCT:\n${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA PARA HABERES EN TABLAS: Si el archivo de escala cuenta con haberes o adicionales (en cuadros separados o junto a la escala), relaciónalos con los 'concepto_id' de esta lista. Si hay un valor nuevo, extráelo en escalas[].valores[] usando el concepto_id. NO extraigas estos haberes o adicionales como categorías laborales, y NO los dupliques en el array raíz de conceptos.`
@@ -979,6 +979,9 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     
     // 4. MATRIZ DE ESCALAS SALARIALES (El núcleo de esta función)
     "Piensa en una matriz multidimensional: Categoría x Periodo (Vigencia) x Concepto x Zona x Modalidad.",
+    "Categorias son puestos/cargos/clases reales. Modalidad, jornada, zona, turno, con retiro, sin retiro, mismo empleador, distintos empleadores, mensualizado o jornalizado son atributos de escala, no categorias.",
+    "Si la tabla tiene columna Rama/Grupo/Sector/Agrupamiento con celdas combinadas, ese valor se hereda hacia abajo hasta la próxima rama/grupo. Guardalo en categorias[].grupo_nombre y no lo confundas con modalidad.",
+    "Si una misma categoria aparece en distintas ramas/grupos con importes distintos, ahi si deben existir categoria_id distintos compuestos por rama + categoria. Si solo cambia modalidad/jornada/zona, mantener la misma categoria_id y completar escalas[].valores[].modalidad/zona.",
     "Cada celda con valor monetario de la tabla salarial debe generar un elemento puro en el array 'escalas[].valores[]'.",
     "Para el año actual, extrae de forma exhaustiva TODOS los periodos de vigencia concatenados o segmentados que aparezcan. No omitas ningún mes del año en curso.",
     "Identifica correctamente el divisor y la unidad de pago: si la escala expresa valores por hora, setea 'unidad_pago' en 'hourly'; si es jornal, 'daily'; si es sueldo mensual, 'monthly'. No uses 'monthly' por defecto.",
@@ -1003,7 +1006,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
 
 function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
   const baseCategoriesText = baseCategories.length 
-    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs.` 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre, grupo_nombre: c.grupo_nombre || "", modalidad_aplicable: c.modalidad_aplicable || ""})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs. No crees categorías nuevas solo por modalidad, jornada, zona o alcance.` 
     : "";
   const baseConceptsText = baseConcepts.length
     ? `\nCONCEPTOS PRE-EXTRAÍDOS: ${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA: Relaciona los adicionales o haberes de la tabla con estos 'concepto_id'. NO extraigas los adicionales como categorías y NO dupliques conceptos.`
@@ -1015,6 +1018,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     
     // Directivas de Ultra-Compactación (Exclusivas de esta función)
     "Aplica estrictamente una matriz conceptual compacta: categoría x periodo x concepto x zona x modalidad. Cada importe va en escalas[].valores[].",
+    "Categoria = puesto/cargo/clase real. Rama/grupo diferencia categorias si cambia el puesto dentro de otro agrupamiento. Modalidad/jornada/zona se guardan como atributos de escalas[].valores[], no como categorias.",
     "Cada ítem de 'valores' debe ser mínimo: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona SOLO si cambia o es estrictamente indispensable para diferenciar la celda.",
     "Usa 'categoria_nombre' únicamente en el array raíz de categorías; NO repitas el nombre de la categoría dentro de cada objeto del vector de valores.",
     "Conceptos permitidos en esta llamada (Máximo 12 ID canónicos): SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, VALOR_HORA, VALOR_DIARIO, VALOR_JORNAL, VIATICO. No crees conceptos por mes (Prohibido BASICO_OCT_25).",
@@ -1022,7 +1026,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     // Clasificación y Tratamiento Rápido
     "SUELDO_BASICO: tipo_concepto haber, naturaleza remunerativo, base escala_salarial. NO_REMUNERATIVO: tipo_concepto haber, naturaleza no_remunerativo, base escala_salarial.",
     "El Sueldo Anual Complementario (SAC) no es SUELDO_BASICO. Si aparece en la tabla, crear concepto 'SAC' por separado.",
-    "Si una categoría tiene importes separados por modalidad (ej: Con Retiro / Sin Retiro), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante.",
+    "Si una categoria tiene importes separados por modalidad, jornada o condicion (ej: Con Retiro / Sin Retiro), NO crees categorias diferenciadas. Usa una categoria laboral base y guarda la variante en escalas[].valores[].modalidad.",
     "Reconstruye filas partidas del PDF: una categoría seguida por varias líneas de importes numéricos corresponden a la misma fila de la matriz.",
     "Formato numérico argentino obligatorio: el punto (.) son miles y la coma (,) son decimales.",
 
@@ -1370,6 +1374,8 @@ function buildConventionAuditPrompt(convention) {
     "Actua como auditor senior de liquidacion de haberes y control de CCT de Argentina.",
     "Audita el convenio ya estructurado. No lo reescribas, no inventes datos y no calcules importes nuevos.",
     "Controla coherencia entre identificacion, categorias, conceptos, escalas, periodos, modalidades, zonas, naturaleza remunerativa/no remunerativa, bases, formulas, referencias y fuentes CCT/LCT.",
+    "Controla especialmente que categorias contenga solo puestos/cargos/clases reales. Si detectas categorias que son solo modalidad, jornada, zona, turno, con retiro, sin retiro, mismo empleador o distintos empleadores, marcarlas como ADVERTENCIA en seccion categorias y recomendar moverlas a modalidad/ambitos/escalas.",
+    "Si una misma categoria laboral se duplico solo por modalidad o jornada, marcar ADVERTENCIA. Si se duplica por rama/grupo/sector real con importes distintos, es correcto.",
     "Controla la prioridad documental: una regla especifica del CCT nunca debe ser reemplazada por LCT. La LCT solo debe aparecer como fuente de una regla general ausente en el CCT y cada dato supletorio debe conservar fuente_documento y evidencia. Advierte si hay datos LCT sin trazabilidad o si faltan reglas generales necesarias que no aparecen ni como CCT ni como LCT.",
     "Marca como BLOQUEANTE solo un problema que impida liquidar de forma segura: escala con importes sin periodo, categoria salarial sin valor, referencia huerfana, importe invalido, concepto liquidable sin naturaleza o formula indispensable indeterminada.",
     "Usa ADVERTENCIA para inconsistencias que requieren revision humana pero permiten continuar. Usa CONSEJO para mejoras de calidad, trazabilidad o configuracion.",

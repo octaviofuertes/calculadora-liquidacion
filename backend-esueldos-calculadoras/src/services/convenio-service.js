@@ -267,13 +267,16 @@ function buildActiveScale(convenio, scale) {
   (scale.valores || []).forEach((value) => {
     const category = categories.get(value.categoria_id) || { categoria_id: value.categoria_id, categoria_nombre: value.categoria_id };
     const concept = concepts.get(value.concepto_id) || { concepto_id: value.concepto_id, nombre: value.concepto_id };
-    const key = `${value.categoria_id}:${normalizeZone(value.zona || scale.zona)}`;
+    const modality = value.modalidad || value.modalidad_aplicable || value.jornada || value.alcance || "";
+    const key = `${value.categoria_id}:${normalizeZone(value.zona || scale.zona)}:${matchText(modality)}`;
     if (!rows.has(key)) {
       rows.set(key, {
         id: value.categoria_id,
         label: category.categoria_nombre || category.grupo_nombre || value.categoria_id,
         group: category.grupo_nombre || "",
-        zone: normalizeZone(value.zona || scale.zona)
+        zone: normalizeZone(value.zona || scale.zona),
+        modality,
+        modalidad: modality
       });
     }
     const row = rows.get(key);

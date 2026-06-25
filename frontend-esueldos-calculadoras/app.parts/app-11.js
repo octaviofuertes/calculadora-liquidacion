@@ -379,9 +379,7 @@
   async function approveConventionDraft() {
     if (!conventionBuilderState.selected) return;
     const blockers = conventionBuilderState.selected.parsedConvention?.auditoriaIA?.bloqueantes || [];
-    if (blockers.length) {
-      setConventionBuilderStatus(`Hay ${blockers.length} errores bloqueantes. Corregilos antes de aprobar.`, "bad");
-      $("conventionAiAuditSummary")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (blockers.length && !confirm(`La auditoría IA detectó ${blockers.length} observación/es críticas. Podés aprobar igual bajo revisión humana. ¿Querés continuar?`)) {
       return;
     }
     try {

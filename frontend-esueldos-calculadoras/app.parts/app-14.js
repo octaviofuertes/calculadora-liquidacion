@@ -18,6 +18,7 @@
       if (event.target.id === "convention") updateConvention();
       else {
         if (event.target.id === "category") {
+          refreshPayrollModalityOptions();
           renderDynamicFields(getConvention());
         }
         if (event.target.id === "period") {
@@ -25,6 +26,7 @@
           if (period) period.value = selectedPeriodMonth();
           refreshActiveScaleContext();
         }
+        if (event.target.id === "zone") refreshPayrollModalityOptions();
         markDirty();
       }
     });

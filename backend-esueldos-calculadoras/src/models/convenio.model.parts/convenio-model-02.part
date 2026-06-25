@@ -20,15 +20,15 @@ function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
     concepto_id: rawConceptId ? canonConceptId(rawConceptId) : "",
     modalidad: text(item.modalidad || item.modality),
     unidad_pago: text(item.unidad_pago || item.paymentUnit),
-    periodicidad: text(item.periodicidad || item.periodicity),
+    periodicidad: text(item.periodicidad || item.periodicity || item.periodo || item.period || item.mes || item.month),
     valor: amount(item.valor ?? item.value ?? item.importe ?? item.monto ?? item.amount),
     valor_minimo: amount(item.valor_minimo ?? item.minValue),
     valor_maximo: amount(item.valor_maximo ?? item.maxValue),
     moneda: text(item.moneda || item.currency),
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
-    vigencia_desde: text(item.vigencia_desde || item.fecha_desde || item.desde || item.validFrom),
-    vigencia_hasta: text(item.vigencia_hasta || item.fecha_hasta || item.hasta || item.validTo),
+    vigencia_desde: text(item.vigencia_desde || item.periodo_desde || item.fecha_desde || item.desde || item.validFrom || item.periodFrom || item.fecha || item.date),
+    vigencia_hasta: text(item.vigencia_hasta || item.periodo_hasta || item.fecha_hasta || item.hasta || item.validTo || item.periodTo),
     fuente_documento: text(item.fuente_documento || item.source),
     ...traceFields(item)
   };
@@ -237,6 +237,8 @@ function finalizeConvenio(normalized) {
     if (plan.variants.size <= 1 || plan.variantless > 0) return;
     const baseCategory = categorias.find((category) => category.categoria_id === baseCategoryId);
     if (!baseCategory) return;
+    const onlyModalities = Array.from(plan.variants.values()).every((variantLabel) => isModalityOnlyCategoryLabel({ categoria_nombre: variantLabel, categoria_id: variantLabel }));
+    if (onlyModalities) return;
     splitBaseCategoryIds.add(baseCategoryId);
     plan.variants.forEach((variantLabel, variantId) => {
       const finalId = variantCategoryId(baseCategoryId, variantId);

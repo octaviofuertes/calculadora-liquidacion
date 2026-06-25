@@ -153,7 +153,16 @@ function scalePeriodIds(scale = {}) {
   return Array.from(new Set([
     ...range,
     ...periodIds(scale.periodo_desde, scale.periodo_hasta, scale.nombre_escala, scale.escala_id),
-    ...array(scale.valores).flatMap((value) => periodIds(value.periodicidad, value.periodo, value.mes, value.fecha, value.vigencia_desde, value.vigencia_hasta))
+    ...array(scale.valores).flatMap((value) => periodIds(
+      value.periodicidad,
+      value.periodo,
+      value.mes,
+      value.fecha,
+      value.periodo_desde,
+      value.periodo_hasta,
+      value.vigencia_desde,
+      value.vigencia_hasta
+    ))
   ].filter(Boolean)));
 }
 

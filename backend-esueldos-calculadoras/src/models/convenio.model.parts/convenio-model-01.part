@@ -142,8 +142,8 @@ function categoryRuntimeLabel(category = {}) {
 
 function categoryIdentityKey(category = {}) {
   return semanticCategoryKey(
-    category.categoria_nombre || category.categoria_id,
-    category.modalidad_aplicable || categoryVariantLabelFromId(category.categoria_id)
+    category.grupo_nombre,
+    category.categoria_nombre || category.categoria_id
   );
 }
 
@@ -161,16 +161,18 @@ function isAdditionalCategoryLabel(category = {}) {
 }
 
 function isModalityOnlyCategoryLabel(category = {}) {
-  const pattern = /^(PERSONAL_)?(SIN_RETIRO|CON_RETIRO|CON_RETIRO_MISMO_EMPLEADOR|CON_RETIRO_DISTINTOS_EMPLEADORES|JORNADA_COMPLETA|JORNADA_PARCIAL|MEDIA_JORNADA|TIEMPO_COMPLETO|TIEMPO_PARCIAL|MENSUALIZADO|JORNALIZADO)$/;
-  const label = slugId(category.categoria_nombre || "");
-  const id = slugId(category.categoria_id || "");
-  return pattern.test(label) || (!label && pattern.test(id));
+  const raw = slugId(`${category.categoria_id || ""} ${category.categoria_nombre || ""} ${category.modalidad_aplicable || ""}`);
+  const hasRealJob = /(SUPERVISOR|CASERO|CASERA|ASISTENCIA|CUIDADO|TAREAS_ESPECIFICAS|TAREAS_GENERALES|MAESTRO|OFICIAL|AYUDANTE|DEPENDIENTE|CAJERO|PEON|APRENDIZ|ADMINISTRATIVO|REPARTO|MANTENIMIENTO|OPERARIO|TECNICO|VENDEDOR|CHOFER|ENFERMERO|AUXILIAR|ENCARGADO|JEFE|GERENTE|COORDINADOR|ANALISTA|TELEFONISTA|SOPORTE|MECANICO|MOZO|COCINERO|PORTERO|VIGILADOR|FARMACEUTICO)/.test(raw);
+  const hasModality = /(SIN_RETIRO|CON_RETIRO|MISMO_EMPLEADOR|DISTINTOS_EMPLEADORES|JORNADA_COMPLETA|JORNADA_PARCIAL|MEDIA_JORNADA|TIEMPO_COMPLETO|TIEMPO_PARCIAL|MENSUALIZADO|JORNALIZADO|CON_CAMA|SIN_CAMA|FULL_TIME|PART_TIME|TURNO|MODALIDAD|\d+_?HS?|\d+_?HORAS?)/.test(raw);
+  const modalityOnly = /^(PERSONAL_)?(TRABAJADORAS?_ES?_)?(SIN_RETIRO|CON_RETIRO|CON_RETIRO_MISMO_EMPLEADOR|CON_RETIRO_DISTINTOS_EMPLEADORES|JORNADA_COMPLETA|JORNADA_PARCIAL|MEDIA_JORNADA|TIEMPO_COMPLETO|TIEMPO_PARCIAL|MENSUALIZADO|JORNALIZADO)(?:_.*EMPLEADOR(?:ES)?)?$/.test(raw);
+  return modalityOnly || (hasModality && !hasRealJob);
 }
 
 function isGeneralGroupingCategory(category = {}) {
   const id = slugId(category.categoria_id || "");
   const label = slugId(category.categoria_nombre || "");
   const modality = text(category.modalidad_aplicable);
+  if (/TAREAS_GENERALES|PERSONAL_PARA_TAREAS_GENERALES/.test(`${id} ${label}`)) return false;
   return /^(CATEGORIA_GENERAL|GENERAL|PERSONAL_GENERAL|TODAS_LAS_CATEGORIAS)$/.test(id)
     || (/PERSONAL/.test(label) && /SIN_RETIRO|CON_RETIRO|JORNADA|MODALIDAD/.test(slugId(modality)));
 }

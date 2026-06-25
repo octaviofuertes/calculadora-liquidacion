@@ -29,7 +29,7 @@
 function calcFarmacia(ctx) {
   const rows = emptyRows();
   const period = ctx.payloadPeriod;
-  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
+  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality);
   const rules = ctx.convention.rules || {};
   const weeklyHours = Math.min(Number(rules.weeklyHours || 45), Math.max(0, inputValue(ctx.inputs, "farmWeeklyHours", Number(rules.weeklyHours || 45))));
   const proportion = (weeklyHours / Number(rules.weeklyHours || 45)) * (inputValue(ctx.inputs, "farmMonthPct", 100) / 100);
@@ -80,7 +80,7 @@ function calcFarmacia(ctx) {
 function calcCamioneros(ctx) {
   const rows = emptyRows();
   const coef = Number(ctx.zone.coef || 1) || 1;
-  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
+  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality);
   const hasSpecificZone = scaleRowMatchesZone(activeRow, ctx.zone);
   const periodDays = Math.max(1, inputValue(ctx.inputs, "camPeriodDays", 24));
   const paidDays = Math.min(Math.max(0, inputValue(ctx.inputs, "camWorkingDays", periodDays)), periodDays);

@@ -410,6 +410,7 @@
     setOptions($("period"), conv.periods, currentPeriod);
     setOptions($("zone"), conv.zones, str("zone"));
     setOptions($("category"), conv.categories, str("category"));
+    refreshPayrollModalityOptions();
     renderDynamicFields(conv);
     enhanceFieldHelp($("payrollFormPanel"));
     syncScaleConvention();
