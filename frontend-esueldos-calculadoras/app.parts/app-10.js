@@ -517,7 +517,6 @@
     const convName = conv.convenio?.denominacion || conv.name || draft.name;
     const isPending = draft.status === "PENDIENTE_REVISION";
     const isApproved = draft.status === "APROBADO";
-    const blockingFindings = conv.auditoriaIA?.bloqueantes || [];
     if (auditSummary) {
       auditSummary.className = "convention-ai-audit-summary";
       auditSummary.innerHTML = conventionAiAuditHtml(conv);
@@ -537,7 +536,7 @@
     const auditActions = `<div class="scale-editor-actions convention-audit-bottom-actions">
       <button class="icon-btn" id="downloadConventionJsonBtn" type="button">Descargar respaldo</button>
       <button class="icon-btn" id="saveConventionJsonBtn" type="button">Guardar revisión</button>
-      ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button" ${blockingFindings.length ? `disabled title="Resolve los ${blockingFindings.length} errores bloqueantes antes de aprobar"` : ""}>Aprobar y activar convenio</button>
+      ${isPending ? `<button class="primary-action" id="approveConventionDraftBtn" type="button">Aprobar y activar convenio</button>
       <button class="icon-btn danger" id="rejectConventionDraftBtn" type="button">Rechazar</button>` : ""}
       <button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
         <svg viewBox="0 0 24 24" aria-hidden="true">

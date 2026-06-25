@@ -87,7 +87,14 @@ function scaleRowMatchesZone(row, zone) {
   return Boolean(rowZone && ((zoneId && rowZone === zoneId) || (zoneLabel && rowZone === zoneLabel)));
 }
 
-function findScaleRow(rows, item, zone) {
+function scaleRowMatchesModality(row, modality) {
+  const selected = normalizeMatchText(modality);
+  if (!selected) return true;
+  const rowModality = normalizeMatchText(row?.modality || row?.modalidad || row?.modalidad_aplicable || row?.jornada || row?.alcance);
+  return Boolean(rowModality && (rowModality === selected || rowModality.includes(selected) || selected.includes(rowModality)));
+}
+
+function findScaleRow(rows, item, zone, modality = "") {
   if (!Array.isArray(rows) || !item) return null;
   const itemId = normalizeMatchText(item.id);
   const itemLabel = normalizeMatchText(item.label);
@@ -98,18 +105,20 @@ function findScaleRow(rows, item, zone) {
     const rowLabel = normalizeMatchText(row.label);
     return (itemId && rowId === itemId)
       || (itemLabel && rowLabel === itemLabel)
-      || (itemLabel && rowLabel.includes(itemLabel))
-      || (itemLabel && itemLabel.includes(rowLabel));
+      || (itemLabel && rowLabel && rowLabel.includes(itemLabel))
+      || (itemLabel && rowLabel && itemLabel.includes(rowLabel));
   });
   if (!candidates.length) return null;
-  return candidates.find((row) => {
+  const scoped = candidates.filter((row) => scaleRowMatchesModality(row, modality));
+  const searchRows = scoped.length ? scoped : candidates;
+  return searchRows.find((row) => {
     const rowZone = normalizeZoneMatchText(row.zone);
     return rowZone && ((zoneId && rowZone.includes(zoneId)) || (zoneLabel && rowZone.includes(zoneLabel)));
-  }) || candidates.find((row) => !row.zone) || candidates[0];
+  }) || searchRows.find((row) => !row.zone) || searchRows[0];
 }
 
-function scaleCategoryRow(activeScale, category, zone) {
-  return activeScale ? findScaleRow(activeScale.parsedScale?.categories, category, zone) : null;
+function scaleCategoryRow(activeScale, category, zone, modality = "") {
+  return activeScale ? findScaleRow(activeScale.parsedScale?.categories, category, zone, modality) : null;
 }
 
 function scaleAdditionalRow(activeScale, key, additional) {
@@ -159,7 +168,7 @@ function commonContext({ catalog, convention, payload, activeScale }) {
     civilStatus: payload.employee?.civilStatus || "soltero",
     years: yearsFromEntry(payload.employee?.entryDate)
   };
-  return { constants: catalog.constants || {}, convention, category, zone, employee, inputs: payload.inputs || {}, activeScale };
+  return { constants: catalog.constants || {}, convention, category, zone, employee, inputs: payload.inputs || {}, activeScale, modality: payload.inputs?.modality || "" };
 }
 
 function applyManualRows(ctx, rows) {
@@ -331,7 +340,7 @@ function buildResult(ctx, rows, warnings = []) {
 function calcGeneric(ctx) {
   const rows = emptyRows();
   const period = ctx.payloadPeriod;
-  const activeCatRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
+  const activeCatRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality);
   const model = ctx.convention.liquidationModel || {};
   const rules = { ...(ctx.convention.rules || {}), ...(model.rules || {}) };
   rules.nonRemunerativeScale = {
@@ -433,7 +442,7 @@ function farmaciaAntiquityPct(years) {
 function calcUocra(ctx) {
   const rows = emptyRows();
   const period = ctx.payloadPeriod;
-  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone);
+  const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality);
   const staticScale = amount(ctx.convention.scales?.[period]?.[ctx.zone.id]?.[ctx.category.id]);
   const scale = firstFinite(ctx.category.monthly ? activeRow?.monthly : activeRow?.day, activeRow?.monthly, staticScale) || 0;
   const snrMonthly = firstFinite(activeRow?.nonRemunerative, ctx.convention.nonRem?.[period]?.[ctx.zone.id]?.[ctx.category.id]) || 0;

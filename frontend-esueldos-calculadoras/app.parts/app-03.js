@@ -227,6 +227,13 @@
     return Boolean(rowZone && ((zoneId && rowZone === zoneId) || (zoneLabel && rowZone === zoneLabel)));
   }
 
+  function scaleRowMatchesModality(row, modality) {
+    const selected = normalizeMatchText(modality);
+    if (!selected) return true;
+    const rowModality = normalizeMatchText(row?.modality || row?.modalidad || row?.modalidad_aplicable || row?.jornada || row?.alcance);
+    return Boolean(rowModality && (rowModality === selected || rowModality.includes(selected) || selected.includes(rowModality)));
+  }
+
   function activeScaleFor(conv) {
     const scale = scaleState.activeForPayroll;
     if (!scale || scale.status !== "APROBADA" || scale.conventionId !== conv.id) return null;
@@ -241,7 +248,7 @@
     return null;
   }
 
-  function findScaleRow(rows, item, zone) {
+  function findScaleRow(rows, item, zone, modality = str("modality", "")) {
     if (!Array.isArray(rows) || !item) return null;
     const itemId = normalizeMatchText(item.id);
     const itemLabel = normalizeMatchText(item.label);
@@ -252,15 +259,17 @@
       const rowLabel = normalizeMatchText(row.label);
       return (itemId && rowId === itemId)
         || (itemLabel && rowLabel === itemLabel)
-        || (itemLabel && rowLabel.includes(itemLabel))
-        || (itemLabel && itemLabel.includes(rowLabel));
+        || (itemLabel && rowLabel && rowLabel.includes(itemLabel))
+        || (itemLabel && rowLabel && itemLabel.includes(rowLabel));
     });
     if (!candidates.length) return null;
-    const zoneMatch = candidates.find((row) => {
+    const scoped = candidates.filter((row) => scaleRowMatchesModality(row, modality));
+    const searchRows = scoped.length ? scoped : candidates;
+    const zoneMatch = searchRows.find((row) => {
       const rowZone = normalizeZoneMatchText(row.zone);
       return rowZone && ((zoneId && rowZone.includes(zoneId)) || (zoneLabel && rowZone.includes(zoneLabel)));
     });
-    return zoneMatch || candidates.find((row) => !row.zone) || candidates[0];
+    return zoneMatch || searchRows.find((row) => !row.zone) || searchRows[0];
   }
 
   function scaleCategoryRow(conv, category, zone) {

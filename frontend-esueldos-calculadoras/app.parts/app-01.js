@@ -290,6 +290,62 @@
     return conv.categories.find((cat) => cat.id === str("category")) || conv.categories[0];
   }
 
+  function normalizeOptionKey(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function categoryLikeRowMatches(row, category) {
+    const categoryId = normalizeOptionKey(category?.id);
+    const categoryLabel = normalizeOptionKey(category?.label);
+    const rowId = normalizeOptionKey(row?.id || row?.categoria_id);
+    const rowLabel = normalizeOptionKey(row?.label || row?.categoria_nombre || row?.nombre);
+    return (categoryId && rowId === categoryId)
+      || (categoryLabel && rowLabel === categoryLabel)
+      || (categoryLabel && rowLabel && rowLabel.includes(categoryLabel))
+      || (categoryLabel && rowLabel && categoryLabel.includes(rowLabel));
+  }
+
+  function payrollModalityOptions(conv = getConvention()) {
+    const category = getCategory(conv);
+    const parsedScale = scaleState.activeForPayroll?.parsedScale || {};
+    const rows = [
+      ...(parsedScale.categories || []),
+      ...(parsedScale.nonRemunerative || []),
+      ...(conv.categories || [])
+    ];
+    (conv.escalas || []).forEach((scale) => {
+      (scale.valores || []).forEach((value) => rows.push({
+        id: value.categoria_id,
+        label: value.categoria_nombre,
+        modalidad: value.modalidad || value.modalidad_aplicable || value.jornada || value.alcance
+      }));
+    });
+    const options = new Map();
+    rows.forEach((row) => {
+      if (!categoryLikeRowMatches(row, category)) return;
+      const label = row.modalidad || row.modality || row.modalidad_aplicable || row.jornada || row.alcance || "";
+      const id = normalizeOptionKey(label);
+      if (!id || ["general", "base", "sin adicional"].includes(id)) return;
+      options.set(id, { id, label: String(label).replace(/_/g, " ") });
+    });
+    return Array.from(options.values());
+  }
+
+  function refreshPayrollModalityOptions() {
+    const field = $("modalityField");
+    const select = $("modality");
+    if (!field || !select) return;
+    const options = payrollModalityOptions();
+    field.hidden = options.length < 2;
+    setOptions(select, options.length ? options : [{ id: "", label: "General" }], str("modality"));
+    if (field.hidden) select.value = "";
+  }
+
   function setOptions(select, options, current) {
     select.innerHTML = options
       .map((option) => `<option value="${option.id}">${escapeHtml(option.label)}</option>`)

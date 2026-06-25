@@ -64,6 +64,7 @@
     } catch (error) {
       scaleState.activeForPayroll = null;
     }
+    refreshPayrollModalityOptions();
   }
 
   async function loadScaleDashboard() {
