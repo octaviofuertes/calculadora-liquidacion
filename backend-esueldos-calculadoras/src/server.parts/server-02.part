@@ -58,6 +58,7 @@
     ]);
 
     let globalLaborLawPdf = null;
+    let globalLaborLawText = "";
     let laborLawStatus = {
       available: false,
       sourceFileName: "",
@@ -67,19 +68,25 @@
       message: "No hay Sintesis/Ley de Trabajo Aplicable cargada. Los faltantes generales quedaran para revision manual."
     };
     const laborLawPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const laborLawEditedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
     if (fs.existsSync(laborLawPath)) {
       globalLaborLawPdf = {
         buffer: await fs.promises.readFile(laborLawPath),
         mimeType: "application/pdf",
         sourceFileName: "Ley de Trabajo Aplicable"
       };
+      if (fs.existsSync(laborLawEditedPath)) {
+        globalLaborLawText = await fs.promises.readFile(laborLawEditedPath, "utf8");
+      }
       laborLawStatus = {
         available: true,
         sourceFileName: "Ley de Trabajo Aplicable",
-        mode: "local_pdf",
+        mode: globalLaborLawText ? "edited_text" : "local_pdf",
         used: false,
         readable: false,
-        message: "Sintesis/Ley de Trabajo Aplicable cargada localmente."
+        message: globalLaborLawText
+          ? "Version corregida de la Ley de Trabajo Aplicable cargada y activa."
+          : "Sintesis/Ley de Trabajo Aplicable cargada localmente."
       };
     }
 
@@ -112,7 +119,8 @@
           scalePdfs,
           draftName,
           notes,
-          globalLaborLawPdf
+          globalLaborLawPdf,
+          globalLaborLawText
         });
         parsedConvention = result.parsedConvention;
         laborLawStatus = result.laborLawStatus || laborLawStatus;
@@ -152,6 +160,7 @@
       return;
     }
 
+    const aiAudit = parsedConvention.auditoriaIA || null;
     const internalConvention = parsedConvention.categories
       ? sanitizeGenericConventionCategories(applyConventionArchitecture(parsedConvention, processingPipeline))
       : parsedConvention;
@@ -172,6 +181,23 @@
       aiError = "Las escalas fueron extraidas, pero falta confirmar su periodo de vigencia antes de aprobar.";
     } else {
       parsedConvention = validation.data;
+    }
+    if (aiAudit) parsedConvention.auditoriaIA = aiAudit;
+    if (!validation.ok && aiAudit) {
+      const blockers = Array.isArray(parsedConvention.auditoriaIA.bloqueantes) ? parsedConvention.auditoriaIA.bloqueantes : [];
+      if (!blockers.some((item) => item.codigo === "ESCALA_PERIODO_FALTANTE")) {
+        blockers.push({
+          codigo: "ESCALA_PERIODO_FALTANTE",
+          mensaje: "Hay escalas con importes pero sin periodo de vigencia detectable.",
+          seccion: "escalas",
+          rowId: "",
+          campo: "mes",
+          recomendacion: "Completar el mes o periodo de cada escala antes de aprobar.",
+          fuente: "CCT / Escala"
+        });
+      }
+      parsedConvention.auditoriaIA.bloqueantes = blockers;
+      parsedConvention.auditoriaIA.nivelRiesgo = "ALTO";
     }
     if ((!laborLawStatus.available || !laborLawStatus.readable) && laborLawStatus.message) {
       parsedConvention.warnings = Array.from(new Set([...(parsedConvention.warnings || []), laborLawStatus.message]));
@@ -235,6 +261,7 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
     }
     const update = { updatedAt: new Date() };
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, "parsedConvention")) {
+      const aiAudit = req.body.parsedConvention?.auditoriaIA || null;
       update.parsedConvention = normalizeConvention(req.body.parsedConvention, {
         fallbackName: req.body.parsedConvention?.name || "Convenio pendiente de identificacion documental",
         useFallbackDefaults: false
@@ -245,6 +272,7 @@ app.patch("/api/convention-drafts/:id", async (req, res, next) => {
         return;
       }
       update.parsedConvention = validation.data;
+      if (aiAudit) update.parsedConvention.auditoriaIA = aiAudit;
       update.humanEdited = true;
       update.humanEditedAt = new Date();
     }

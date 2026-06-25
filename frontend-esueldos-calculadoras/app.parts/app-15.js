@@ -53,6 +53,56 @@
     preview.style.display = "block";
   }
 
+  let laborLawOriginalText = "";
+  let laborLawSearchOffset = 0;
+
+  function updateLaborLawEditorCount() {
+    const text = $("laborLawEditorText")?.value || "";
+    if ($("laborLawEditorCount")) $("laborLawEditorCount").textContent = `${text.length.toLocaleString("es-AR")} caracteres`;
+  }
+
+  function openLaborLawEditor(data = {}) {
+    const modal = $("laborLawEditorModal");
+    const editor = $("laborLawEditorText");
+    if (!modal || !editor) return;
+    laborLawOriginalText = String(data.fullText || "");
+    laborLawSearchOffset = 0;
+    editor.value = laborLawOriginalText;
+    $("laborLawEditorSource").textContent = data.sourceFileName || "Ley de Trabajo Aplicable";
+    $("laborLawEditorMode").textContent = data.isEdited ? "Versión editada" : "Texto original";
+    $("laborLawEditorMode").classList.toggle("is-edited", !!data.isEdited);
+    $("laborLawEditorSearch").value = "";
+    $("laborLawSearchStatus").textContent = "";
+    updateLaborLawEditorCount();
+    modal.showModal();
+    editor.focus();
+  }
+
+  function closeLaborLawEditor() {
+    const modal = $("laborLawEditorModal");
+    const changed = ($("laborLawEditorText")?.value || "") !== laborLawOriginalText;
+    if (changed && !confirm("Hay cambios sin guardar. ¿Querés descartarlos?")) return;
+    modal?.close();
+  }
+
+  function findNextLaborLawMatch() {
+    const editor = $("laborLawEditorText");
+    const query = ($("laborLawEditorSearch")?.value || "").trim();
+    if (!editor || !query) return;
+    const haystack = editor.value.toLocaleLowerCase("es");
+    const needle = query.toLocaleLowerCase("es");
+    let index = haystack.indexOf(needle, laborLawSearchOffset);
+    if (index < 0 && laborLawSearchOffset > 0) index = haystack.indexOf(needle);
+    if (index < 0) {
+      $("laborLawSearchStatus").textContent = "Sin coincidencias";
+      return;
+    }
+    editor.focus();
+    editor.setSelectionRange(index, index + query.length);
+    laborLawSearchOffset = index + query.length;
+    $("laborLawSearchStatus").textContent = `Coincidencia en posición ${index + 1}`;
+  }
+
   async function loadGlobalLaborLawStatus() {
     const label = $("globalLaborLawLabel");
     const deleteBtn = $("deleteGlobalLaborLawBtn");
@@ -62,7 +112,7 @@
       const res = await fetch(apiUrl("/api/settings"));
       const data = await res.json().catch(() => ({}));
       if (data.hasGlobalLaborLaw) {
-        label.textContent = "Ley de Trabajo (PDF) cargada globalmente";
+        label.textContent = data.hasEditedLaborLaw ? "Ley de Trabajo (versión corregida activa)" : "Ley de Trabajo (PDF) cargada globalmente";
         label.style.color = "var(--ok, green)";
         if (deleteBtn) deleteBtn.style.display = "block";
         if (previewBtn) previewBtn.style.display = "inline-flex";
@@ -95,18 +145,54 @@
     modal.querySelector(".modal-close-btn")?.addEventListener("click", () => modal.close());
 
     $("previewGlobalLaborLawBtn")?.addEventListener("click", async () => {
-      const preview = $("globalLaborLawPreview");
-      if (preview) preview.innerHTML = `<div style="font-size: 13px; color: var(--text-muted);">Cargando extracción...</div>`;
+      const button = $("previewGlobalLaborLawBtn");
+      if (button) button.disabled = true;
       try {
         const res = await fetch(apiUrl("/api/settings/labor-law/preview"));
         if (!res.ok) throw new Error("No se pudo generar la vista previa.");
         const data = await res.json();
-        renderLaborLawPreview(data.rows || [], data.sourceFileName || "", data.fullText || "");
+        openLaborLawEditor(data);
       } catch (err) {
-        if (preview) {
-          preview.innerHTML = `<div style="font-size: 13px; color: var(--red, red);">${escapeHtml(err.message)}</div>`;
-          preview.style.display = "block";
-        }
+        $("globalSettingsFeedback").textContent = err.message;
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+
+    $("laborLawEditorText")?.addEventListener("input", updateLaborLawEditorCount);
+    $("findNextLaborLawBtn")?.addEventListener("click", findNextLaborLawMatch);
+    $("laborLawEditorSearch")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); findNextLaborLawMatch(); }
+    });
+    $("closeLaborLawEditorBtn")?.addEventListener("click", closeLaborLawEditor);
+    $("cancelLaborLawEditorBtn")?.addEventListener("click", closeLaborLawEditor);
+    $("laborLawEditorModal")?.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeLaborLawEditor();
+    });
+    $("saveLaborLawEditorBtn")?.addEventListener("click", async () => {
+      const text = ($("laborLawEditorText")?.value || "").trim();
+      if (text.length < 100) { alert("El contenido es demasiado corto para utilizarse como contexto legal."); return; }
+      if (!confirm("¿Guardar esta versión corregida para futuras estructuraciones?")) return;
+      const button = $("saveLaborLawEditorBtn");
+      button.disabled = true;
+      try {
+        const res = await fetch(apiUrl("/api/settings/labor-law/text"), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error || "No se pudo guardar la versión corregida.");
+        laborLawOriginalText = text;
+        $("laborLawEditorMode").textContent = "Versión editada";
+        $("laborLawEditorMode").classList.add("is-edited");
+        await loadGlobalLaborLawStatus();
+        $("globalSettingsFeedback").textContent = "Versión corregida guardada y activa para leIA.";
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
       }
     });
 

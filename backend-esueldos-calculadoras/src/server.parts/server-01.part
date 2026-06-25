@@ -445,8 +445,9 @@ app.use(createAiRouter({ getDb: getDbInstance }));
 app.get("/api/settings", async (req, res, next) => {
   try {
     const filePath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const editedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
     const hasGlobalLaborLaw = fs.existsSync(filePath);
-    res.json({ hasGlobalLaborLaw });
+    res.json({ hasGlobalLaborLaw, hasEditedLaborLaw: hasGlobalLaborLaw && fs.existsSync(editedPath) });
   } catch (error) {
     next(error);
   }
@@ -455,12 +456,16 @@ app.get("/api/settings", async (req, res, next) => {
 app.get("/api/settings/labor-law/preview", async (req, res, next) => {
   try {
     const filePath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const editedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
     if (!fs.existsSync(filePath)) {
       res.status(404).json({ error: "No hay ley de trabajo cargada." });
       return;
     }
-    const buffer = await fs.promises.readFile(filePath);
-    const text = await extractPdfText({ buffer, mimeType: "application/pdf", sourceFileName: "Ley de Trabajo Aplicable" });
+    const isEdited = fs.existsSync(editedPath);
+    const buffer = isEdited ? null : await fs.promises.readFile(filePath);
+    const text = isEdited
+      ? await fs.promises.readFile(editedPath, "utf8")
+      : await extractPdfText({ buffer, mimeType: "application/pdf", sourceFileName: "Ley de Trabajo Aplicable" });
     if (!text) {
       res.status(422).json({ error: "No se pudo leer texto util del PDF." });
       return;
@@ -482,9 +487,36 @@ app.get("/api/settings/labor-law/preview", async (req, res, next) => {
     });
     res.json({
       sourceFileName: "Ley de Trabajo Aplicable",
+      isEdited,
       rows,
       fullText: text
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/settings/labor-law/text", async (req, res, next) => {
+  try {
+    const pdfPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    if (!fs.existsSync(pdfPath)) {
+      res.status(404).json({ error: "No hay ley de trabajo cargada." });
+      return;
+    }
+    const text = String(req.body?.text || "").replace(/\r\n/g, "\n").trim();
+    if (text.length < 100) {
+      res.status(400).json({ error: "El contenido legal es demasiado corto." });
+      return;
+    }
+    if (text.length > 1800000) {
+      res.status(413).json({ error: "El contenido legal supera el limite permitido." });
+      return;
+    }
+    const editedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
+    const tempPath = `${editedPath}.${Date.now()}.tmp`;
+    await fs.promises.writeFile(tempPath, text, "utf8");
+    await fs.promises.rename(tempPath, editedPath);
+    res.json({ ok: true, isEdited: true, characters: text.length });
   } catch (error) {
     next(error);
   }
@@ -497,8 +529,10 @@ app.post("/api/settings/labor-law", conventionUpload.single("laborLawPdf"), asyn
       return;
     }
     const targetPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const editedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
     await fs.promises.copyFile(req.file.path, targetPath);
     await fs.promises.unlink(req.file.path).catch(() => {});
+    await fs.promises.unlink(editedPath).catch(() => {});
     const apiKey = geminiConventionApiKey() || geminiScaleApiKey();
     if (apiKey && laborLawStoreName) {
       const client = createGeminiClient({ apiKey });
@@ -542,9 +576,11 @@ app.post("/api/settings/labor-law", conventionUpload.single("laborLawPdf"), asyn
 app.delete("/api/settings/labor-law", async (req, res, next) => {
   try {
     const targetPath = path.join(conventionUploadDir, "global_labor_law.pdf");
+    const editedPath = path.join(conventionUploadDir, "global_labor_law_edited.txt");
     if (fs.existsSync(targetPath)) {
       await fs.promises.unlink(targetPath);
     }
+    await fs.promises.unlink(editedPath).catch(() => {});
     res.json({ ok: true });
   } catch (error) {
     next(error);

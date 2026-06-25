@@ -169,7 +169,7 @@
                 <input class="convention-file-input" id="builderCctPdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
                 <label class="convention-folder-picker" for="builderCctPdf" title="Seleccionar CCT o acta">
                   <span class="convention-folder-icon" aria-hidden="true"></span>
-                  <strong>Seleccionar CCT o acta</strong>
+                  <strong>Seleccionar CCT</strong>
                   <small id="builderCctPdfStatus">Ning&uacute;n archivo seleccionado</small>
                 </label>
               </div>
@@ -185,7 +185,7 @@
             </div>
 
             <div class="scale-actions">
-              <button class="primary-action" id="buildConventionBtn" type="submit">Estructurar convenio</button>
+              <button class="primary-action convention-structure-button" id="buildConventionBtn" type="submit"><span aria-hidden="true">&#10022;</span> Estructurar convenio</button>
               <span id="conventionBuilderStatus" class="scale-status">Sin cargas en curso.</span>
             </div>
 
@@ -216,6 +216,26 @@
               </div>
             </div>
           </form>
+
+          <aside class="convention-upload-guide" aria-label="Guia para estructurar convenios">
+            <section class="convention-guide-card">
+              <h3><span aria-hidden="true">&#10022;</span> &iquest;C&oacute;mo funciona?</h3>
+              <ol class="convention-guide-steps">
+                <li><span>1</span><div><strong>Sub&iacute; los documentos</strong><small>Carg&aacute; el CCT, acta y las escalas salariales.</small></div></li>
+                <li><span>2</span><div><strong>leIA analiza</strong><small>Extrae y organiza la informaci&oacute;n clave del convenio.</small></div></li>
+                <li><span>3</span><div><strong>Auditor&iacute;a humana</strong><small>Revis&aacute;, valid&aacute; y public&aacute; el convenio con trazabilidad.</small></div></li>
+              </ol>
+              <div class="convention-guide-tips">
+                <strong><span aria-hidden="true">&#9737;</span> Consejos</strong>
+                <span>Us&aacute; PDFs legibles y completos.</span>
+                <span>Inclu&iacute; todas las escalas vigentes.</span>
+              </div>
+            </section>
+            <section class="convention-guide-card convention-security-card">
+              <h3><span aria-hidden="true">&#9672;</span> Seguridad y trazabilidad</h3>
+              <p>Tus documentos est&aacute;n protegidos. Cada cambio queda registrado.</p>
+            </section>
+          </aside>
         </div>
         </div>
 
@@ -227,6 +247,7 @@
               <span>Valid&aacute; la informaci&oacute;n antes de aprobarla y activarla.</span>
             </div>
           </div>
+          <div id="conventionAiAuditSummary" class="convention-ai-audit-summary empty-state">Seleccion&aacute; un convenio para ver el resultado de la auditor&iacute;a autom&aacute;tica.</div>
           <div class="convention-builder-layout convention-builder-audit-layout">
           <div class="scale-card convention-builder-audit">
             <div class="scale-card-head">
@@ -419,35 +440,6 @@
       </div>
 
       <div class="panel result-panel">
-        <div class="result-actions">
-          <button class="icon-btn" id="saveBtn" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 4h12l2 2v14H5z"/>
-              <path d="M8 4v6h8V4"/>
-              <path d="M8 20v-6h8v6"/>
-            </svg>
-            Guardar
-          </button>
-          <button class="icon-btn" id="exportBtn" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 3h7l4 4v14H7z"/>
-              <path d="M14 3v5h5"/>
-              <path d="M10 13 8 15l2 2"/>
-              <path d="M14 13l2 2-2 2"/>
-            </svg>
-            Exportar JSON
-          </button>
-          <button class="icon-btn" id="printBtn" type="button" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 8V4h10v4"/>
-              <path d="M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1-2 2v4a2 2 0 0 1-2 2h-2"/>
-              <path d="M7 14h10v6H7z"/>
-              <path d="M17 12h.01"/>
-            </svg>
-            Imprimir
-          </button>
-          <button class="primary-action audit-action" id="auditBtn" type="button" disabled>Auditar con leIA</button>
-        </div>
         <div class="tabs" role="tablist">
           <button class="tab" data-tab="receipt" type="button">Recibo</button>
           <button class="tab" data-tab="calculation" type="button">C&aacute;lculo</button>
@@ -550,8 +542,6 @@
               </div>
             </div>
           </div>
-          <div id="globalLaborLawPreview" style="display: none; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-1); padding: 10px; max-height: 280px; overflow: auto;"></div>
-
           <form id="globalSettingsForm">
             <label class="field">
               <span>Subir nuevo documento (PDF)</span>
@@ -562,6 +552,42 @@
           <div id="globalSettingsFeedback" style="margin-top: 8px; font-size: 13px;"></div>
         </div>
       </div>
+    </div>
+  </dialog>
+
+  <dialog id="laborLawEditorModal" class="modal labor-law-editor-modal">
+    <div class="labor-law-editor-shell">
+      <header class="labor-law-editor-head">
+        <div>
+          <span class="eyebrow">Contexto legal global</span>
+          <h2>Ley de Trabajo</h2>
+          <p id="laborLawEditorSource">Ley de Trabajo Aplicable</p>
+        </div>
+        <div class="labor-law-editor-head-actions">
+          <span id="laborLawEditorMode" class="labor-law-editor-mode">Texto original</span>
+          <button class="modal-close-btn" id="closeLaborLawEditorBtn" type="button" aria-label="Cerrar editor">&times;</button>
+        </div>
+      </header>
+      <div class="labor-law-editor-toolbar">
+        <label>
+          <span>Buscar en el documento</span>
+          <input id="laborLawEditorSearch" type="search" placeholder="Ej: vacaciones, jornada, indemnizaci&oacute;n">
+        </label>
+        <button class="icon-btn" id="findNextLaborLawBtn" type="button">Buscar siguiente</button>
+        <span id="laborLawSearchStatus" aria-live="polite"></span>
+      </div>
+      <main class="labor-law-editor-body">
+        <label for="laborLawEditorText">Contenido utilizado por leIA</label>
+        <textarea id="laborLawEditorText" spellcheck="true" aria-describedby="laborLawEditorHelp"></textarea>
+        <p id="laborLawEditorHelp">Pod&eacute;s corregir errores de extracci&oacute;n. El PDF original se conserva como respaldo.</p>
+      </main>
+      <footer class="labor-law-editor-footer">
+        <span id="laborLawEditorCount">0 caracteres</span>
+        <div>
+          <button class="icon-btn" id="cancelLaborLawEditorBtn" type="button">Cancelar</button>
+          <button class="primary-action" id="saveLaborLawEditorBtn" type="button">Guardar versi&oacute;n corregida</button>
+        </div>
+      </footer>
     </div>
   </dialog>
 

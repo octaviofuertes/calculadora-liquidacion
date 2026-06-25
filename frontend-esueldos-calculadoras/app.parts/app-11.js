@@ -15,6 +15,11 @@
     tablesArea?.querySelector("#approveConventionDraftBtn")?.addEventListener("click", approveConventionDraft);
     tablesArea?.querySelector("#rejectConventionDraftBtn")?.addEventListener("click", rejectConventionDraft);
     tablesArea?.querySelector("#deleteConventionDraftBtn")?.addEventListener("click", () => deleteConventionDraft(draft.id));
+    [editor, $("conventionAiAuditSummary")].filter(Boolean).forEach((root) => {
+      root.querySelectorAll("[data-ai-audit-go]").forEach((button) => {
+        button.addEventListener("click", () => goToConventionAuditFinding(button));
+      });
+    });
     [editor, tablesArea].filter(Boolean).forEach((root) => {
       root.querySelectorAll("[data-audit-select-all]").forEach((checkbox) => {
         checkbox.addEventListener("change", () => {
@@ -31,6 +36,34 @@
         button.addEventListener("click", () => deleteConventionAuditRows(button.dataset.auditDelete));
       });
     });
+  }
+
+  function goToConventionAuditFinding(button) {
+    const section = button.dataset.aiAuditGo || "general";
+    const rowId = button.dataset.aiAuditRow || "";
+    const fieldName = button.dataset.aiAuditField || "";
+    const editor = $("conventionJsonEditor");
+    const tablesArea = $("conventionAuditTablesArea");
+    let target;
+    if (section === "general") {
+      target = editor?.querySelector(".convention-audit-general");
+    } else {
+      const details = tablesArea?.querySelector(`[data-audit-section="${section}"]`);
+      if (details) details.open = true;
+      const rows = Array.from(details?.querySelectorAll("tbody tr:not(.audit-empty-row)") || []);
+      target = rowId ? rows.find((row) => row.dataset.auditRowId === rowId
+        || Array.from(row.querySelectorAll("[data-field]")).some((input) => String(input.value || "") === rowId)) : details;
+      target ||= details;
+    }
+    if (!target) {
+      setConventionBuilderStatus("No pude ubicar la fila indicada por la auditoría. Revisá la sección manualmente.", "bad");
+      return;
+    }
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("ai-audit-target");
+    const field = fieldName ? Array.from(target.querySelectorAll("[data-field]")).find((item) => item.dataset.field === fieldName) : null;
+    window.setTimeout(() => field?.focus({ preventScroll: true }), 450);
+    window.setTimeout(() => target.classList.remove("ai-audit-target"), 2400);
   }
 
   function parseConventionJsonEditor() {
@@ -345,6 +378,12 @@
 
   async function approveConventionDraft() {
     if (!conventionBuilderState.selected) return;
+    const blockers = conventionBuilderState.selected.parsedConvention?.auditoriaIA?.bloqueantes || [];
+    if (blockers.length) {
+      setConventionBuilderStatus(`Hay ${blockers.length} errores bloqueantes. Corregilos antes de aprobar.`, "bad");
+      $("conventionAiAuditSummary")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     try {
       const parsedConvention = parseConventionJsonEditor();
       const payload = await fetchJson(`/api/convention-drafts/${encodeURIComponent(conventionBuilderState.selected.id)}/approve`, {

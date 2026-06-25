@@ -39,6 +39,15 @@ function geminiScaleApiKey() {
   return process.env.GEMINI_SCALE_API_KEY || geminiBaseApiKey();
 }
 
+function geminiAuditorApiKey() {
+  return String(process.env.GEMINI_AUDITOR_API_KEY || "").trim();
+}
+
+function geminiAuditorModels() {
+  const configuredModels = splitModels(process.env.GEMINI_AUDITOR_MODEL);
+  return uniqueModels(configuredModels.length ? configuredModels : [geminiConventionModel()]);
+}
+
 function geminiFallbackModels() {
   const configuredModels = splitModels(process.env.GEMINI_FALLBACK_MODELS);
   return uniqueModels(configuredModels.length ? configuredModels : DEFAULT_GEMINI_FALLBACK_MODELS);
@@ -57,6 +66,8 @@ module.exports = {
   geminiBaseApiKey,
   geminiConventionApiKey,
   geminiScaleApiKey,
+  geminiAuditorApiKey,
+  geminiAuditorModels,
   geminiFallbackModels,
   geminiModelList
 };

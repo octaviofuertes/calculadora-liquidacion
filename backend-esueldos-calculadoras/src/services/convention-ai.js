@@ -1,4 +1,4 @@
-const { geminiModelList } = require("../gemini-config");
+const { geminiModelList, geminiAuditorApiKey, geminiAuditorModels } = require("../gemini-config");
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio: normalizeUniversalConvenio } = require("../models/convenio.model");
 const pdfParse = require("pdf-parse");
 const UNIVERSAL_SCHEMA_VERSION = EXCEL_SCHEMA_VERSION;
@@ -1371,6 +1371,109 @@ function mergeTokenUsage(...usages) {
   }), {});
 }
 
+function buildConventionAuditPrompt(convention) {
+  return [
+    "Actua como auditor senior de liquidacion de haberes y control de CCT de Argentina.",
+    "Audita el convenio ya estructurado. No lo reescribas, no inventes datos y no calcules importes nuevos.",
+    "Controla coherencia entre identificacion, categorias, conceptos, escalas, periodos, modalidades, zonas, naturaleza remunerativa/no remunerativa, bases, formulas, referencias y fuentes CCT/LCT.",
+    "Controla la prioridad documental: una regla especifica del CCT nunca debe ser reemplazada por LCT. La LCT solo debe aparecer como fuente de una regla general ausente en el CCT y cada dato supletorio debe conservar fuente_documento y evidencia. Advierte si hay datos LCT sin trazabilidad o si faltan reglas generales necesarias que no aparecen ni como CCT ni como LCT.",
+    "Marca como BLOQUEANTE solo un problema que impida liquidar de forma segura: escala con importes sin periodo, categoria salarial sin valor, referencia huerfana, importe invalido, concepto liquidable sin naturaleza o formula indispensable indeterminada.",
+    "Usa ADVERTENCIA para inconsistencias que requieren revision humana pero permiten continuar. Usa CONSEJO para mejoras de calidad, trazabilidad o configuracion.",
+    "Cada hallazgo debe indicar una seccion exacta de esta lista: general, ambitos, categorias, conceptos_remunerativos, conceptos_no_remunerativos, conceptos_deducciones, escalas, adicionales.",
+    "rowId debe copiar literalmente el ID existente de la fila afectada (categoria_id, concepto_id, escala_id, adicional_id o ambito_id). Si afecta toda la seccion usa cadena vacia.",
+    "campo debe ser el nombre exacto del campo afectado cuando pueda identificarse. fuente debe ser CCT, CCT / Escala, LCT o Sin fuente.",
+    "Devuelve exclusivamente JSON valido con esta forma exacta:",
+    '{"nivelRiesgo":"ALTO|MEDIO|BAJO","resumen":"string breve","bloqueantes":[{"codigo":"string","mensaje":"string","seccion":"string","rowId":"string","campo":"string","recomendacion":"string","fuente":"string"}],"advertencias":[],"consejos":[],"controles":[{"nombre":"string","estado":"OK|REVISAR|ERROR","detalle":"string"}]}',
+    "Limita cada grupo a 12 hallazgos, elimina duplicados y prioriza los que afectan el calculo.",
+    `CONVENIO ESTRUCTURADO PARA AUDITAR:\n${JSON.stringify(convention)}`
+  ].join("\n");
+}
+
+function normalizeConventionAudit(raw = {}) {
+  const allowedSections = new Set(["general", "ambitos", "categorias", "conceptos_remunerativos", "conceptos_no_remunerativos", "conceptos_deducciones", "escalas", "adicionales"]);
+  const findings = (value) => (Array.isArray(value) ? value : []).slice(0, 12).map((item, index) => ({
+    codigo: String(item?.codigo || `AUDIT-${index + 1}`),
+    mensaje: String(item?.mensaje || item?.detalle || "Hallazgo pendiente de revision."),
+    seccion: allowedSections.has(String(item?.seccion || "")) ? String(item.seccion) : "general",
+    rowId: String(item?.rowId || item?.fila_id || ""),
+    campo: String(item?.campo || ""),
+    recomendacion: String(item?.recomendacion || "Revisar contra la documentacion fuente."),
+    fuente: String(item?.fuente || "Sin fuente")
+  }));
+  const level = String(raw.nivelRiesgo || raw.nivel_riesgo || "MEDIO").toUpperCase();
+  return {
+    nivelRiesgo: ["ALTO", "MEDIO", "BAJO"].includes(level) ? level : "MEDIO",
+    resumen: String(raw.resumen || "Auditoria automatica completada."),
+    bloqueantes: findings(raw.bloqueantes),
+    advertencias: findings(raw.advertencias),
+    consejos: findings(raw.consejos),
+    controles: (Array.isArray(raw.controles) ? raw.controles : []).slice(0, 16).map((item) => ({
+      nombre: String(item?.nombre || "Control"),
+      estado: ["OK", "REVISAR", "ERROR"].includes(String(item?.estado || "").toUpperCase()) ? String(item.estado).toUpperCase() : "REVISAR",
+      detalle: String(item?.detalle || "")
+    })),
+    auditadoPor: "Gemini",
+    auditadoEn: new Date().toISOString()
+  };
+}
+
+async function requestConventionAuditOnce({ apiKey, model, convention }) {
+  const result = await callGeminiJson({
+    apiKey,
+    model,
+    label: "auditoria-convenio",
+    parts: [{ text: buildConventionAuditPrompt(convention) }]
+  });
+  const audit = normalizeConventionAudit(result.parsed);
+  audit.auditadoModelo = model;
+  return { audit, tokenUsage: result.tokenUsage, model };
+}
+
+function isTransientAuditError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return error?.status === 429
+    || error?.status === 503
+    || /(?:429|503|unavailable|high demand|overloaded|resource_exhausted|try again later)/i.test(message);
+}
+
+function waitForAuditRetry(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function requestConventionAudit({ convention }) {
+  const apiKey = geminiAuditorApiKey();
+  const models = geminiAuditorModels();
+  if (!apiKey) {
+    throw new GeminiConventionError("Falta configurar GEMINI_AUDITOR_API_KEY para ejecutar la auditoria.", {
+      status: 503,
+      code: "AUDITOR_API_KEY_MISSING",
+      modelsTried: []
+    });
+  }
+  const errors = [];
+  for (const model of models) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        console.log(`[CCT audit] modelo=${model} intento=${attempt}/3`);
+        return await requestConventionAuditOnce({ apiKey, model, convention });
+      } catch (error) {
+        errors.push({ model, attempt, status: error.status, message: error.message });
+        const retryable = isTransientAuditError(error);
+        console.warn(`[CCT audit] fallo modelo=${model} intento=${attempt}: ${error.message}`);
+        if (!retryable || attempt === 3) break;
+        await waitForAuditRetry(800 * (2 ** (attempt - 1)));
+      }
+    }
+  }
+  const last = errors[errors.length - 1] || {};
+  throw new GeminiConventionError("No se pudo completar la auditoria con los modelos configurados.", {
+    status: last.status || 503,
+    code: "AUDITOR_MODELS_UNAVAILABLE",
+    model: last.model,
+    modelsTried: models
+  });
+}
+
 async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown, cctPdf, scalePdf, draftName, notes }) {
   const conventionResult = await requestConventionStructureOnce({ apiKey, model, cctMarkdown, cctPdf, draftName, notes });
   const baseCategories = conventionResult.parsed?.categorias || [];
@@ -1388,9 +1491,31 @@ async function requestConventionOnce({ apiKey, model, cctMarkdown, scaleMarkdown
       code: "EMPTY_STRUCTURE"
     });
   }
+  let auditResult;
+  try {
+    auditResult = await requestConventionAudit({ convention: parsedConvention });
+  } catch (error) {
+    console.warn(`[CCT audit] No se pudo completar la auditoria IA: ${error.message}`);
+    auditResult = {
+      audit: normalizeConventionAudit({
+        nivelRiesgo: "MEDIO",
+        resumen: "La auditoria automatica no pudo completarse. Se requiere revision humana integral.",
+        advertencias: [{
+          codigo: "AUDITORIA_IA_NO_DISPONIBLE",
+          mensaje: "Gemini no pudo completar la auditoria posterior a la estructuracion.",
+          seccion: "general",
+          recomendacion: "Revisar manualmente todas las tablas antes de aprobar.",
+          fuente: "Sin fuente"
+        }]
+      }),
+      tokenUsage: null
+    };
+  }
+  parsedConvention.auditoriaIA = auditResult.audit;
+  console.log(`[CCT audit] modelo=${auditResult.model || auditResult.audit.auditadoModelo || "manual"} riesgo=${auditResult.audit.nivelRiesgo} bloqueantes=${auditResult.audit.bloqueantes.length} advertencias=${auditResult.audit.advertencias.length} consejos=${auditResult.audit.consejos.length}`);
   return {
     parsedConvention,
-    tokenUsage: mergeTokenUsage(conventionResult.tokenUsage, scaleResult.tokenUsage)
+    tokenUsage: mergeTokenUsage(conventionResult.tokenUsage, scaleResult.tokenUsage, auditResult.tokenUsage)
   };
 }
 
@@ -1477,12 +1602,13 @@ async function retrieveContext(query, chunks, embeddings, apiKey, topK = 15) {
   return scored.slice(0, topK).map(s => s.chunk).join("\n\n---\n\n");
 }
 
-async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes, globalLaborLawPdf }) {
+async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf, scalePdf, scalePdfs = [], draftName, notes, globalLaborLawPdf, globalLaborLawText = "" }) {
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
-  const laborLawStatus = globalLaborLawPdf ? {
+  const hasLaborLaw = !!(globalLaborLawPdf || String(globalLaborLawText || "").trim());
+  const laborLawStatus = hasLaborLaw ? {
     available: true,
-    sourceFileName: globalLaborLawPdf.sourceFileName || "Ley de Trabajo Aplicable",
-    mode: "local_pdf",
+    sourceFileName: globalLaborLawPdf?.sourceFileName || "Ley de Trabajo Aplicable",
+    mode: String(globalLaborLawText || "").trim() ? "edited_text" : "local_pdf",
     used: false,
     readable: false,
     message: "Sintesis/Ley de Trabajo Aplicable recibida para completar faltantes generales."
