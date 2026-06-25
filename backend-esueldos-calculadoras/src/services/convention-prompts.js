@@ -253,9 +253,9 @@ function buildConventionPrompt({ draftName, notes }) {
     "Todo dato que afecte el calculo del sueldo debe ser identificado y clasificado. No omitir conceptos. No resumir articulos. No inventar informacion.",
     "Si una regla no puede determinarse con certeza, escribir: requiere revision manual.",
     "EXTRAER OBLIGATORIAMENTE informacion general: numero de convenio, anio, denominacion, actividad, rama, jurisdiccion, ambito territorial, ambito personal, partes firmantes, fecha de homologacion, vigencia y organismo homologante.",
-    "EXTRAER OBLIGATORIAMENTE todas las categorias laborales: nombre, codigo si existe, descripcion, tareas, nivel jerarquico, rama y modalidad.",
+    "EXTRAER OBLIGATORIAMENTE todas las categorias laborales: nombre, codigo si existe, descripcion, tareas, nivel jerarquico, rama, grupo_nombre, agrupamiento, sector o seccion y modalidad.",
     "Distinguir categoria laboral de concepto/adicional: Adicional, Plus, Premio, Bono, Viatico, Asignacion, Presentismo, Antiguedad, Titulo, Falla/Quebranto de caja, Movilidad, Refrigerio, No Remunerativo, Aporte, Cuota, Fondo, Seguro y Contribucion no son categorias laborales salvo que el documento diga explicitamente que son puestos/categorias.",
-    "Si una misma categoria tiene variantes liquidatorias con valores distintos por modalidad, jornada, alcance, rama o condicion de trabajo, NO las compactes. Deben quedar como categorias separadas con categoria_id diferenciado y modalidad_aplicable clara. Ejemplos genericos: CATEGORIA_X_CON_RETIRO y CATEGORIA_X_SIN_RETIRO; CATEGORIA_X_JORNADA_8H y CATEGORIA_X_JORNADA_6H.",
+    "Si una misma categoria tiene variantes liquidatorias con valores distintos por modalidad, jornada, alcance, rama, grupo_nombre, agrupamiento, sector o condicion de trabajo, NO las compactes. Deben quedar como categorias separadas con categoria_id diferenciado y modalidad_aplicable clara. Ejemplos genericos: CATEGORIA_X_CON_RETIRO y CATEGORIA_X_SIN_RETIRO; CATEGORIA_X_JORNADA_8H y CATEGORIA_X_JORNADA_6H.",
     "NO extraigas tablas salariales completas en esta llamada. Las escalas salariales se extraen en una segunda llamada separada. En esta llamada deja escalas: [] salvo que el texto principal contenga una regla salarial sin tabla separada.",
     "EXTRAER OBLIGATORIAMENTE haberes remunerativos: sueldo basico, antiguedad, presentismo, puntualidad, titulo, funcion, caja, zona, altura, riesgo, horas extras, nocturnidad, feriados, francos trabajados, guardias, disponibilidad, productividad, comisiones y premios.",
     "SUELDO_BASICO es solo salario basico de escala. Sueldo Anual Complementario, SAC o Aguinaldo debe ir como concepto SAC, nunca como SUELDO_BASICO.",
@@ -278,8 +278,8 @@ function buildConventionPrompt({ draftName, notes }) {
     "EXTRAER OBLIGATORIAMENTE presentismo y puntualidad: como se calcula, cuando se pierde, cuando se reduce y base utilizada.",
     "EXTRAER OBLIGATORIAMENTE reglas de liquidacion: divisor mensual, divisor diario, divisor horario, redondeos, minimos garantizados, garantias salariales, compensaciones, absorciones y topes.",
     "Cuando el documento contiene tablas, pensar en matriz: categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada celda monetaria debe convertirse en escalas[].valores[] si es valor salarial, no en texto libre.",
-    "Soportar tablas con categorias en filas y periodos en columnas, periodos en filas y categorias en paginas separadas, grupos/ramas como encabezados intermedios, zonas/regiones como subtitulos, y columnas de basico/no remunerativo/total.",
-    "categorias debe contener solo puestos/cargos/clases/grupos laborales reales. No crear categorias con modalidades puras como con retiro, sin retiro, mismo empleador, distintos empleadores, jornada completa, media jornada, mensualizado o jornalizado; esas van en modalidad_aplicable o escalas[].valores[].modalidad.",
+    "Soportar tablas con categorias en filas y periodos en columnas, periodos en filas y categorias en paginas separadas, grupos/ramas/agrupamientos/sectores/secciones como encabezados intermedios, zonas/regiones como subtitulos, y columnas de basico/no remunerativo/total.",
+    "categorias debe contener solo puestos/cargos/clases/grupos laborales reales. No crear categorias con modalidades puras como con retiro, sin retiro, mismo empleador, distintos empleadores, jornada completa, media jornada, mensualizado o jornalizado; esas van en modalidad_aplicable o escalas[].valores[].modalidad. Si la tabla usa encabezados de rama o grupo, copiarlos en grupo_nombre y rama.",
     "No uses salaryType monthly por defecto. Si el CCT o la escala habla de jornal, dia, changa, valor dia o pago por dia, usa daily y completa day/dayByPeriod. Si habla de hora o valor hora, usa hourly y completa hourly/hourlyByPeriod. Usa monthly solo cuando el basico sea mensual.",
     "Toda formula encontrada debe quedar estructurada en sintaxis matematica clara para que la calculadora pueda leerla, por ejemplo: (sueldo_basico * 0.02) o (valor_hora * 1.5 * horas). No uses 'por ciento' ni 'x', usa '*', '/', '+' y '-'.",
     "Antes de finalizar verificar categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, retenciones, aportes patronales, licencias, jornada laboral, horas extras, formulas de calculo y reglas de liquidacion. Si falta alguno, indicar: Informacion no encontrada en la documentacion analizada.",
@@ -354,7 +354,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
   return [
     "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos, específicamente las escalas salariales.",
     "Debe estar sí o sí el cálculo para cada concepto. Si es extraído de una tabla, indícalo explícitamente. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
-    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto. Si dos categorías tienen el mismo nombre pero pertenecen a ramas, grupos o modalidades distintas, mantenelas separadas y diferenciadas por su rama/grupo/modalidad." + baseCategoriesText + baseConceptsText,
+    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto. Si el documento usa rama, grupo, agrupamiento, sector o seccion, copiá ese texto en grupo_nombre y rama. Si dos categorías tienen el mismo nombre pero pertenecen a ramas, grupos o modalidades distintas, mantenelas separadas y diferenciadas por su rama/grupo/modalidad." + baseCategoriesText + baseConceptsText,
     "[AISLAMIENTO ABSOLUTO] No uses memoria ni otros CCT. Solo el texto y las tablas de esta escala. Si falta un dato usa null o []. No inventes valores.",
     "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques de formato. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
     
@@ -375,7 +375,7 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     
     // Control de Errores Numéricos
     "CRÍTICO: En Argentina, el punto (.) separa miles y la coma (,) separa decimales en documentos legales. Procesa los números bajo este criterio estricto (ej: 860.281 es ochocientos sesenta mil doscientos ochenta y uno).",
-    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones. Si una categoría ya existe en el CCT y vuelve a aparecer en la escala, mantené el mismo categoria_id y no la descartes. Si el nombre se repite en otra rama o grupo, generá una categoría distinta usando rama/grupo como parte de la identidad.",
+    "Asegúrate de que toda categoría que tenga una fila salarial en la tabla tenga su correspondiente 'categoria_id' idéntico en el listado de categorías raíz para evitar desvinculaciones. Si una categoría ya existe en el CCT y vuelve a aparecer en la escala, mantené el mismo categoria_id y no la descartes. Si el nombre se repite en otra rama, grupo, agrupamiento o sector, generá una categoría distinta usando esa rama/grupo como parte de la identidad.",
 
     draftName ? `Etiqueta informativa: ${draftName}.` : "Etiqueta informativa: sin etiqueta.",
     notes ? `Notas informativas: ${notes}.` : "Notas informativas: sin notas."
@@ -384,13 +384,13 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
 
 function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseConcepts = [] }) {
   const baseCategoriesText = baseCategories.length 
-    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs. Si una categoría ya existe en el CCT, volvé a emitirla en la escala con el mismo categoria_id.` 
+    ? `\nCATEGORÍAS PRE-EXTRAÍDAS: ${JSON.stringify(baseCategories.map(c => ({categoria_id: c.categoria_id, categoria_nombre: c.categoria_nombre})))}\nREGLA: Usa los 'categoria_id' de esta lista para mapear equivalencias. Si hay categorías nuevas en la tabla, extráelas también y crea nuevos IDs. Si una categoría ya existe en el CCT, volvé a emitirla en la escala con el mismo categoria_id. Si el documento usa rama, grupo, agrupamiento, sector o seccion, copiá ese texto en grupo_nombre y rama.` 
     : "";
   const baseConceptsText = baseConcepts.length
     ? `\nCONCEPTOS PRE-EXTRAÍDOS: ${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA: Relaciona los adicionales o haberes de la tabla con estos 'concepto_id'. NO extraigas los adicionales como categorías y NO dupliques conceptos. Si el CCT ya trajo la formula_base de un concepto, conservála y usa la escala solo para el valor.`
     : "";
   return [
-    "Extrae SOLO la escala salarial en JSON válido. Sé lo más compacto posible para evitar límites de tokens de salida." + baseCategoriesText + baseConceptsText,
+    "Extrae SOLO la escala salarial en JSON válido. Sé lo más exhaustivo posible para no perder filas ni categorías. No resumas la tabla." + baseCategoriesText + baseConceptsText,
     "Devuelve exclusivamente el contrato JSON sin notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
     "[AISLAMIENTO ABSOLUTO] Usa únicamente el texto de esta escala salarial. Si falta información usa null o [].",
     

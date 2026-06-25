@@ -143,7 +143,7 @@ function categoryRuntimeLabel(category = {}) {
 function categoryIdentityKey(category = {}) {
   return semanticCategoryKey(
     category.categoria_nombre || category.categoria_id,
-    category.grupo_nombre || category.rama || category.convenio_rama || category.modalidad_aplicable || category.categoria_id || categoryVariantLabelFromId(category.categoria_id)
+    category.grupo_nombre || category.rama || category.agrupamiento || category.sector || category.seccion || category.convenio_rama || category.modalidad_aplicable || category.categoria_id || categoryVariantLabelFromId(category.categoria_id)
   );
 }
 
@@ -383,7 +383,7 @@ function normalizeConvenioRoot(source = {}) {
     "a\u00f1o": yearFrom(source),
     denominacion: text(source.denominacion || source.nombre || source.name || source.shortName || source.titulo || (convenio_id ? `CCT ${convenio_id}` : "Convenio pendiente de identificacion documental")),
     actividad: text(source.actividad || source.metadata?.activity),
-    rama: text(source.rama),
+    rama: text(source.rama || source.grupo_nombre || source.agrupamiento || source.sector || source.seccion || source.group || source.branch || source.convenio_rama || source.metadata?.branch),
     jurisdiccion: text(source.jurisdiccion || source.ambito_geografico || source.metadata?.jurisdiction),
     organismo: text(source.organismo || source.organismo_homologante || source.metadata?.homologation?.authority),
     partes_sindicales: text(source.partes_sindicales || source.partes_firmantes_trabajadores || source.metadata?.union),
@@ -414,7 +414,7 @@ function normalizeAmbito(item = {}, convenioId = "", index = 0) {
 
 function normalizeCategoria(item = {}, convenioId = "", index = 0) {
   const name = text(item.categoria_nombre || item.categoria || item.nombre || item.name || item.label);
-  const group = text(item.grupo_nombre || item.rama || item.groupName || item.group);
+  const group = text(item.grupo_nombre || item.rama || item.agrupamiento || item.sector || item.seccion || item.groupName || item.group || item.branch || item.categoryGroup || item.category_group);
   const convenioRama = text(item.convenio_rama || item.convenio?.rama || "");
   const finalGroup = group || convenioRama;
   const id = canonCategoryId(item.categoria_id || item.id || name, name, group || convenioId);
