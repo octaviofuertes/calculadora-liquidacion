@@ -279,7 +279,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "EXTRAER OBLIGATORIAMENTE reglas de liquidacion: divisor mensual, divisor diario, divisor horario, redondeos, minimos garantizados, garantias salariales, compensaciones, absorciones y topes.",
     "Cuando el documento contiene tablas, pensar en matriz: categoria x periodo x concepto x zona x modalidad x unidad_pago. Cada celda monetaria debe convertirse en escalas[].valores[] si es valor salarial, no en texto libre.",
     "Soportar tablas con categorias en filas y periodos en columnas, periodos en filas y categorias en paginas separadas, grupos/ramas/agrupamientos/sectores/secciones como encabezados intermedios, zonas/regiones como subtitulos, y columnas de basico/no remunerativo/total.",
-    "categorias debe contener solo puestos/cargos/clases/grupos laborales reales. No crear categorias con modalidades puras como con retiro, sin retiro, mismo empleador, distintos empleadores, jornada completa, media jornada, mensualizado o jornalizado; esas van en modalidad_aplicable o escalas[].valores[].modalidad. Si la tabla usa encabezados de rama o grupo, copiarlos en grupo_nombre y rama.",
+    "categorias debe contener solo puestos/cargos/clases/grupos laborales reales. Pero si la tabla salarial separa el mismo puesto por modalidad con montos distintos (por ejemplo con retiro / sin retiro, mismo empleador / distintos empleadores, jornada completa / media jornada), crear una categoria por cada variante y reflejar la modalidad en categoria_nombre y modalidad_aplicable. Si la tabla usa encabezados de rama o grupo, copiarlos en grupo_nombre y rama.",
     "No uses salaryType monthly por defecto. Si el CCT o la escala habla de jornal, dia, changa, valor dia o pago por dia, usa daily y completa day/dayByPeriod. Si habla de hora o valor hora, usa hourly y completa hourly/hourlyByPeriod. Usa monthly solo cuando el basico sea mensual.",
     "Toda formula encontrada debe quedar estructurada en sintaxis matematica clara para que la calculadora pueda leerla, por ejemplo: (sueldo_basico * 0.02) o (valor_hora * 1.5 * horas). No uses 'por ciento' ni 'x', usa '*', '/', '+' y '-'.",
     "Antes de finalizar verificar categorias, escalas salariales, haberes remunerativos, haberes no remunerativos, retenciones, aportes patronales, licencias, jornada laboral, horas extras, formulas de calculo y reglas de liquidacion. Si falta alguno, indicar: Informacion no encontrada en la documentacion analizada.",
@@ -320,7 +320,7 @@ function buildConventionCorePrompt({ draftName, notes }) {
     
     // 2. CATEGORÍAS (Estructura de Puestos)
     "CATEGORÍAS: Identifica los puestos reales. Si el CCT divide por Ramas, Sectores o Agrupamientos y los nombres se repiten, genera un 'categoria_id' único y compuesto (ej: 'RAMA_TALLER_OPERARIO_A'). Nunca dejes vacio 'rama' o 'grupo_nombre' si el documento muestra esa separación.",
-    "Variantes de jornada o modalidad (ej: Con Retiro/Sin Retiro, Completa/Media) NO deben duplicar la categoría base salvo que sean puestos jerárquicos distintos. Se diferenciarán luego en las escalas.",
+    "Variantes de jornada o modalidad (ej: Con Retiro/Sin Retiro, Completa/Media) deben duplicarse como categorias separadas cuando la tabla les asigna montos distintos. Se mantienen como categorias distintas para no perder trazabilidad de montos.",
     
     // 3. CONCEPTOS LIQUIDABLES (Reglas y Motores de Cálculo)
     "CONCEPTOS: Identifica todos los conceptos remunerativos, no remunerativos y retenciones mencionados en el texto legal.",
@@ -396,6 +396,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     
     // Directivas de Ultra-Compactación (Exclusivas de esta función)
     "Aplica estrictamente una matriz conceptual compacta: categoría x periodo x concepto x zona x modalidad. Cada importe va en escalas[].valores[].",
+    "Cuando la tabla tenga columnas separadas por hora y mes, devolvé ambas como valores distintos: una fila/objeto con unidad_pago 'hourly' y otra con unidad_pago 'monthly'. No mezcles hora y mes en un solo valor.",
     "Cada ítem de 'valores' debe ser mínimo: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona SOLO si cambia o es estrictamente indispensable para diferenciar la celda.",
     "Usa 'categoria_nombre' únicamente en el array raíz de categorías; NO repitas el nombre de la categoría dentro de cada objeto del vector de valores.",
     "Conceptos permitidos en esta llamada (Máximo 12 ID canónicos): SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, VALOR_HORA, VALOR_DIARIO, VALOR_JORNAL, VIATICO. No crees conceptos por mes (Prohibido BASICO_OCT_25).",
@@ -403,7 +404,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     // Clasificación y Tratamiento Rápido
     "SUELDO_BASICO: tipo_concepto haber, naturaleza remunerativo, base escala_salarial. NO_REMUNERATIVO: tipo_concepto haber, naturaleza no_remunerativo, base escala_salarial.",
     "El Sueldo Anual Complementario (SAC) no es SUELDO_BASICO. Si aparece en la tabla, crear concepto 'SAC' por separado.",
-    "Si una categoría tiene importes separados por modalidad o rama (ej: Con Retiro / Sin Retiro, Rama A / Rama B), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante. Cuando una tabla tenga encabezados de rama/grupo, copiá ese texto en grupo_nombre y rama. No dejes esos campos vacíos si el PDF muestra una separación por rama.",
+    "Si una categoría tiene importes separados por modalidad, rama o subdivisión visible en la tabla (ej: Con Retiro / Sin Retiro, Rama A / Rama B, Personal con retiro / Personal sin retiro), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante. Cuando una tabla tenga encabezados de rama/grupo o subencabezados de modalidad, copiá ese texto en grupo_nombre, rama y modalidad_aplicable. No dejes esos campos vacíos si el PDF muestra una separación por rama o modalidad.",
     "Reconstruye filas partidas del PDF: una categoría seguida por varias líneas de importes numéricos corresponden a la misma fila de la matriz.",
     "Formato numérico argentino obligatorio: el punto (.) son miles y la coma (,) son decimales.",
 

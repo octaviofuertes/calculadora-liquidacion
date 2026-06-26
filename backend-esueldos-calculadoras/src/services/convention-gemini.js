@@ -142,6 +142,14 @@ function pdfFilePart(file, uploadedFile) {
   };
 }
 
+function normalizeGeminiModelName(model) {
+  const raw = String(model || "").trim();
+  if (!raw) return "gemini-2.5-flash";
+  if (/^models\//.test(raw)) return raw.replace(/^models\//, "");
+  if (/^(tunedModels\/|projects\/|publishers\/)/.test(raw)) return raw;
+  return raw;
+}
+
 async function extractPdfText(file) {
   if (!file?.buffer || !String(file.mimeType || "").includes("pdf")) return "";
   try {
@@ -228,28 +236,29 @@ async function buildPdfPartsForGemini({ apiKey, files, role }) {
 async function callGeminiJson({ apiKey, model, parts, label }) {
   const { GoogleGenAI } = require("@google/genai");
   const ai = new GoogleGenAI({ apiKey });
+  const modelName = normalizeGeminiModelName(model);
   const inlineCount = parts.filter((part) => part.inline_data || part.inlineData).length;
   const fileCount = parts.filter((part) => part.file_data || part.fileData).length;
-  console.log(`[Gemini ${label}] files=${fileCount} inline=${inlineCount} partes=${parts.length}`);
+  console.log(`[Gemini ${label}] model=${modelName} files=${fileCount} inline=${inlineCount} partes=${parts.length}`);
   const generationConfig = {
     temperature: 0.08,
     topP: 0.72,
     maxOutputTokens: /escala/i.test(label) ? 24000 : 16000,
     responseMimeType: "application/json"
   };
-  if (/gemini-2\.5/i.test(model)) {
+  if (/gemini-2\.5/i.test(modelName)) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
   try {
     const response = await ai.models.generateContent({
-      model,
+      model: modelName,
       contents: parts,
       config: generationConfig
     });
 
     const text = response.text || "";
     if (!text) {
-      throw new GeminiConventionError(`Gemini no devolvio texto para ${label}.`, { status: 502, model });
+      throw new GeminiConventionError(`Gemini no devolvio texto para ${label}.`, { status: 502, model: modelName });
     }
     const usage = response.usageMetadata || null;
     return {
@@ -266,7 +275,7 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
     }
     throw new GeminiConventionError(error.message, {
       status: error.status || 502,
-      model,
+      model: modelName,
       code: error.status
     });
   }

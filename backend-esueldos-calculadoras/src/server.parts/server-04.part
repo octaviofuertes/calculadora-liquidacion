@@ -64,14 +64,14 @@ app.get("*", (req, res) => {
 
 app.use((error, req, res, next) => {
   logger.error(error);
-  if (multer?.MulterError && error instanceof multer.MulterError) {
+  if (typeof multer !== "undefined" && multer && typeof multer.MulterError === "function" && error instanceof multer.MulterError) {
     const message = error.code === "LIMIT_FILE_COUNT"
       ? "PodÃ©s subir 1 archivo CCT y hasta 5 archivos de escala salarial."
       : error.message || "No se pudo subir el archivo.";
     res.status(400).json({ error: message });
     return;
   }
-  if (error instanceof GeminiScaleError) {
+  if (typeof GeminiScaleError === "function" && error instanceof GeminiScaleError) {
     res.status(error.status || 502).json({
       error: error.message,
       code: error.code,
@@ -80,7 +80,7 @@ app.use((error, req, res, next) => {
     });
     return;
   }
-  if (error instanceof GeminiConventionError) {
+  if (typeof GeminiConventionError === "function" && error instanceof GeminiConventionError) {
     res.status(error.status || 502).json({
       error: error.message,
       code: error.code,
