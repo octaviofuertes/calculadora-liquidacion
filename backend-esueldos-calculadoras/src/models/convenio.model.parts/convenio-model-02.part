@@ -8,7 +8,7 @@ function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
   const rawConceptId = item.concepto_id || item.conceptId || item.concepto || item.nombre_concepto;
   const rawCategoryId = item.categoria_id || item.categoryId || item.categoria || item.categoria_nombre || item.nombre_categoria;
   const normalizedCategoryId = rawCategoryId || item.categoria_nombre || item.categoryName || item.categoria
-    ? canonCategoryId(rawCategoryId, item.categoria_nombre || item.categoryName || item.categoria, item.grupo_nombre || item.rama || item.groupName || item.group)
+    ? canonCategoryId(rawCategoryId, item.categoria_nombre || item.categoryName || item.categoria, item.grupo_nombre || item.rama || item.agrupamiento || item.sector || item.seccion || item.groupName || item.group || item.branch || item.categoryGroup || item.category_group)
     : "";
   return {
     valor_id: text(item.valor_id || item.id || `valor-${index + 1}`),
@@ -16,7 +16,7 @@ function normalizeValor(item = {}, convenioId = "", escalaId = "", index = 0) {
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
     categoria_id: normalizedCategoryId,
     categoria_nombre: text(item.categoria_nombre || item.categoryName || item.categoria),
-    grupo_nombre: text(item.grupo_nombre || item.rama || item.groupName || item.group),
+    grupo_nombre: text(item.grupo_nombre || item.rama || item.agrupamiento || item.sector || item.seccion || item.groupName || item.group || item.branch || item.categoryGroup || item.category_group),
     concepto_id: rawConceptId ? canonConceptId(rawConceptId) : "",
     modalidad: text(item.modalidad || item.modality),
     unidad_pago: text(item.unidad_pago || item.paymentUnit),
@@ -64,8 +64,16 @@ function expandScaleValue(item = {}, convenioId = "", escalaId = "", index = 0) 
 
 function normalizeEscala(item = {}, convenioId = "", index = 0) {
   const escalaId = text(item.escala_id || item.id || `escala-${index + 1}`);
+  const scaleGroup = text(item.grupo_nombre || item.rama || item.agrupamiento || item.sector || item.seccion || item.groupName || item.group || item.branch || item.categoryGroup || item.category_group);
   const valores = array(item.valores || item.values)
-    .flatMap((value, valueIndex) => expandScaleValue(value, convenioId, escalaId, valueIndex))
+    .flatMap((value, valueIndex) => expandScaleValue({
+      ...value,
+      grupo_nombre: text(value.grupo_nombre || value.rama || value.agrupamiento || value.sector || value.seccion || scaleGroup),
+      rama: text(value.rama || value.grupo_nombre || value.agrupamiento || value.sector || value.seccion || scaleGroup),
+      agrupamiento: text(value.agrupamiento || value.grupo_nombre || value.rama || scaleGroup),
+      sector: text(value.sector || value.grupo_nombre || value.rama || scaleGroup),
+      seccion: text(value.seccion || value.grupo_nombre || value.rama || scaleGroup)
+    }, convenioId, escalaId, valueIndex))
     .filter((value) => value.valor !== null && value.valor !== undefined && value.valor !== "");
   const nombreEscala = text(item.nombre_escala || item.nombre || item.name || item.periodo || item.period);
   const periodoDesde = text(item.periodo_desde || item.fecha_desde || item.vigencia_desde || item.desde || item.periodFrom || item.period);
@@ -93,6 +101,8 @@ function normalizeEscala(item = {}, convenioId = "", index = 0) {
     moneda: text(item.moneda || item.currency),
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
+    grupo_nombre: scaleGroup,
+    rama: scaleGroup || text(item.convenio_rama || item.convenio?.rama || ""),
     fuente_documento: text(item.fuente_documento || item.source),
     valores,
     ...traceFields(item)
@@ -184,7 +194,7 @@ function finalizeConvenio(normalized) {
       continue;
     }
     const nameKey = categoryIdentityKey(category);
-    if (categoryByCanonicalName.has(nameKey)) {
+    if (categoryByCanonicalName.has(nameKey) && text(category.grupo_nombre || category.rama || category.convenio_rama).trim()) {
       const existing = categoryByCanonicalName.get(nameKey);
       console.warn(`[CCT normalize] Categoria duplicada por nombre: ${category.categoria_nombre}. ${category.categoria_id} -> ${existing.categoria_id}`);
       categoryIdMap.set(category.categoria_id, existing.categoria_id);
@@ -192,7 +202,11 @@ function finalizeConvenio(normalized) {
       categoryByCanonicalName.set(nameKey, mergeCategoryData(existing, { ...category, categoria_id: canonicalId }, convenioId));
       continue;
     }
-    const finalCategory = { ...category, convenio_id: convenioId, categoria_id: canonicalId };
+    const finalCategory = { ...category, convenio_id: convenioId, categoria_id: canonicalId, convenio_rama: text(category.convenio_rama || normalized.convenio?.rama) };
+    if (categoryByCanonicalName.has(nameKey)) {
+      const suffix = slugId(`${finalCategory.convenio_rama || finalCategory.grupo_nombre || "RAMA"}_${finalCategory.categoria_id || category.categoria_id}`);
+      finalCategory.categoria_id = `${finalCategory.categoria_id}_${suffix}`;
+    }
     categoryIdMap.set(category.categoria_id, canonicalId);
     categoryIdMap.set(canonicalId, canonicalId);
     categoryByCanonicalName.set(nameKey, finalCategory);
@@ -280,7 +294,7 @@ function finalizeConvenio(normalized) {
         ? { ...value, modalidad: text(value.modalidad || value.categoria_nombre || value.categoria_id), categoria_id: "", categoria_nombre: "", grupo_nombre: "" }
         : value;
       const hasValueCategory = text(normalizedValue.categoria_id).trim() || text(normalizedValue.categoria_nombre).trim() || text(normalizedValue.grupo_nombre).trim();
-      const normalizedCategoryId = hasValueCategory ? canonCategoryId(normalizedValue.categoria_id, normalizedValue.categoria_nombre, normalizedValue.grupo_nombre || scale.zona) : "";
+      const normalizedCategoryId = hasValueCategory ? canonCategoryId(normalizedValue.categoria_id, normalizedValue.categoria_nombre, normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona) : "";
       const promotedAdditional = additionalCategoryById.get(normalizedValue.categoria_id) || additionalCategoryById.get(normalizedCategoryId);
       const categoryId = promotedAdditional ? "" : categoryIds.has(normalizedCategoryId)
         ? normalizedCategoryId
@@ -299,7 +313,10 @@ function finalizeConvenio(normalized) {
         categorias.push({
           categoria_id: finalCategoryId,
           convenio_id: convenioId,
-          grupo_nombre: text(normalizedValue.grupo_nombre || scale.zona),
+          grupo_nombre: text(normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona || normalized.convenio?.rama),
+          group: text(normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona || normalized.convenio?.rama),
+          rama: text(normalizedValue.grupo_nombre || scale.rama || scale.grupo_nombre || scale.zona || normalized.convenio?.rama),
+          convenio_rama: text(normalized.convenio?.rama),
           categoria_nombre: text(normalizedValue.categoria_nombre) || finalCategoryId.replace(/_/g, " "),
           descripcion: "",
           tareas_incluidas: "",
@@ -347,12 +364,6 @@ function finalizeConvenio(normalized) {
   }).filter(Boolean), "adicional_id", "adicionales");
 
   const ambitos = (normalized.ambitos || []).map((item) => ({ ...item, convenio_id: convenioId }));
-  const valuedCategoryIds = new Set(escalas.flatMap((scale) => (scale.valores || [])
-    .filter((value) => numericAmount(value.valor) !== null)
-    .map((value) => value.categoria_id)
-    .filter(Boolean)));
-  categorias = categorias.filter((category) => valuedCategoryIds.has(category.categoria_id) || !isGeneralGroupingCategory(category));
-
   return { ...normalized, ambitos, categorias, conceptos, escalas, adicionales };
 }
 
@@ -375,7 +386,12 @@ function normalizeConvenio(input = {}) {
     ? input
     : { convenio: input, ambitos: input.ambitos, categorias: input.categorias, conceptos: input.conceptos, escalas: input.escalas, adicionales: input.adicionales };
   const universal = input.id && input.categories ? input : null;
-  const convenio = normalizeConvenioRoot(source.convenio || universal || input);
+  const inferGroup = (items = []) => array(items).map((item) => text(item.grupo_nombre || item.rama || item.agrupamiento || item.sector || item.seccion || item.groupName || item.group || item.branch || item.categoryGroup || item.category_group || item.convenio_rama)).find(Boolean) || "";
+  const convenio = normalizeConvenioRoot({
+    ...(source.convenio || universal || input),
+    rama: text((source.convenio || universal || input)?.rama || inferGroup(source.categorias) || inferGroup(source.escalas) || inferGroup(array(source.escalas).flatMap((escala) => array(escala.valores))) || inferGroup(array(source.ambitos))
+    )
+  });
   const convenioId = convenio.convenio_id;
   const conceptos = source.conceptos || (universal ? universalConcepts(universal) : []);
   const adicionales = source.adicionales || (universal?.additionals ? Object.values(universal.additionals) : []);

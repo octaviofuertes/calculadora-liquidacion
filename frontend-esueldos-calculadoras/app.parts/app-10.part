@@ -174,10 +174,13 @@
     return (conv.categorias || []).map((category) => {
       const variant = category.modalidad_aplicable || categoryVariantFromId(category.categoria_id);
       const name = String(category.categoria_nombre || category.nombre || "");
+      const group = category.grupo_nombre || category.rama || category.group || category.grupo || category.agrupamiento || category.sector || category.seccion || category.convenio_rama || conv.convenio?.rama || "";
       return {
         ...category,
         categoria_nombre: name,
-        modalidad_aplicable: category.modalidad_aplicable || variant
+        modalidad_aplicable: category.modalidad_aplicable || variant,
+        grupo_nombre: group,
+        rama: category.rama || group
       };
     });
   }

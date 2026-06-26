@@ -133,11 +133,11 @@
 
   function categoryGuideGroups(categories) {
     const rows = Array.isArray(categories) ? categories : [];
-    const hasGroups = rows.some((cat) => cat.group || cat.grupo || cat.categoryGroup || cat.category_group || cat.rama || cat.branch || cat.section || cat.seccion || cat.jornada);
+    const hasGroups = rows.some((cat) => cat.group || cat.grupo || cat.grupo_nombre || cat.convenio_rama || cat.categoryGroup || cat.category_group || cat.rama || cat.branch || cat.section || cat.seccion || cat.jornada);
     if (!hasGroups) return [{ label: "", categories: rows }];
     const groups = new Map();
     rows.forEach((cat) => {
-      const label = cat.group || cat.grupo || cat.categoryGroup || cat.category_group || cat.rama || cat.branch || cat.section || cat.seccion || cat.jornada || "Sin grupo";
+      const label = cat.group || cat.grupo || cat.grupo_nombre || cat.convenio_rama || cat.categoryGroup || cat.category_group || cat.rama || cat.branch || cat.section || cat.seccion || cat.jornada || "Sin grupo";
       if (!groups.has(label)) groups.set(label, []);
       groups.get(label).push(cat);
     });

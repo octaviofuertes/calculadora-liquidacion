@@ -162,9 +162,11 @@ function isAdditionalCategoryLabel(category = {}) {
 
 function isModalityOnlyCategoryLabel(category = {}) {
   const raw = slugId(`${category.categoria_id || ""} ${category.categoria_nombre || ""} ${category.modalidad_aplicable || ""}`);
-  const hasRealJob = /(SUPERVISOR|CASERO|CASERA|ASISTENCIA|CUIDADO|TAREAS_ESPECIFICAS|TAREAS_GENERALES|MAESTRO|OFICIAL|AYUDANTE|DEPENDIENTE|CAJERO|PEON|APRENDIZ|ADMINISTRATIVO|REPARTO|MANTENIMIENTO|OPERARIO|TECNICO|VENDEDOR|CHOFER|ENFERMERO|AUXILIAR|ENCARGADO|JEFE|GERENTE|COORDINADOR|ANALISTA|TELEFONISTA|SOPORTE|MECANICO|MOZO|COCINERO|PORTERO|VIGILADOR|FARMACEUTICO)/.test(raw);
+  const hasRealJob = /(SUPERVISOR|CASERO|CASERA|ASISTENCIA|CUIDADO|TAREAS_ESPECIFICAS|TAREAS_GENERALES|MAESTRO|OFICIAL|AYUDANTE|DEPENDIENTE|CAJERO|PEON|APRENDIZ|ADMINISTRATIVO|REPARTO|MANTENIMIENTO|OPERARIO|OPERADOR|TECNICO|VENDEDOR|CHOFER|ENFERMERO|AUXILIAR|ENCARGADO|JEFE|GERENTE|COORDINADOR|ANALISTA|TELEFONISTA|SOPORTE|MECANICO|MOZO|COCINERO|PORTERO|VIGILADOR|FARMACEUTICO)/.test(raw);
   const hasModality = /(SIN_RETIRO|CON_RETIRO|MISMO_EMPLEADOR|DISTINTOS_EMPLEADORES|JORNADA_COMPLETA|JORNADA_PARCIAL|MEDIA_JORNADA|TIEMPO_COMPLETO|TIEMPO_PARCIAL|MENSUALIZADO|JORNALIZADO|CON_CAMA|SIN_CAMA|FULL_TIME|PART_TIME|TURNO|MODALIDAD|\d+_?HS?|\d+_?HORAS?)/.test(raw);
   const modalityOnly = /^(PERSONAL_)?(TRABAJADORAS?_ES?_)?(SIN_RETIRO|CON_RETIRO|CON_RETIRO_MISMO_EMPLEADOR|CON_RETIRO_DISTINTOS_EMPLEADORES|JORNADA_COMPLETA|JORNADA_PARCIAL|MEDIA_JORNADA|TIEMPO_COMPLETO|TIEMPO_PARCIAL|MENSUALIZADO|JORNALIZADO)(?:_.*EMPLEADOR(?:ES)?)?$/.test(raw);
+  const workerLabel = /(TRABAJADORAS?_ES?|TRABAJADORES?|PERSONAL)/.test(raw);
+  if (workerLabel) return false;
   return modalityOnly || (hasModality && !hasRealJob);
 }
 
@@ -385,7 +387,7 @@ function normalizeConvenioRoot(source = {}) {
     "a\u00f1o": yearFrom(source),
     denominacion: text(source.denominacion || source.nombre || source.name || source.shortName || source.titulo || (convenio_id ? `CCT ${convenio_id}` : "Convenio pendiente de identificacion documental")),
     actividad: text(source.actividad || source.metadata?.activity),
-    rama: text(source.rama),
+    rama: text(source.rama || source.grupo_nombre || source.agrupamiento || source.sector || source.seccion || source.group || source.branch || source.convenio_rama || source.metadata?.branch),
     jurisdiccion: text(source.jurisdiccion || source.ambito_geografico || source.metadata?.jurisdiction),
     organismo: text(source.organismo || source.organismo_homologante || source.metadata?.homologation?.authority),
     partes_sindicales: text(source.partes_sindicales || source.partes_firmantes_trabajadores || source.metadata?.union),
@@ -416,12 +418,17 @@ function normalizeAmbito(item = {}, convenioId = "", index = 0) {
 
 function normalizeCategoria(item = {}, convenioId = "", index = 0) {
   const name = text(item.categoria_nombre || item.categoria || item.nombre || item.name || item.label);
-  const group = text(item.grupo_nombre || item.rama || item.groupName || item.group);
+  const group = text(item.grupo_nombre || item.rama || item.agrupamiento || item.sector || item.seccion || item.groupName || item.group || item.branch || item.categoryGroup || item.category_group);
+  const convenioRama = text(item.convenio_rama || item.convenio?.rama || "");
+  const finalGroup = group || convenioRama;
   const id = canonCategoryId(item.categoria_id || item.id || name, name, group || convenioId);
   return {
     categoria_id: id,
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
-    grupo_nombre: group,
+    grupo_nombre: finalGroup,
+    group: finalGroup,
+    rama: finalGroup,
+    convenio_rama: convenioRama,
     categoria_nombre: name,
     descripcion: text(item.descripcion || item.description || item.detalle),
     tareas_incluidas: text(item.tareas_incluidas || item.tareas || item.includedTasks),
