@@ -19,6 +19,7 @@
     let aiModel = null;
     let aiModelsTried = [];
     let tokenUsage = null;
+    let documentClassification = null;
     let parsedConvention = normalizeConvention({
       convention: {
         name: "",
@@ -123,6 +124,7 @@
           globalLaborLawText
         });
         parsedConvention = result.parsedConvention;
+        documentClassification = result.documentClassification || parsedConvention.clasificacionDocumental || null;
         laborLawStatus = result.laborLawStatus || laborLawStatus;
         tokenUsage = result.tokenUsage || null;
         aiStatus = "ESTRUCTURADO_POR_LEIA";
@@ -238,6 +240,7 @@
       aiModel,
       aiModelsTried,
       laborLawStatus,
+      documentClassification,
       parsedConvention,
       processingPipeline,
       tokenUsage: typeof tokenUsage !== "undefined" ? tokenUsage : null,

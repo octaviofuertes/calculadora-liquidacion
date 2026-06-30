@@ -413,6 +413,47 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
   ].join("\n");
 }
 
+function buildClassifierPrompt() {
+  return [
+    "Actuá como clasificador de documentos laborales argentinos.",
+    "Tu tarea es analizar el archivo cargado y determinar qué tipo de procesamiento corresponde aplicar.",
+    "Clasificá el documento en una de estas opciones:",
+    "1. CCT_CONVENIO: Usar cuando el documento contiene reglas laborales, categorías, jornada, licencias, adicionales, aportes, contribuciones o condiciones generales de trabajo.",
+    "2. ESCALA_SALARIAL: Usar cuando el documento contiene importes salariales, básicos, valores hora, jornales, sumas remunerativas, sumas no remunerativas, anexos salariales, planillas por mes, categoría, rama, zona o jornada.",
+    "3. DOCUMENTO_MIXTO: Usar cuando el documento contiene reglas laborales y también importes salariales o escalas.",
+    "4. HOMOLOGACION_COMPLEMENTARIA: Usar cuando el documento principalmente homologa, registra o aprueba un acuerdo, pero no contiene por sí mismo reglas ni importes suficientes para liquidar.",
+    "5. DOCUMENTO_NO_APTO: Usar cuando el documento no permite extraer información útil para liquidación o está ilegible.",
+    "6. REQUIERE_OCR: Usar cuando el documento es escaneado, imagen, tabla pegada como imagen o el texto no puede extraerse correctamente.",
+    "Reglas:",
+    "- Si hay artículos, jornada, licencias, categorías o adicionales sin montos, usar prompt CCT.",
+    "- Si hay básicos, valores hora, jornales, importes, sumas no remunerativas o porcentajes de aumento, usar prompt escalas.",
+    "- Si hay ambas cosas, usar ambos prompts.",
+    "- Si solo hay una resolución de homologación sin anexo útil, marcar HOMOLOGACION_COMPLEMENTARIA.",
+    "- Si el documento menciona una escala o anexo que no está incluido, marcar que requiere anexo.",
+    "- No inventes datos.",
+    "Devolvé únicamente JSON válido con esta estructura:",
+    JSON.stringify({
+      "clasificacion": "CCT_CONVENIO | ESCALA_SALARIAL | DOCUMENTO_MIXTO | HOMOLOGACION_COMPLEMENTARIA | DOCUMENTO_NO_APTO | REQUIERE_OCR",
+      "usar_prompt_cct": true,
+      "usar_prompt_escalas": true,
+      "requiere_ocr": false,
+      "requiere_revision_humana": false,
+      "motivo": "Descripción de por qué se llegó a esta clasificación.",
+      "datos_detectados": {
+        "numero_cct": "string | null",
+        "actividad": "string | null",
+        "rama": "string | null",
+        "periodos_salariales": ["string"],
+        "hay_tablas": true,
+        "hay_importes": true,
+        "hay_reglas_laborales": true,
+        "hay_anexos_mencionados": true
+      },
+      "accion_recomendada": "Ej: 'Usar prompt de CCT y luego el de escalas' o 'Aplicar OCR y volver a clasificar'."
+    }, null, 2)
+  ].join("\n");
+}
+
 
 module.exports = {
   universalConventionTemplateForPrompt,
@@ -420,5 +461,6 @@ module.exports = {
   buildConventionPrompt,
   buildConventionCorePrompt,
   buildScalePrompt,
-  buildScaleCompactPrompt
+  buildScaleCompactPrompt,
+  buildClassifierPrompt
 };
