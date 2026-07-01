@@ -412,8 +412,8 @@ function normalizeConvenio(input = {}) {
 
 function runtimeSalaryField(value = {}) {
   const raw = text(`${value.modalidad} ${value.unidad_pago} ${value.periodicidad}`).toLowerCase();
-  if (raw.includes("hora")) return "hourly";
-  if (raw.includes("jornal") || raw.includes("dia") || raw.includes("dÃ­a")) return "day";
+  if (raw.includes("hora") || raw.includes("hourly")) return "hourly";
+  if (raw.includes("jornal") || raw.includes("dia") || raw.includes("dÃ­a") || raw.includes("daily")) return "day";
   return "monthly";
 }
 

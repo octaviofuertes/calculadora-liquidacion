@@ -369,6 +369,8 @@
   }
 
   function genericSalaryTypeForCategory(conv, category) {
+    const selected = str("genSalaryType", "");
+    if (["monthly", "daily", "hourly"].includes(selected)) return selected;
     if (category?.salaryType) return category.salaryType;
     if (category?.monthly || Object.keys(category?.monthlyByPeriod || {}).length) return "monthly";
     if (category?.day || Object.keys(category?.dayByPeriod || {}).length) return "daily";

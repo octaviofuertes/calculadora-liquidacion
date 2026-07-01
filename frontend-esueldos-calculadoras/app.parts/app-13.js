@@ -146,7 +146,16 @@
       const visibleDeductions = userFacingConcepts(model.deductions || []);
       const visibleRetentions = userFacingConcepts(model.retentions || []);
       const category = getCategory(conv);
+      const availableSalaryTypes = [
+        (category?.monthly || Object.keys(category?.monthlyByPeriod || {}).length) && "monthly",
+        (category?.day || Object.keys(category?.dayByPeriod || {}).length) && "daily",
+        (category?.hourly || Object.keys(category?.hourlyByPeriod || {}).length) && "hourly"
+      ].filter(Boolean);
       const salaryType = genericSalaryTypeForCategory(conv, category);
+      const salaryTypeField = availableSalaryTypes.length > 1 ? `
+          <label class="field"><span>Forma de liquidacion</span><select id="genSalaryType">
+            ${availableSalaryTypes.map((type) => `<option value="${type}"${type === salaryType ? " selected" : ""}>${type === "monthly" ? "Sueldo mensual" : type === "daily" ? "Por jornal" : "Por hora"}</option>`).join("")}
+          </select></label>` : "";
       const defaultWorkUnits = salaryType === "hourly"
         ? (rules.hourDivisor || rules.overtime?.divisor || 200)
         : (rules.monthDivisor || rules.dayDivisor || 30);
@@ -195,6 +204,7 @@
         <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
         <div class="generic-section-title">Base del convenio IA</div>
         <div class="grid three">
+          ${salaryTypeField}
           ${workUnitsField}
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Hs extra 50%</span><input id="genExtra50" type="number" min="0" step="0.01" value="0"></label>
@@ -212,6 +222,10 @@
         </p>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));
+      $("genSalaryType")?.addEventListener("change", () => {
+        markDirty();
+        renderDynamicFields(conv);
+      });
       return;
     }
 

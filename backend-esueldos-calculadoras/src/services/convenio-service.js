@@ -1,4 +1,4 @@
-const { EXCEL_SCHEMA_VERSION, normalizeConvenio, parseConvenio, parseEscala } = require("../models/convenio.model");
+const { EXCEL_SCHEMA_VERSION, normalizeConvenio, parseConvenio, parseEscala, toRuntimeConvention } = require("../models/convenio.model");
 const { normalizePeriod } = require("../repositories/scale-repository");
 
 const COLLECTION = "convenios";
@@ -192,7 +192,11 @@ function periodOf(scale = {}) {
 function selectScale(scales = [], period) {
   const normalizedPeriod = normalizePeriod(period) || period;
   const sorted = [...scales].sort((a, b) => String(periodOf(b)).localeCompare(String(periodOf(a))));
-  return sorted.find((scale) => !periodOf(scale) || periodOf(scale) <= normalizedPeriod) || sorted[0] || null;
+  return sorted.find((scale) => {
+    const from = periodOf(scale);
+    const to = normalizePeriod(scale.periodo_hasta) || scale.periodo_hasta || "";
+    return (!from || from <= normalizedPeriod) && (!to || to >= normalizedPeriod);
+  }) || null;
 }
 
 function conceptMap(convenio) {
@@ -201,6 +205,13 @@ function conceptMap(convenio) {
 
 function isBasicConcept(concept = {}) {
   return /basico|sueldo basico|salario basico/.test(matchText([concept.concepto_id, concept.codigo, concept.nombre].join(" ")));
+}
+
+function salaryField(concept = {}, value = {}) {
+  const raw = matchText([concept.concepto_id, concept.codigo, concept.nombre, value.unidad_pago, value.periodicidad].join(" "));
+  if (/valor hora|hourly|por hora|\bhora\b/.test(raw)) return "hourly";
+  if (/valor jornal|jornal|daily|por dia|\bdia\b/.test(raw)) return "day";
+  return isBasicConcept(concept) || !value.concepto_id ? "monthly" : "";
 }
 
 function conceptKind(concept = {}) {
@@ -281,11 +292,9 @@ function buildActiveScale(convenio, scale) {
     }
     const row = rows.get(key);
     const valueAmount = numberValue(value.valor);
-    const unit = matchText(value.unidad_pago || value.periodicidad || value.modalidad);
-    if (isBasicConcept(concept) || !value.concepto_id) {
-      if (/hora/.test(unit)) row.hourly = valueAmount;
-      else if (/dia|jornal/.test(unit)) row.day = valueAmount;
-      else row.monthly = valueAmount;
+    const salaryTarget = salaryField(concept, value);
+    if (salaryTarget) {
+      row[salaryTarget] = valueAmount;
     } else if (conceptKind(concept) === "nonRemunerative") {
       row.nonRemunerative = numberValue(row.nonRemunerative) + valueAmount;
     } else if (value.concepto_id && valueAmount) {
@@ -304,57 +313,29 @@ function buildActiveScale(convenio, scale) {
 }
 
 function buildPayrollConvention(convenio, period) {
-  const { rules, ruleConceptIds } = extractRules(convenio.conceptos);
-  const concepts = [];
-  const deductions = [];
-  const retentions = [];
-  const employerContributions = [];
-  (convenio.conceptos || []).forEach((concept) => {
-    if (isBasicConcept(concept)) return;
-    if (ruleConceptIds.has(concept.concepto_id)) return;
-    if (concept.es_liquidable === false) return;
-    const kind = conceptKind(concept);
-    const engineConcept = conceptToEngine(concept, kind);
-    if (kind === "employer") employerContributions.push(engineConcept);
-    else if (kind === "deduction" && /retencion/.test(matchText(concept.tipo_concepto))) retentions.push(engineConcept);
-    else if (kind === "deduction") deductions.push(engineConcept);
-    else concepts.push(engineConcept);
+  const runtime = toRuntimeConvention(convenio);
+  const extractedRules = extractRules(convenio.conceptos || []);
+  const sourceById = new Map((convenio.conceptos || []).map((concept) => [concept.concepto_id, concept]));
+  const grouped = { concepts: [], deductions: [], retentions: [], employerContributions: [] };
+  (runtime.liquidationModel?.concepts || []).forEach((concept) => {
+    const source = sourceById.get(concept.id) || {};
+    const kind = conceptKind(source);
+    if (concept.rowType === "reference" || isBasicConcept(source) || extractedRules.ruleConceptIds.has(concept.id)) return;
+    if (kind === "employer") grouped.employerContributions.push({ ...concept, defaultValue: true });
+    else if (kind === "deduction" && /retencion/.test(matchText(source.tipo_concepto))) grouped.retentions.push({ ...concept, defaultValue: true });
+    else if (kind === "deduction") grouped.deductions.push({ ...concept, defaultValue: true });
+    else grouped.concepts.push({ ...concept, defaultValue: source.defaultValue === true });
   });
-  (convenio.adicionales || []).forEach((additional) => {
-    if (ruleConceptIds.has(additional.concepto_id || additional.adicional_id)) return;
-    concepts.push(conceptToEngine({
-      concepto_id: additional.concepto_id || additional.adicional_id,
-      nombre: additional.nombre,
-      tipo_concepto: additional.tipo || "ADICIONAL",
-      porcentaje: additional.porcentaje,
-      importe_fijo: additional.importe,
-      base_calculo: additional.base_calculo,
-      condicion: additional.condicion
-    }, "remunerative"));
-  });
-  const periods = (convenio.escalas || []).map((esc) => ({
-    id: periodOf(esc) || period,
-    label: esc.nombre_escala || periodOf(esc) || period,
-    validFrom: periodOf(esc) || period
-  }));
-  const zones = extractZones(convenio.escalas);
   return {
-    id: convenio.convenio.convenio_id,
-    name: convenio.convenio.denominacion,
-    shortName: convenio.convenio.numero || convenio.convenio.denominacion,
-    source: convenio.convenio.fuente_documento || convenio.convenio.tipo_norma,
-    type: "monthly",
-    calculationMode: "generic-v1",
-    periods: periods.length ? periods : [{ id: period, label: period, validFrom: period }],
-    zones,
-    categories: (convenio.categorias || []).map((category) => ({
-      id: category.categoria_id,
-      label: category.categoria_nombre || category.grupo_nombre || category.categoria_id,
-      group: category.grupo_nombre || "",
-      monthly: 0
-    })),
-    rules,
-    liquidationModel: { concepts, deductions, retentions, employerContributions }
+    ...runtime,
+    structuredFromConvention: true,
+    rules: { ...(runtime.rules || {}), ...extractedRules.rules },
+    periods: runtime.periods?.length ? runtime.periods : [{ id: period, label: period, validFrom: period }],
+    liquidationModel: {
+      ...(runtime.liquidationModel || {}),
+      rules: { ...(runtime.liquidationModel?.rules || {}), ...extractedRules.rules },
+      ...grouped
+    }
   };
 }
 
@@ -363,8 +344,8 @@ async function buildPayrollDataForConvenio(db, convenioId, period, baseCatalog =
   const scale = selectScale(convenio.escalas || [], period);
   const activeScale = buildActiveScale(convenio, scale);
   if (!activeScale?.parsedScale?.categories?.length) {
-    const error = new Error("No hay escalas.valores suficientes para calcular este convenio");
-    error.status = 400;
+    const error = new Error(`No existe una escala salarial vigente para ${period}`);
+    error.status = 422;
     throw error;
   }
   const payrollConvention = buildPayrollConvention(convenio, period);

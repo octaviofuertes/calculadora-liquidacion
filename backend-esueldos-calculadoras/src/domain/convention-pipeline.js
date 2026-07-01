@@ -2,11 +2,12 @@ const path = require("path");
 
 const SUPPORTED_DOCUMENT_MIME_TYPES = new Set([
   "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "image/jpeg",
   "image/png",
   "image/webp"
 ]);
-const SUPPORTED_DOCUMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".webp"]);
+const SUPPORTED_DOCUMENT_EXTENSIONS = new Set([".pdf", ".docx", ".jpg", ".jpeg", ".png", ".webp"]);
 const LIQUIDATION_FLOW = [
   "validar_convenio",
   "validar_conceptos",
@@ -29,12 +30,13 @@ function analyzeConventionDocuments(documents = []) {
   const files = documents.filter(Boolean).map((document) => {
     const mimeType = document.mimeType || document.mimetype || "";
     const image = mimeType.startsWith("image/");
+    const word = mimeType.includes("wordprocessingml") || path.extname(document.sourceFileName || document.originalname || "").toLowerCase() === ".docx";
     return {
       field: document.field || "",
       sourceFileName: document.sourceFileName || document.originalname || "",
       mimeType,
-      contentType: image ? "visual_image" : "pdf_document",
-      extractionStrategy: image ? "ai_agent_visual_interpretation" : "ai_agent_document_interpretation",
+      contentType: image ? "visual_image" : word ? "word_document" : "pdf_document",
+      extractionStrategy: image ? "ai_agent_visual_interpretation" : word ? "local_text_and_ai_interpretation" : "ai_agent_document_interpretation",
       tableStrategy: "ai_agent_table_interpretation"
     };
   });

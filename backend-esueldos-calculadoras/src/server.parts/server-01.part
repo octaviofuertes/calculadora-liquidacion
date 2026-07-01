@@ -104,7 +104,7 @@ const scaleUpload = multer({
       cb(null, true);
       return;
     }
-    cb(new Error("Solo se aceptan PDF o imagenes JPG, PNG y WEBP de escala salarial."));
+    cb(new Error("Solo se aceptan PDF, DOCX o imagenes JPG, PNG y WEBP de escala salarial."));
   }
 });
 
@@ -124,7 +124,7 @@ const conventionUpload = multer({
       cb(null, true);
       return;
     }
-    cb(new Error("Solo se aceptan PDF o imagenes JPG, PNG y WEBP para estructurar convenios."));
+    cb(new Error("Solo se aceptan PDF, DOCX o imagenes JPG, PNG y WEBP para estructurar convenios."));
   }
 });
 

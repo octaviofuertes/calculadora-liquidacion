@@ -161,6 +161,29 @@ async function extractPdfText(file) {
   }
 }
 
+async function extractDocumentText(file) {
+  if (!file?.buffer) return "";
+  const fileName = String(file.sourceFileName || "").toLowerCase();
+  const mimeType = String(file.mimeType || "").toLowerCase();
+  if (mimeType.includes("pdf") || fileName.endsWith(".pdf")) return extractPdfText(file);
+  if (mimeType.includes("wordprocessingml") || fileName.endsWith(".docx")) {
+    try {
+      const mammoth = require("mammoth");
+      const result = await mammoth.extractRawText({ buffer: file.buffer });
+      return String(result?.value || "").trim();
+    } catch (error) {
+      console.warn(`[DOCX texto] No se pudo leer ${file.sourceFileName || "archivo.docx"}: ${error.message}`);
+    }
+  }
+  return "";
+}
+
+function supportsGeminiDocumentPart(file = {}) {
+  const mimeType = String(file.mimeType || "").toLowerCase();
+  const fileName = String(file.sourceFileName || "").toLowerCase();
+  return mimeType.includes("pdf") || mimeType.startsWith("image/") || /\.(pdf|jpe?g|png|webp)$/.test(fileName);
+}
+
 async function getGeminiFile({ apiKey, name }) {
   const { GoogleGenAI } = require("@google/genai");
   const ai = new GoogleGenAI({ apiKey });
@@ -211,7 +234,7 @@ async function buildPdfPartsForGemini({ apiKey, files, role }) {
   const parts = [];
   let uploaded = 0;
   let inlined = 0;
-  for (const file of (files || []).filter((item) => item?.buffer)) {
+  for (const file of (files || []).filter((item) => item?.buffer && supportsGeminiDocumentPart(item))) {
     parts.push({ text: `${role}. Nombre: ${file.sourceFileName || "archivo.pdf"}` });
     if (useGeminiFilesApi) {
       try {
@@ -243,7 +266,7 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
   const generationConfig = {
     temperature: 0.08,
     topP: 0.72,
-    maxOutputTokens: /escala/i.test(label) ? 24000 : 16000,
+    maxOutputTokens: /clasificador/i.test(label) ? 2000 : (/escala/i.test(label) ? 24000 : 16000),
     responseMimeType: "application/json"
   };
   if (/gemini-2\.5/i.test(modelName)) {
@@ -287,6 +310,7 @@ module.exports = {
   parseGeminiJson,
   extractGeminiText,
   extractPdfText,
+  extractDocumentText,
   pdfInlinePart,
   buildPdfPartsForGemini,
   callGeminiJson

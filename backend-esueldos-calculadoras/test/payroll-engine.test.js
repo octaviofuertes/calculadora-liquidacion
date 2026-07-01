@@ -238,3 +238,76 @@ test("usa reglas no remunerativas de la escala vigente sin exigir una reaprobaci
     "Presentismo no remunerativo"
   ]);
 });
+
+function structuredConvention(overrides = {}) {
+  return {
+    id: "structured",
+    name: "Convenio estructurado",
+    calculationMode: "generic-v1",
+    structuredFromConvention: true,
+    categories: [{ id: "tareas", label: "Tareas", monthly: 100000 }],
+    zones: [{ id: "general", label: "General", coef: 1 }],
+    liquidationModel: {
+      rules: { salaryType: "monthly", seniority: { enabled: false }, nonRemunerativeScale: { enabled: false } },
+      concepts: [], deductions: [], retentions: [], employerContributions: []
+    },
+    ...overrides
+  };
+}
+
+function structuredPayload(inputs = {}) {
+  return {
+    conventionId: "structured",
+    period: "2026-04",
+    categoryId: "tareas",
+    zoneId: "general",
+    employee: { entryDate: "2025-01-01" },
+    inputs
+  };
+}
+
+test("exige modalidad y usa exclusivamente la fila seleccionada", () => {
+  const convention = structuredConvention();
+  const catalog = { constants: {}, conventions: { structured: convention } };
+  const activeScale = { parsedScale: { categories: [
+    { id: "tareas", label: "Tareas", modality: "Con retiro", monthly: 100000 },
+    { id: "tareas", label: "Tareas", modality: "Sin retiro", monthly: 120000 }
+  ] } };
+
+  assert.throws(() => calculatePayroll({ catalog, payload: structuredPayload(), activeScale }), /Selecciona la modalidad/);
+  const result = calculatePayroll({ catalog, payload: structuredPayload({ modality: "Sin retiro" }), activeScale });
+  assert.equal(result.remunerative.find((row) => row.label === "Basico").amount, 120000);
+});
+
+test("permite elegir importe mensual o por hora sin mezclar unidades", () => {
+  const convention = structuredConvention({ categories: [{ id: "tareas", label: "Tareas", monthly: 100000, hourly: 1000 }] });
+  const catalog = { constants: {}, conventions: { structured: convention } };
+  const monthly = calculatePayroll({ catalog, payload: structuredPayload({ genSalaryType: "monthly" }) });
+  const hourly = calculatePayroll({ catalog, payload: structuredPayload({ genSalaryType: "hourly", genWorkUnits: 10 }) });
+  assert.equal(monthly.remunerative.find((row) => row.label === "Basico").amount, 100000);
+  assert.equal(hourly.remunerative.find((row) => row.label === "Basico").amount, 10000);
+  assert.match(hourly.remunerative.find((row) => row.label === "Basico").detail, /1000 x 10/);
+});
+
+test("completa solo deducciones legales ausentes sin duplicar las estructuradas", () => {
+  const convention = structuredConvention({
+    liquidationModel: {
+      rules: { salaryType: "monthly", seniority: { enabled: false }, nonRemunerativeScale: { enabled: false } },
+      concepts: [], retentions: [], employerContributions: [],
+      deductions: [
+        { id: "jubilacion", label: "Jubilacion SIPA", percent: 11, base: "remunerative" },
+        { id: "obra-social", label: "Obra social", percent: 3, base: "obra social" }
+      ]
+    }
+  });
+  const catalog = { constants: { worker: { jubilacion: 0.11, pami: 0.03, obraSocial: 0.03 } }, conventions: { structured: convention } };
+  const result = calculatePayroll({ catalog, payload: structuredPayload() });
+  assert.deepEqual(result.deductions.map((row) => row.label), ["Ley 19.032 (PAMI) 3%", "Jubilacion SIPA", "Obra social"]);
+  assert.equal(result.totals.deductions, 17000);
+});
+
+test("rechaza categoria inexistente en vez de usar la primera", () => {
+  const convention = structuredConvention();
+  const catalog = { constants: {}, conventions: { structured: convention } };
+  assert.throws(() => calculatePayroll({ catalog, payload: { ...structuredPayload(), categoryId: "otra" } }), /Categoria invalida/);
+});

@@ -9,7 +9,8 @@ async function calculateLiquidation(db, body, serializeScale) {
   const catalog = await catalogService.getCatalog(db);
   let runtimeCatalog = catalog;
   let activeScale = serializeScale(await scaleRepository.findActiveScale(db, payload.conventionId, payload.period));
-  if (!catalog.conventions?.[payload.conventionId]) {
+  const catalogConvention = catalog.conventions?.[payload.conventionId];
+  if (!catalogConvention || catalogConvention.excelConvention || catalogConvention.structuredFromConvention) {
     const runtime = await convenioService.buildPayrollDataForConvenio(db, payload.conventionId, payload.period, catalog);
     runtimeCatalog = runtime.catalog;
     activeScale = runtime.activeScale;

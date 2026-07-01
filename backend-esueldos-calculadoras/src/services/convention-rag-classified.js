@@ -1,5 +1,5 @@
 const { geminiModelList } = require("../gemini-config");
-const { GeminiConventionError, extractPdfText, buildPdfPartsForGemini, callGeminiJson } = require("./convention-gemini");
+const { GeminiConventionError, extractDocumentText, buildPdfPartsForGemini, callGeminiJson } = require("./convention-gemini");
 const { buildClassifierPrompt, buildConventionPrompt, buildScalePrompt, buildScaleCompactPrompt } = require("./convention-prompts");
 const { normalizeConvention } = require("./convention-normalizers");
 
@@ -28,9 +28,18 @@ function mergeUnique(left = [], right = [], key) {
   });
 }
 
-function fallbackClassification({ cctPdf, scalePdfs, text }) {
-  const hasCct = Boolean(cctPdf);
-  const hasScale = Boolean(scalePdfs?.length);
+const DOCUMENT_CLASSIFICATIONS = new Set([
+  "CCT_CONVENIO",
+  "ESCALA_SALARIAL",
+  "DOCUMENTO_MIXTO",
+  "HOMOLOGACION_COMPLEMENTARIA",
+  "DOCUMENTO_NO_APTO",
+  "REQUIERE_OCR"
+]);
+
+function fallbackClassification({ file, role, text }) {
+  const hasCct = role === "cctPdf";
+  const hasScale = role === "scalePdf";
   const hasText = Boolean(String(text || "").trim());
   if (!hasText) {
     return {
@@ -40,7 +49,11 @@ function fallbackClassification({ cctPdf, scalePdfs, text }) {
       requiere_ocr: true,
       requiere_revision_humana: true,
       motivo: "No se pudo extraer texto local suficiente; se intenta con Gemini y revision humana.",
+      requiere_escala_anexa: false,
+      confianza_general: "baja",
+      alertas: ["El archivo no contiene texto extraible; debe interpretarse visualmente con Gemini."],
       datos_detectados: {},
+      archivo_fuente: file?.sourceFileName || "",
       accion_recomendada: "Usar Gemini con el archivo original y revisar resultado."
     };
   }
@@ -49,39 +62,109 @@ function fallbackClassification({ cctPdf, scalePdfs, text }) {
     usar_prompt_cct: hasCct || !hasScale,
     usar_prompt_escalas: hasScale,
     requiere_ocr: false,
-    requiere_revision_humana: true,
+    requiere_revision_humana: false,
+    requiere_escala_anexa: false,
+    confianza_general: "media",
+    alertas: [],
     motivo: "Clasificacion tecnica por campos cargados; Gemini clasificador no fue concluyente.",
     datos_detectados: {},
+    archivo_fuente: file?.sourceFileName || "",
     accion_recomendada: "Procesar con los prompts correspondientes y auditar."
   };
 }
 
 async function textFromFiles(files = []) {
   const chunks = await Promise.all(files.map(async (file) => {
-    const text = await extractPdfText(file);
+    const text = await extractDocumentText(file);
     return text ? `## ${file.sourceFileName || "documento"}\n\n${text}` : "";
   }));
   return chunks.filter(Boolean).join("\n\n---\n\n");
 }
 
-async function classifyLaborDocuments({ apiKey, model, files, text, cctPdf, scalePdfs }) {
+function normalizeDocumentClassification(parsed, fallback) {
+  const source = parsed && typeof parsed === "object" ? parsed : {};
+  const clasificacion = DOCUMENT_CLASSIFICATIONS.has(source.clasificacion) ? source.clasificacion : fallback.clasificacion;
+  return {
+    ...fallback,
+    ...source,
+    clasificacion,
+    usar_prompt_cct: typeof source.usar_prompt_cct === "boolean" ? source.usar_prompt_cct : fallback.usar_prompt_cct,
+    usar_prompt_escalas: typeof source.usar_prompt_escalas === "boolean" ? source.usar_prompt_escalas : fallback.usar_prompt_escalas,
+    requiere_ocr: source.requiere_ocr === true || clasificacion === "REQUIERE_OCR",
+    requiere_revision_humana: source.requiere_revision_humana !== false,
+    requiere_escala_anexa: source.requiere_escala_anexa === true,
+    confianza_general: ["alta", "media", "baja"].includes(source.confianza_general) ? source.confianza_general : fallback.confianza_general,
+    alertas: Array.isArray(source.alertas) ? source.alertas.filter(Boolean).map(String) : fallback.alertas
+  };
+}
+
+async function classifySingleDocument({ apiKey, models, file, role, text, documentId }) {
+  const fallback = fallbackClassification({ file, role, text });
   const parts = [
     { text: buildClassifierPrompt() },
-    { text: `Texto extraido para clasificar:\n\n${String(text || "").slice(0, 12000)}` }
+    { text: `Rol declarado por el usuario: ${role === "scalePdf" ? "ESCALA" : "CCT_O_ACTA"}. Clasifica por contenido real, no por este rol.` },
+    { text: `Archivo: ${file?.sourceFileName || "documento"}\n\nTexto extraido para clasificar:\n\n${String(text || "").slice(0, 16000)}` }
   ];
-  const fileParts = await buildPdfPartsForGemini({ apiKey, files, role: "DOCUMENTO A CLASIFICAR" });
+  const fileParts = await buildPdfPartsForGemini({ apiKey, files: [file], role: "DOCUMENTO A CLASIFICAR" });
   parts.push(...fileParts.parts);
-  try {
-    const result = await callGeminiJson({ apiKey, model, label: "clasificador-documental", parts });
-    return {
-      ...fallbackClassification({ cctPdf, scalePdfs, text }),
-      ...(result.parsed || {}),
-      tokenUsage: result.tokenUsage || null
-    };
-  } catch (error) {
-    console.warn(`[CCT classifier] No se pudo clasificar con Gemini: ${error.message}`);
-    return fallbackClassification({ cctPdf, scalePdfs, text });
+  for (const model of models) {
+    try {
+      const result = await callGeminiJson({ apiKey, model, label: "clasificador-documental", parts });
+      return {
+        ...normalizeDocumentClassification(result.parsed, fallback),
+        document_id: documentId,
+        archivo_fuente: file?.sourceFileName || "",
+        rol_declarado: role,
+        tokenUsage: result.tokenUsage || null,
+        modelo: model
+      };
+    } catch (error) {
+      console.warn(`[CCT classifier] ${file?.sourceFileName || "documento"} con ${model}: ${error.message}`);
+      if (!/high demand|unavailable|overloaded|try again later|503/i.test(String(error.message || ""))) break;
+    }
   }
+  return { ...fallback, document_id: documentId, rol_declarado: role, tokenUsage: null, modelo: "fallback-tecnico" };
+}
+
+function aggregateDocumentClassifications(documents) {
+  const useCct = documents.some((item) => item.usar_prompt_cct);
+  const useScale = documents.some((item) => item.usar_prompt_escalas);
+  const requiresOcr = documents.some((item) => item.requiere_ocr);
+  const requiresAnnex = documents.some((item) => item.requiere_escala_anexa);
+  const noApt = documents.length > 0 && documents.every((item) => item.clasificacion === "DOCUMENTO_NO_APTO");
+  const onlyHomologation = documents.length > 0 && documents.every((item) => item.clasificacion === "HOMOLOGACION_COMPLEMENTARIA");
+  const alertas = Array.from(new Set(documents.flatMap((item) => item.alertas || []).filter(Boolean)));
+  if (requiresAnnex) alertas.push("La documentacion menciona una escala o anexo que no fue incluido.");
+  return {
+    clasificacion: noApt ? "DOCUMENTO_NO_APTO" : onlyHomologation ? "HOMOLOGACION_COMPLEMENTARIA" : (useCct && useScale ? "DOCUMENTO_MIXTO" : useScale ? "ESCALA_SALARIAL" : useCct ? "CCT_CONVENIO" : "DOCUMENTO_NO_APTO"),
+    usar_prompt_cct: useCct,
+    usar_prompt_escalas: useScale,
+    requiere_ocr: requiresOcr,
+    requiere_revision_humana: documents.some((item) => item.requiere_revision_humana) || requiresOcr || requiresAnnex || onlyHomologation,
+    requiere_escala_anexa: requiresAnnex,
+    estado_extraccion: noApt || onlyHomologation ? "INSUFICIENTE" : (requiresOcr || requiresAnnex || alertas.length ? "PARCIAL" : "COMPLETO"),
+    confianza_general: noApt || requiresOcr ? "baja" : documents.some((item) => item.confianza_general !== "alta") ? "media" : "alta",
+    motivo: documents.map((item) => `${item.archivo_fuente || "Documento"}: ${item.motivo || item.clasificacion}`).join(" | "),
+    alertas: Array.from(new Set(alertas)),
+    documentos: documents,
+    datos_detectados: {
+      periodos_salariales: Array.from(new Set(documents.flatMap((item) => item.datos_detectados?.periodos_salariales || []))),
+      hay_tablas: documents.some((item) => item.datos_detectados?.hay_tablas),
+      hay_importes: documents.some((item) => item.datos_detectados?.hay_importes),
+      hay_reglas_laborales: documents.some((item) => item.datos_detectados?.hay_reglas_laborales),
+      hay_anexos_mencionados: documents.some((item) => item.datos_detectados?.hay_anexos_mencionados)
+    },
+    accion_recomendada: noApt ? "Solicitar documentacion legible y completa." : onlyHomologation ? "Adjuntar el CCT, acuerdo o anexo salarial homologado." : "Procesar cada archivo con el prompt indicado y someter el resultado a auditoria humana.",
+    tokenUsage: mergeTokenUsage(...documents.map((item) => item.tokenUsage))
+  };
+}
+
+async function classifyLaborDocuments({ apiKey, models, documents }) {
+  const results = [];
+  for (const document of documents) {
+    results.push(await classifySingleDocument({ apiKey, models, ...document }));
+  }
+  return aggregateDocumentClassifications(results);
 }
 
 async function requestConventionExtraction({ apiKey, model, markdownText, files = [], draftName, notes, globalLaborLawPdf, globalLaborLawText }) {
@@ -169,7 +252,27 @@ async function extractConventionFromPdfs({
   const models = providedModels || geminiModelList(model, fallbackModels);
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
   const allFiles = [cctPdf, ...allScalePdfs].filter(Boolean);
-  const combinedText = markdownText || await textFromFiles(allFiles);
+  const inputDocuments = [
+    ...(cctPdf ? [{ file: cctPdf, role: "cctPdf" }] : []),
+    ...allScalePdfs.map((file) => ({ file, role: "scalePdf" }))
+  ];
+  if (!inputDocuments.length && markdownText) {
+    inputDocuments.push({
+      file: { sourceFileName: isScaleExtraction ? "escala-texto-extraido" : "cct-texto-extraido" },
+      role: isScaleExtraction ? "scalePdf" : "cctPdf",
+      text: String(markdownText)
+    });
+  }
+  const preparedDocuments = await Promise.all(inputDocuments.map(async (document, index) => ({
+    ...document,
+    documentId: `documento-${index + 1}`,
+    text: document.text ?? await extractDocumentText(document.file)
+  })));
+  const preparedText = (documents) => documents
+    .filter((document) => document.text)
+    .map((document) => `## ${document.file.sourceFileName || "documento"}\n\n${document.text}`)
+    .join("\n\n---\n\n");
+  const combinedText = markdownText || preparedText(preparedDocuments);
   if (isScaleExtraction) {
     return extractWithFallback({
       apiKey,
@@ -187,14 +290,17 @@ async function extractConventionFromPdfs({
   }
   const documentClassification = await classifyLaborDocuments({
     apiKey,
-    model: models[0],
-    files: allFiles,
-    text: combinedText,
-    cctPdf,
-    scalePdfs: allScalePdfs
+    models,
+    documents: preparedDocuments
   });
   const useCct = documentClassification.usar_prompt_cct !== false;
-  const useScale = documentClassification.usar_prompt_escalas === true || allScalePdfs.length > 0;
+  const useScale = documentClassification.usar_prompt_escalas === true;
+  const classificationFor = (document) => documentClassification.documentos.find((item) => item.document_id === document.documentId);
+  const conventionDocuments = preparedDocuments.filter((document) => {
+    const classification = classificationFor(document);
+    return classification?.usar_prompt_cct || (useCct && classification?.clasificacion === "HOMOLOGACION_COMPLEMENTARIA");
+  });
+  const scaleDocuments = preparedDocuments.filter((document) => classificationFor(document)?.usar_prompt_escalas);
 
   let conventionResult = { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
   let scaleResult = { parsed: normalizeConvention({}, { fallbackName: draftName }), tokenUsage: null };
@@ -205,8 +311,8 @@ async function extractConventionFromPdfs({
       models,
       isScaleExtraction: false,
       payload: {
-        markdownText: combinedText,
-        files: cctPdf ? [cctPdf] : allFiles,
+        markdownText: preparedText(conventionDocuments) || combinedText,
+        files: conventionDocuments.map((document) => document.file),
         draftName,
         notes,
         globalLaborLawPdf,
@@ -216,13 +322,13 @@ async function extractConventionFromPdfs({
   }
 
   if (useScale) {
-    const scaleFiles = allScalePdfs.length ? allScalePdfs : allFiles;
+    const scaleFiles = scaleDocuments.map((document) => document.file);
     scaleResult = await extractWithFallback({
       apiKey,
       models,
       isScaleExtraction: true,
       payload: {
-        markdownText: await textFromFiles(scaleFiles),
+        markdownText: preparedText(scaleDocuments) || await textFromFiles(scaleFiles),
         files: scaleFiles,
         draftName,
         notes,

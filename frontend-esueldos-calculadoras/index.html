@@ -96,12 +96,12 @@
               </label>
               <label class="field">
                 <span>Documento o imagen de escala</span>
-                <input id="scalePdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
+                <input id="scalePdf" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp" multiple>
               </label>
             </div>
 
             <div class="scale-actions">
-              <button class="primary-action" id="uploadScaleBtn" type="submit">Subir y analizar PDF</button>
+              <button class="primary-action" id="uploadScaleBtn" type="submit">Subir y analizar documentos</button>
               <span id="scaleUploadStatus" class="scale-status">Sin cargas en curso.</span>
             </div>
 
@@ -155,7 +155,7 @@
               <span class="scale-icon convention-builder-icon">IA</span>
               <div>
                 <h3>Crear convenio con leIA</h3>
-                <p>La IA lee los PDFs, arma categor&iacute;as, reglas, conceptos, aportes y checklist de auditor&iacute;a.</p>
+                <p>La IA lee PDF, DOCX e im&aacute;genes, arma categor&iacute;as, reglas, conceptos, aportes y checklist de auditor&iacute;a.</p>
               </div>
             </div>
 
@@ -166,7 +166,7 @@
               </label>
               <div class="field convention-file-field">
                 <span>Documento o imagen CCT / acta</span>
-                <input class="convention-file-input" id="builderCctPdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp">
+                <input class="convention-file-input" id="builderCctPdf" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp">
                 <label class="convention-folder-picker" for="builderCctPdf" title="Seleccionar CCT o acta">
                   <span class="convention-folder-icon" aria-hidden="true"></span>
                   <strong>Seleccionar CCT</strong>
@@ -175,7 +175,7 @@
               </div>
               <div class="field convention-file-field">
                 <span>Documento o imagen de escala salarial</span>
-                <input class="convention-file-input" id="builderScalePdf" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple>
+                <input class="convention-file-input" id="builderScalePdf" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp" multiple>
                 <label class="convention-folder-picker" for="builderScalePdf" title="Seleccionar escalas salariales">
                   <span class="convention-folder-icon" aria-hidden="true"></span>
                   <strong>Seleccionar escalas salariales</strong>
