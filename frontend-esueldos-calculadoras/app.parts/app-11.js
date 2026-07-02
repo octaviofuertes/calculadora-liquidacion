@@ -1,4 +1,4 @@
-﻿          <path d="M8 6V4h8v2"></path>
+          <path d="M8 6V4h8v2"></path>
           <path d="M19 6l-1 14H6L5 6"></path>
           <path d="M10 11v5"></path>
           <path d="M14 11v5"></path>
@@ -107,22 +107,24 @@
     };
     if (!salaryRows.length) {
       (base.escalas || []).forEach((scale) => {
-        const copy = { ...scale, valores: [] };
+        const copy = { ...scale, valores: [...(scale.valores || [])] };
         escalas.push(copy);
         scaleByMonth.set(String(scale.periodo_desde || scale.nombre_escala || scale.escala_id || escalas.length), copy);
       });
     }
     const scaleById = new Map(escalas.map((scale) => [scale.escala_id, scale]));
-    (base.escalas || []).forEach((scale) => {
-      (scale.valores || []).forEach((value, index) => {
-        if (isBasicScaleValue(value)) return;
-        if (value.categoria_id && !categoryIds.has(value.categoria_id)) return;
-        const targetScale = scaleById.get(value.escala_id || scale.escala_id) || ensureScale(value.periodicidad || scale.periodo_desde || scale.nombre_escala);
-        const escalaId = targetScale.escala_id;
-        if (!scaleById.has(escalaId)) scaleById.set(escalaId, targetScale);
-        scaleById.get(escalaId).valores.push({ ...value, valor_id: value.valor_id || `valor-extra-${index + 1}`, escala_id: escalaId });
+    if (salaryRows.length) {
+      (base.escalas || []).forEach((scale) => {
+        (scale.valores || []).forEach((value, index) => {
+          if (isBasicScaleValue(value)) return;
+          if (value.categoria_id && !categoryIds.has(value.categoria_id)) return;
+          const targetScale = scaleById.get(value.escala_id || scale.escala_id) || ensureScale(value.periodicidad || scale.periodo_desde || scale.nombre_escala);
+          const escalaId = targetScale.escala_id;
+          if (!scaleById.has(escalaId)) scaleById.set(escalaId, targetScale);
+          scaleById.get(escalaId).valores.push({ ...value, valor_id: value.valor_id || `valor-extra-${index + 1}`, escala_id: escalaId });
+        });
       });
-    });
+    }
     salaryRows.forEach((salary, index) => {
       if (!String(salary.sueldo_base || "").trim()) return;
       const scale = ensureScale(salary.mes, index);

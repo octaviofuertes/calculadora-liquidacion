@@ -329,7 +329,13 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
       res.status(400).json({ error: "El JSON no tiene categorias con importes. Revisalo antes de aprobar." });
       return;
     }
-    const hasScaleValues = convention.escalas.some((scale) => (scale.valores || []).some((value) => value.valor !== null && value.valor !== undefined && value.valor !== ""));
+    const getScaleAmount = (value = {}) => (
+      value.valor ?? value.sueldo_base ?? value.sueldoBase ?? value.importe ?? value.monto ?? value.amount ?? value.value
+    );
+    const hasScaleValues = convention.escalas.some((scale) => (scale.valores || []).some((value) => {
+      const amount = getScaleAmount(value);
+      return amount !== null && amount !== undefined && amount !== "";
+    }));
     if (!hasScaleValues) {
       res.status(400).json({ error: "El JSON no tiene valores salariales en escalas[].valores. Reestructuralo antes de aprobar." });
       return;

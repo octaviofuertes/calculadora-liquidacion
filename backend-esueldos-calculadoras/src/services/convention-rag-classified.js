@@ -1,4 +1,4 @@
-const { geminiModelList } = require("../gemini-config");
+const { geminiModelList, geminiConventionApiKey, geminiConventionModel, geminiScaleApiKey, geminiScaleModel } = require("../gemini-config");
 const { GeminiConventionError, extractDocumentText, buildPdfPartsForGemini, callGeminiJson } = require("./convention-gemini");
 const { buildClassifierPrompt, buildConventionPrompt, buildScalePrompt, buildScaleCompactPrompt } = require("./convention-prompts");
 const { normalizeConvention } = require("./convention-normalizers");
@@ -7,6 +7,52 @@ function hasScaleValues(parsed = {}) {
   return Array.isArray(parsed.escalas) && parsed.escalas.some((scale) => (
     Array.isArray(scale?.valores) && scale.valores.some((value) => value && value.valor !== null && value.valor !== undefined && value.valor !== "")
   ));
+}
+
+function unique(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function detectScaleSignals(text = "") {
+  const raw = String(text || "");
+  const months = unique((raw.match(/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)\b(?:\s*[-/]\s*(?:19|20)?\d{2})?/gi) || []).map((item) => item.replace(/\s+/g, " ").trim().toLowerCase()));
+  const zones = unique((raw.match(/\bzona\s*["']?[a-z0-9\-áéíóúü]+["']?/gi) || []).map((item) => item.replace(/\s+/g, " ").trim().toLowerCase()));
+  const branches = unique(
+    raw.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => {
+        const normalized = line.replace(/[^a-z0-9áéíóúüñ\s\/\-]+/gi, "").trim();
+        return normalized.length >= 6 && normalized.length <= 80 && line === line.toUpperCase() && !/[0-9]/.test(normalized);
+      })
+      .map((line) => line.replace(/\s+/g, " ").trim())
+  );
+  return { months, zones, branches };
+}
+
+function summarizeScaleParsed(parsed = {}) {
+  const scales = Array.isArray(parsed.escalas) ? parsed.escalas : [];
+  const values = scales.flatMap((scale) => Array.isArray(scale.valores) ? scale.valores : []);
+  return {
+    scales: scales.length,
+    values: values.length,
+    zones: unique([].concat(
+      scales.map((scale) => scale.zona),
+      values.map((value) => value.zona)
+    )),
+    months: unique([].concat(
+      scales.map((scale) => scale.nombre_escala || scale.periodo_desde || scale.periodo_hasta),
+      values.map((value) => value.periodicidad || value.vigencia_desde || value.vigencia_hasta)
+    ))
+  };
+}
+
+function detectScaleBlocks(text = "") {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const interesting = lines.filter((line) => /anexo|zona|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic|canalizacion|lineas|instalacion|empalme|personal|oficial|ayudante|sereno/i.test(line));
+  return interesting.slice(0, 18);
 }
 
 function mergeTokenUsage(...usages) {
@@ -191,28 +237,60 @@ async function requestConventionExtraction({ apiKey, model, markdownText, files 
 
 async function requestScaleExtraction({ apiKey, model, markdownText, files = [], draftName, notes, baseCategories = [], baseConcepts = [] }) {
   const fileParts = await buildPdfPartsForGemini({ apiKey, files, role: "ESCALA SALARIAL" });
+  const signals = detectScaleSignals(markdownText || "");
+  const blocks = detectScaleBlocks(markdownText || "");
+  const scaleHint = [
+    signals.months.length ? `Meses detectados en el texto: ${signals.months.join(", ")}.` : "Meses detectados en el texto: ninguno.",
+    signals.zones.length ? `Zonas detectadas en el texto: ${signals.zones.join(", ")}.` : "Zonas detectadas en el texto: ninguna.",
+    signals.branches.length ? `Ramas/bloques detectados en el texto: ${signals.branches.join(" | ")}.` : "Ramas/bloques detectados en el texto: ninguno.",
+    blocks.length ? `Bloques visibles detectados: ${blocks.join(" || ")}.` : "Bloques visibles detectados: ninguno.",
+    "Regla crítica: si el documento muestra más de una zona, no colapses toda la escala en una sola zona."
+  ].join(" ");
+  console.log(`[CCT scale] files=${files.length} parts=${fileParts.parts.length} meses=${signals.months.length} zonas=${signals.zones.length} ramas=${signals.branches.length} bloques=${blocks.length}`);
   let result = await callGeminiJson({
     apiKey,
     model,
     label: "escala-rag",
+    maxOutputTokens: 32000,
     parts: [
-      { text: buildScalePrompt({ draftName, notes, baseCategories, baseConcepts }) },
+      { text: buildScalePrompt({ draftName, notes: [notes, scaleHint].filter(Boolean).join("\n") + (signals.zones.length ? `\nZonas detectadas: ${signals.zones.join(", ")}.` : ""), baseCategories, baseConcepts }) },
       { text: `Texto de la escala:\n\n${markdownText || ""}` },
       ...fileParts.parts
     ]
   });
+  console.log(`[CCT scale] parse inicial escalas=${Array.isArray(result.parsed?.escalas) ? result.parsed.escalas.length : 0} zonas=${summarizeScaleParsed(result.parsed).zones.length} valores=${summarizeScaleParsed(result.parsed).values}`);
   if (!hasScaleValues(result.parsed)) {
     const compactResult = await callGeminiJson({
       apiKey,
       model,
       label: "escala-rag-compact",
+      maxOutputTokens: 32000,
       parts: [
-        { text: buildScaleCompactPrompt({ draftName, notes, baseCategories, baseConcepts }) },
+        { text: buildScaleCompactPrompt({ draftName, notes: [notes, scaleHint].filter(Boolean).join("\n"), baseCategories, baseConcepts }) },
         { text: `Texto de la escala:\n\n${markdownText || ""}` },
         ...fileParts.parts
       ]
     });
     if (hasScaleValues(compactResult.parsed)) result = compactResult;
+  }
+  const parsedSummary = summarizeScaleParsed(result.parsed);
+  if (signals.zones.length > 1 && parsedSummary.zones.length <= 1) {
+    console.log(`[CCT scale] reintento por colapso de zonas. detectadas=${signals.zones.join(", ")} parseadas=${parsedSummary.zones.join(", ") || "ninguna"}`);
+    const zoneStrictResult = await callGeminiJson({
+      apiKey,
+      model,
+      label: "escala-rag-zones",
+      maxOutputTokens: 32000,
+      parts: [
+        { text: buildScaleCompactPrompt({ draftName, notes: `${notes || ""}\n${scaleHint}\nOBLIGATORIO: conservar cada zona por separado y no usar Zona A como valor universal.`, baseCategories, baseConcepts }) },
+        { text: `Encabezados de zona detectados: ${signals.zones.join(", ")}.\n\nTexto de la escala:\n\n${markdownText || ""}` },
+        ...fileParts.parts
+      ]
+    });
+    if (hasScaleValues(zoneStrictResult.parsed) && summarizeScaleParsed(zoneStrictResult.parsed).zones.length >= signals.zones.length) {
+      result = zoneStrictResult;
+      console.log(`[CCT scale] reintento zonas aplicado correctamente. zonas=${summarizeScaleParsed(result.parsed).zones.join(", ")}`);
+    }
   }
   return { ...result, parsed: normalizeConvention(result.parsed, { fallbackName: draftName }) };
 }
@@ -237,6 +315,12 @@ async function extractConventionFromPdfs({
   model,
   fallbackModels = [],
   models: providedModels,
+  cctApiKey,
+  cctModel,
+  cctFallbackModels = [],
+  scaleApiKey,
+  scaleModel,
+  scaleFallbackModels = [],
   cctPdf,
   scalePdf,
   scalePdfs = [],
@@ -249,7 +333,12 @@ async function extractConventionFromPdfs({
   baseCategories = [],
   baseConcepts = []
 }) {
-  const models = providedModels || geminiModelList(model, fallbackModels);
+  const resolvedCctApiKey = cctApiKey || apiKey || geminiConventionApiKey();
+  const resolvedScaleApiKey = scaleApiKey || apiKey || geminiScaleApiKey();
+  const resolvedCctModel = cctModel || model || geminiConventionModel();
+  const resolvedScaleModel = scaleModel || model || geminiScaleModel();
+  const models = providedModels || geminiModelList(resolvedCctModel, cctFallbackModels.length ? cctFallbackModels : fallbackModels);
+  const scaleModels = providedModels || geminiModelList(resolvedScaleModel, scaleFallbackModels.length ? scaleFallbackModels : fallbackModels);
   const allScalePdfs = scalePdfs.length ? scalePdfs : (scalePdf ? [scalePdf] : []);
   const allFiles = [cctPdf, ...allScalePdfs].filter(Boolean);
   const inputDocuments = [
@@ -275,8 +364,8 @@ async function extractConventionFromPdfs({
   const combinedText = markdownText || preparedText(preparedDocuments);
   if (isScaleExtraction) {
     return extractWithFallback({
-      apiKey,
-      models,
+      apiKey: resolvedScaleApiKey,
+      models: scaleModels,
       isScaleExtraction: true,
       payload: {
         markdownText: combinedText,
@@ -307,7 +396,7 @@ async function extractConventionFromPdfs({
 
   if (useCct) {
     conventionResult = await extractWithFallback({
-      apiKey,
+      apiKey: resolvedCctApiKey,
       models,
       isScaleExtraction: false,
       payload: {
@@ -324,8 +413,8 @@ async function extractConventionFromPdfs({
   if (useScale) {
     const scaleFiles = scaleDocuments.map((document) => document.file);
     scaleResult = await extractWithFallback({
-      apiKey,
-      models,
+      apiKey: resolvedScaleApiKey,
+      models: scaleModels,
       isScaleExtraction: true,
       payload: {
         markdownText: preparedText(scaleDocuments) || await textFromFiles(scaleFiles),

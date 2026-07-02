@@ -1,4 +1,4 @@
-﻿    const errors = Array.isArray(payload.errores) ? payload.errores : [];
+    const errors = Array.isArray(payload.errores) ? payload.errores : [];
     if (errors.length) {
       return errors.slice(0, 5).map((item) => [item.path, item.message].filter(Boolean).join(": ") || String(item)).join(" | ");
     }
@@ -264,12 +264,15 @@
       escala_id: value.escala_id || scale.escala_id,
       mes: isPeriodLikeValue(value.periodicidad) ? value.periodicidad : (scale.periodo_desde || scale.nombre_escala || value.periodicidad || ""),
       categoria_id: value.categoria_id,
+      categoria_nombre: value.categoria_nombre || scale.categoria_nombre || "",
       concepto_id: value.concepto_id,
       unidad_pago: value.unidad_pago,
       periodicidad: value.periodicidad,
       valor: value.valor,
       moneda: value.moneda || scale.moneda,
       zona: value.zona || scale.zona,
+      grupo_nombre: value.grupo_nombre || scale.grupo_nombre || "",
+      rama: value.rama || scale.rama || scale.grupo_nombre || "",
       modalidad: value.modalidad || "",
       fuente_documento: value.fuente_documento || scale.fuente_documento || value.source || scale.source || "",
       documento_tipo: value.documento_tipo || scale.documento_tipo || "",
@@ -297,6 +300,7 @@
           mes: value.mes,
           categoria_id: value.categoria_id || category.categoria_id || "",
           categoria_nombre: category.categoria_nombre || value.categoria_nombre || "",
+          rama: value.rama || value.grupo_nombre || category.grupo_nombre || category.rama || "",
           sueldo_base: value.valor,
           unidad_pago: unit,
           concepto_id: value.concepto_id || "SUELDO_BASICO",
@@ -309,6 +313,36 @@
         };
       })
       .sort((a, b) => String(a.mes || "").localeCompare(String(b.mes || "")) || String(a.categoria_nombre || a.categoria_id || "").localeCompare(String(b.categoria_nombre || b.categoria_id || "")));
+  }
+
+  function formatScaleMonthLabel(value = "") {
+    const raw = String(value || "").trim();
+    const iso = raw.match(/^(\d{4})[-/](\d{1,2})(?:[-/]\d{1,2})?$/);
+    if (!iso) return raw || "Sin mes";
+    const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    const monthName = monthNames[Number(iso[2]) - 1];
+    return monthName ? `${monthName} ${iso[1]}` : raw;
+  }
+
+  function normalizeScaleMonthKey(value = "") {
+    const raw = String(value || "").trim().toLowerCase();
+    const iso = raw.match(/^(\d{4})[-/](\d{1,2})(?:[-/]\d{1,2})?$/);
+    if (iso) return `${iso[1]}-${String(Number(iso[2])).padStart(2, "0")}`;
+    return raw || "sin_mes";
+  }
+
+  function scaleRowsByMonth(rows = []) {
+    const groups = new Map();
+    rows.forEach((row) => {
+      const key = normalizeScaleMonthKey(row?.mes);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    });
+    return Array.from(groups.entries()).map(([mes, groupedRows]) => ({
+      mes,
+      label: formatScaleMonthLabel(groupedRows[0]?.mes || mes),
+      rows: groupedRows
+    }));
   }
 
   function isBasicScaleValue(value = {}) {
@@ -419,6 +453,26 @@
     const hasJornal = salaryRowsData.some((row) => row.unidad_pago === "jornal");
     const hasHourly = salaryRowsData.some((row) => row.unidad_pago === "hora");
     const salaryLabel = hasJornal ? "Jornal" : (hasHourly ? "Valor hora" : "Sueldo base");
+    const scaleGroups = scaleRowsByMonth(salaryRowsData);
+    const scaleSections = scaleGroups.length
+      ? scaleGroups.map((group, index) => auditTable(
+        group.label,
+        `escalas_${index + 1}`,
+        "Valores extraídos de la escala para este período.",
+        [
+          { field: "categoria_id", label: "Categoría" },
+          { field: "categoria_nombre", label: "Nombre" },
+          { field: "rama", label: "Rama / grupo" },
+          { field: "concepto_id", label: "Concepto", type: "select", choices: basicConceptChoices },
+          { field: "unidad_pago", label: "Unidad", type: "select", choices: unitChoices },
+          { field: "modalidad", label: "Jornada / Modalidad" },
+          { field: "zona", label: "Zona" },
+          { field: "sueldo_base", label: salaryLabel }
+        ],
+        group.rows,
+        { locked, defaultOrigin: "CCT / Escala", expanded: index === 0 }
+      )).join("")
+      : `<div class="audit-empty-row">Sin datos de escalas extraídos.</div>`;
 
     return `
       ${options.includeGeneral === false ? "" : conventionGeneralEditor(conv, locked)}
@@ -474,16 +528,20 @@
         { field: "condicion", label: "Condición", type: "textarea" },
         { field: "es_liquidable", label: "Liquidable", type: "select", choices: liquidableChoices }
       ], conceptAuditRows(conv, "deducciones"), { locked })}
-      ${auditTable("Escalas salariales", "escalas", "Básicos extraídos por mes y categoría.", [
-        { field: "mes", label: "Mes" },
-        { field: "categoria_id", label: "Categoría" },
-        { field: "categoria_nombre", label: "Nombre" },
-        { field: "concepto_id", label: "Concepto", type: "select", choices: basicConceptChoices },
-        { field: "unidad_pago", label: "Unidad", type: "select", choices: unitChoices },
-        { field: "modalidad", label: "Jornada / Modalidad" },
-        { field: "zona", label: "Zona" },
-        { field: "sueldo_base", label: salaryLabel }
-      ], salaryRowsData, { locked, defaultOrigin: "CCT / Escala" })}
+      <details class="convention-audit-table" data-audit-section="escalas" open>
+        <summary class="convention-audit-table-summary">
+          <span>Escalas salariales</span>
+          <em>${salaryRowsData.length} fila${salaryRowsData.length === 1 ? "" : "s"}</em>
+        </summary>
+        <div class="convention-audit-table-head">
+          <div>
+            <p>Escalas separadas por mes. Tocá cada período para desplegar sus filas.</p>
+          </div>
+        </div>
+        <div class="convention-audit-table-wrap">
+          ${scaleSections}
+        </div>
+      </details>
       ${auditTable("Adicionales y reglas particulares", "adicionales", "Adicionales detectados que pueden alimentar conceptos o controles humanos.", [
         { field: "adicional_id", label: "ID adicional" },
         { field: "concepto_id", label: "Concepto vinculado" },

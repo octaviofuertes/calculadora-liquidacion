@@ -199,6 +199,15 @@ function selectScale(scales = [], period) {
   }) || null;
 }
 
+function selectScales(scales = [], period) {
+  const normalizedPeriod = normalizePeriod(period) || period;
+  return [...scales].filter((scale) => {
+    const from = periodOf(scale);
+    const to = normalizePeriod(scale.periodo_hasta) || scale.periodo_hasta || "";
+    return (!from || from <= normalizedPeriod) && (!to || to >= normalizedPeriod);
+  }).sort((a, b) => String(periodOf(b)).localeCompare(String(periodOf(a))));
+}
+
 function conceptMap(convenio) {
   return new Map((convenio.conceptos || []).map((concept) => [concept.concepto_id, concept]));
 }
@@ -341,8 +350,20 @@ function buildPayrollConvention(convenio, period) {
 
 async function buildPayrollDataForConvenio(db, convenioId, period, baseCatalog = {}) {
   const convenio = await getConvenio(db, convenioId);
-  const scale = selectScale(convenio.escalas || [], period);
-  const activeScale = buildActiveScale(convenio, scale);
+  const scales = selectScales(convenio.escalas || [], period);
+  const activeScales = scales.map((scale) => buildActiveScale(convenio, scale)).filter(Boolean);
+  const mergedCategories = Array.from(new Map(activeScales.flatMap((scale) => (scale.parsedScale?.categories || [])).map((row) => [
+    `${row.id || ""}:${normalizeZone(row.zone || "")}:${matchText(row.modalidad || row.modality || "")}`,
+    row
+  ])).values());
+  const activeScale = activeScales[0] ? {
+    ...activeScales[0],
+    parsedScale: {
+      ...activeScales[0].parsedScale,
+      categories: mergedCategories
+    },
+    zone: activeScales.map((scale) => scale.parsedScale?.categories || []).flatMap((rows) => rows.map((row) => row.zone)).filter(Boolean)
+  } : null;
   if (!activeScale?.parsedScale?.categories?.length) {
     const error = new Error(`No existe una escala salarial vigente para ${period}`);
     error.status = 422;

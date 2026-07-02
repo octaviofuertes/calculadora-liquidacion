@@ -256,7 +256,7 @@ async function buildPdfPartsForGemini({ apiKey, files, role }) {
   return { parts, uploaded, inlined };
 }
 
-async function callGeminiJson({ apiKey, model, parts, label }) {
+async function callGeminiJson({ apiKey, model, parts, label, maxOutputTokens }) {
   const { GoogleGenAI } = require("@google/genai");
   const ai = new GoogleGenAI({ apiKey });
   const modelName = normalizeGeminiModelName(model);
@@ -266,7 +266,9 @@ async function callGeminiJson({ apiKey, model, parts, label }) {
   const generationConfig = {
     temperature: 0.08,
     topP: 0.72,
-    maxOutputTokens: /clasificador/i.test(label) ? 2000 : (/escala/i.test(label) ? 24000 : 16000),
+    maxOutputTokens: Number.isFinite(Number(maxOutputTokens))
+      ? Number(maxOutputTokens)
+      : (/clasificador/i.test(label) ? 2000 : (/escala/i.test(label) ? 24000 : 16000)),
     responseMimeType: "application/json"
   };
   if (/gemini-2\.5/i.test(modelName)) {

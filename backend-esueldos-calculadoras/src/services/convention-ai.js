@@ -4,7 +4,7 @@ const { buildConventionPrompt, buildScalePrompt, buildScaleCompactPrompt } = req
 const { sanitizeGenericConventionCategories } = require("./convention-generic");
 const { classifyDocument } = require("./document-classifier");
 const { extractPdfText } = require("./convention-gemini");
-const { geminiModelList } = require("../gemini-config");
+const { geminiModelList, geminiConventionApiKey, geminiConventionModel, geminiScaleApiKey, geminiScaleModel } = require("../gemini-config");
 const UNIVERSAL_CONVENTION_TEMPLATE = require("../../convenio-universal-template.json");
 
 /**
@@ -60,10 +60,15 @@ async function processAndStructureConvention({ apiKey, model, fallbackModels, cc
 
   // 3. Ejecución de prompts según clasificación
   console.log(`[CCT AI] Clasificación: ${clasificacion}. Usar CCT: ${useCct}, Usar Escalas: ${useScale}`);
-  const models = geminiModelList(model, fallbackModels);
+  const cctApiKey = geminiConventionApiKey() || apiKey;
+  const scaleApiKey = geminiScaleApiKey() || apiKey;
+  const cctModel = geminiConventionModel() || model;
+  const scaleModel = geminiScaleModel() || model;
+  const cctModels = geminiModelList(cctModel, fallbackModels);
+  const scaleModels = geminiModelList(scaleModel, fallbackModels);
 
-  const cctPayload = { apiKey, models, draftName, notes, markdownText: combinedText };
-  const scalePayload = { ...cctPayload, baseCategories: [], baseConcepts: [] };
+  const cctPayload = { apiKey: cctApiKey, models: cctModels, draftName, notes, markdownText: combinedText, model: cctModel, cctApiKey, cctModel, cctFallbackModels: fallbackModels };
+  const scalePayload = { ...cctPayload, apiKey: scaleApiKey, models: scaleModels, model: scaleModel, scaleApiKey, scaleModel, scaleFallbackModels: fallbackModels, baseCategories: [], baseConcepts: [] };
 
   let conventionResult = { parsed: {}, tokenUsage: { totalTokenCount: 0 } };
   let scaleResult = { parsed: {}, tokenUsage: { totalTokenCount: 0 } };

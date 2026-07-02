@@ -109,7 +109,8 @@ function scaleValueVariantText(value = {}) {
     .map(text)
     .map((item) => item.trim())
     .filter(Boolean)
-    .filter((item) => !/^(general|todos|todas|sin especificar|no aplica)$/i.test(item));
+    .filter((item) => !/^(general|todos|todas|sin especificar|no aplica)$/i.test(item))
+    .filter((item) => !/\bzona\b|\baustral\b|\bnorte\b|\bsur\b|\beste\b|\boeste\b/i.test(item));
   return parts.join(" - ");
 }
 
@@ -142,8 +143,9 @@ function categoryRuntimeLabel(category = {}) {
 
 function categoryIdentityKey(category = {}) {
   return semanticCategoryKey(
-    category.grupo_nombre,
-    category.categoria_nombre || category.categoria_id
+    category.grupo_nombre || category.rama || category.convenio_rama,
+    category.categoria_nombre || category.categoria_id,
+    category.modalidad_aplicable
   );
 }
 

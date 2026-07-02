@@ -257,7 +257,7 @@ function buildConventionPrompt({ draftName, notes }) {
     "EXTRAER OBLIGATORIAMENTE informacion general: numero de convenio, anio, denominacion, actividad, rama, jurisdiccion, ambito territorial, ambito personal, partes firmantes, fecha de homologacion, vigencia y organismo homologante.",
     "EXTRAER OBLIGATORIAMENTE todas las categorias laborales: nombre, codigo si existe, descripcion, tareas, nivel jerarquico, rama, grupo_nombre, agrupamiento, sector o seccion y modalidad.",
     "Distinguir categoria laboral de concepto/adicional: Adicional, Plus, Premio, Bono, Viatico, Asignacion, Presentismo, Antiguedad, Titulo, Falla/Quebranto de caja, Movilidad, Refrigerio, No Remunerativo, Aporte, Cuota, Fondo, Seguro y Contribucion no son categorias laborales salvo que el documento diga explicitamente que son puestos/categorias.",
-    "Si una misma categoria tiene variantes liquidatorias con valores distintos por modalidad, jornada, alcance, rama, zonas, grupo_nombre, agrupamiento, sector o condicion de trabajo, NO las compactes. Deben quedar como categorias separadas con categoria_id diferenciado y modalidad_aplicable clara. Ejemplos genericos: CATEGORIA_X_CON_RETIRO y CATEGORIA_X_SIN_RETIRO; CATEGORIA_X_JORNADA_8H y CATEGORIA_X_JORNADA_6H.",
+    "Si una misma categoria tiene variantes liquidatorias con valores distintos por modalidad, jornada, alcance, rama, zonas, grupo_nombre, agrupamiento, sector o condicion de trabajo, NO las compactes. Deben quedar como categorias separadas con categoria_id diferenciado y modalidad_aplicable clara. Muchas veces la rama aparece como titulo de la tabla salarial aunque las categorias sean las mismas: en ese caso tratala como variante y diferenciá la categoria por rama. Ejemplos genericos: CATEGORIA_X_CON_RETIRO y CATEGORIA_X_SIN_RETIRO; CATEGORIA_X_JORNADA_8H y CATEGORIA_X_JORNADA_6H.",
     "NO extraigas tablas salariales completas en esta llamada. Las escalas salariales se extraen en una segunda llamada separada. En esta llamada deja escalas: [] salvo que el texto principal contenga una regla salarial sin tabla separada.",
     "EXTRAER OBLIGATORIAMENTE haberes remunerativos: sueldo basico, antiguedad, presentismo, puntualidad, titulo, funcion, caja, zona, altura, riesgo, horas extras, nocturnidad, feriados, francos trabajados, guardias, disponibilidad, productividad, comisiones y premios.",
     "SUELDO_BASICO es solo salario basico de escala. Sueldo Anual Complementario, SAC o Aguinaldo debe ir como concepto SAC, nunca como SUELDO_BASICO.",
@@ -321,7 +321,7 @@ function buildConventionCorePrompt({ draftName, notes }) {
     "Clasifica el origen del bloque/documento dentro de 'documento_tipo' como: CCT_BASE, ACTA_ACUERDO, HOMOLOGACION, RESOLUCION u OTRO.",
     
     // 2. CATEGORÍAS (Estructura de Puestos)
-    "CATEGORÍAS: Identifica los puestos reales. Si el CCT divide por Ramas, Sectores o Agrupamientos y los nombres se repiten, genera un 'categoria_id' único y compuesto (ej: 'RAMA_TALLER_OPERARIO_A'). Nunca dejes vacio 'rama' o 'grupo_nombre' si el documento muestra esa separación.",
+    "CATEGORÍAS: Identifica los puestos reales. Si el CCT divide por Ramas, Sectores o Agrupamientos y los nombres se repiten, genera un 'categoria_id' único y compuesto (ej: 'RAMA_TALLER_OPERARIO_A'). Muchas veces la rama viene como titulo de una tabla salarial y la categoria es la misma; en ese caso la rama tambien debe diferenciar la categoria. Nunca dejes vacio 'rama' o 'grupo_nombre' si el documento muestra esa separación.",
     "Variantes de jornada o modalidad (ej: Con Retiro/Sin Retiro, Completa/Media) deben duplicarse como categorias separadas cuando la tabla les asigna montos distintos. Se mantienen como categorias distintas para no perder trazabilidad de montos.",
     
     // 3. CONCEPTOS LIQUIDABLES (Reglas y Motores de Cálculo)
@@ -354,17 +354,24 @@ function buildScalePrompt({ draftName, notes, baseCategories = [], baseConcepts 
     ? `\nCONCEPTOS PRE-EXTRAÍDOS DEL CCT:\n${JSON.stringify(baseConcepts.map(c => ({concepto_id: c.concepto_id, nombre: c.nombre})))}\nREGLA PARA HABERES EN TABLAS: Si el archivo de escala cuenta con haberes o adicionales (en cuadros separados o junto a la escala), relaciónalos con los 'concepto_id' de esta lista. Si hay un valor nuevo, extráelo en escalas[].valores[] usando el concepto_id. NO extraigas estos haberes o adicionales como categorías laborales, y NO los dupliques en el array raíz de conceptos. Si la escala repite una formula o adicional ya visto en el CCT, conservá la formula_base del CCT y usá la escala solo para el valor.` 
     : "";
   return [
-    "Actúa como un experto liquidador de sueldos en Argentina. Extrae todos los datos necesarios para una liquidación de sueldos, específicamente las escalas salariales.",
-    "Debe estar sí o sí el cálculo para cada concepto. Si es extraído de una tabla, indícalo explícitamente. NO metas leyes ni texto jurídico, solo lo estrictamente necesario para liquidar sueldos.",
-    "Tu objetivo principal es extraer de forma exhaustiva las categorías vigentes y las tablas de valores salariales publicados en el documento adjunto. Si el documento usa rama, grupo, agrupamiento, sector o seccion, copiá ese texto en grupo_nombre y rama. Si dos categorías tienen el mismo nombre pero pertenecen a ramas, grupos o modalidades distintas, mantenelas separadas y diferenciadas por su rama/grupo/modalidad." + baseCategoriesText + baseConceptsText,
+    "Actuá como extractor de escalas salariales argentinas.",
+    "Tu objetivo principal es extraer únicamente la estructura salarial del documento: categorías mínimas si son necesarias y tablas de valores salariales.",
+    "Si el documento usa rama, grupo, agrupamiento, sector o seccion, copiá ese texto en grupo_nombre y rama. Si dos categorías tienen el mismo nombre pero pertenecen a ramas, grupos o modalidades distintas, mantenelas separadas y diferenciadas por su rama/grupo/modalidad." + baseCategoriesText + baseConceptsText,
     "Si el archivo es escaneado, una imagen o una tabla sin texto extraible, interpreta visualmente todas las paginas y celdas. Si una celda no es legible, no inventes el dato: dejalo null, conserva pagina/evidencia y marca confianza baja.",
     "[AISLAMIENTO ABSOLUTO] No uses memoria ni otros CCT. Solo el texto y las tablas de esta escala. Si falta un dato usa null o []. No inventes valores.",
-    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques de formato. Claves raíz exactas: schemaVersion, convenio, ambitos, categorias, conceptos, escalas, adicionales.",
+    "Devuelve EXCLUSIVAMENTE un objeto JSON válido, compacto, sin texto explicativo ni bloques de formato. Claves raíz exactas: schemaVersion, convenio, categorias, escalas.",
     
     // 4. MATRIZ DE ESCALAS SALARIALES (El núcleo de esta función)
     "Piensa en una matriz multidimensional: Categoría x Periodo (Vigencia) x Concepto x Zona x Modalidad.",
     "Cada celda con valor monetario de la tabla salarial debe generar un elemento puro en el array 'escalas[].valores[]'.",
+    "Si la tabla salarial está organizada por zonas en columnas o subcolumnas (por ejemplo Zona A, Zona B, Zona C, Zona D o Zona E), cada zona debe salir como un valor separado con su propio campo 'zona'. No copies la primera zona a las demás. Las zonas suelen aparecer como títulos de columna, no como categorías nuevas.",
+    "Si la tabla muestra varias zonas para la misma categoría y la misma rama, tratá cada zona como una celda distinta de la matriz. No colapses Zona B/C/D/E en Zona A, aunque el resto de la fila sea igual. Si una zona no es legible, dejala vacía en vez de inventarla.",
     "Extrae de forma exhaustiva TODOS los periodos de vigencia concatenados o segmentados que aparezcan, aunque sean historicos o futuros. Cada mes o tramo debe conservarse como registro separado.",
+    "Si el archivo trae más de un mes o varios bloques de vigencia, creá un registro separado por cada mes o tramo. No mezcles Abril, Mayo y Junio en un mismo objeto ni en un mismo nombre_escala si el PDF los presenta separados.",
+    "Si el encabezado indica mes/año, guardalo tal cual en 'nombre_escala' o 'periodicidad' para que se pueda distinguir cada vigencia. No sustituyas un mes por el primero que aparezca.",
+    "Si el PDF trae un anexo por mes y dentro de cada anexo repite bloques por rama, sector, sección o grupo, tratá cada bloque como una escala independiente de la misma vigencia. Conservá el nombre del bloque como rama o grupo_nombre.",
+    "Si una misma vigencia repite varias secciones con títulos de rama, sector o grupo, no las unifiques: generá escalas separadas para cada bloque y mantené el mes común.",
+    "Si dentro del mismo anexo aparece una 'suma no remunerativa mensual' o un bloque equivalente separado del salario básico, extraelo como otra escala o bloque de valores independiente, también separado por mes y por rama. No lo mezcles con el salario básico.",
     "Identifica correctamente el divisor y la unidad de pago: si la escala expresa valores por hora, setea 'unidad_pago' en 'hourly'; si es jornal, 'daily'; si es sueldo mensual, 'monthly'. No uses 'monthly' por defecto.",
     "Mapear columnas por posición cuando los encabezados estén separados de las filas (ej: si el encabezado dice 'Básico Abril 2026', el importe de esa columna es SUELDO_BASICO para ese periodo).",
     "Si la tabla aparece fragmentada por la lectura del PDF, reconstruye cada fila completa uniendo la línea de categoría con las líneas siguientes de importes hasta la próxima categoría.",
@@ -394,22 +401,29 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
     : "";
   return [
     "Extrae SOLO la escala salarial en JSON válido. Sé lo más exhaustivo posible para no perder filas ni categorías. No resumas la tabla." + baseCategoriesText + baseConceptsText,
-    "Devuelve exclusivamente el contrato JSON sin notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"ambitos\":[],\"categorias\":[],\"conceptos\":[],\"escalas\":[],\"adicionales\":[]}.",
+    "Devuelve exclusivamente el contrato JSON sin notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"categorias\":[],\"escalas\":[]}.",
     "[AISLAMIENTO ABSOLUTO] Usa únicamente el texto de esta escala salarial. Si falta información usa null o [].",
     "Si el texto esta vacio o fragmentado, usa la vision del archivo original para recorrer todas las paginas y reconstruir la tabla. No inventes celdas ilegibles y marca su baja confianza.",
     
     // Directivas de Ultra-Compactación (Exclusivas de esta función)
     "Aplica estrictamente una matriz conceptual compacta: categoría x periodo x concepto x zona x modalidad. Cada importe va en escalas[].valores[].",
     "Conserva todos los periodos documentados, sin limitarte al año actual ni al ultimo mes.",
+    "Si hay varios meses o tramos de vigencia, emití una escala separada por cada uno. No consolidés distintas vigencias en una sola escala.",
+    "Si el PDF tiene anexos repetidos por mes y cada anexo trae bloques por rama, sector o grupo, emití una escala por cada bloque dentro de cada mes. No mezcles bloques distintos ni meses distintos en una sola escala.",
+    "Cuando el documento repita la misma estructura por anexo, rama o bloque titular, conservá ese título en rama/grupo_nombre/alcance de la escala y tratá la zona solo como subdivisión de columnas. No conviertas la zona en categoría.",
+    "Si el anexo incluye una suma no remunerativa mensual separada del básico, emitila como otro bloque de valores del mismo mes y rama, con su propio concepto_id no_remunerativo o equivalente, sin fusionarla con el sueldo básico.",
     "Cuando la tabla tenga columnas separadas por hora y mes, devolvé ambas como valores distintos: una fila/objeto con unidad_pago 'hourly' y otra con unidad_pago 'monthly'. No mezcles hora y mes en un solo valor.",
+    "Si la tabla salarial tiene zonas en columnas o subcolumnas, registrá una fila por zona y llená 'zona' exactamente como aparece en el encabezado. No reutilices Zona A para otras columnas. Las zonas son subdivisiones de la misma categoría, no categorías nuevas.",
+    "Si el OCR hace que varias columnas parezcan iguales, compará el encabezado completo antes de decidir la zona. La zona debe reflejar la columna real del PDF, no un valor repetido por defecto.",
+    "Leé el encabezado de cada columna completo, incluyendo subencabezados como Personal con retiro, Personal sin retiro, Zona A, Zona B, Zona C, Austral u otros equivalentes. No tomes la primera zona visible como valor universal para toda la tabla.",
     "Cada ítem de 'valores' debe ser mínimo: categoria_id, concepto_id, periodicidad, valor. Agrega modalidad, unidad_pago, moneda o zona SOLO si cambia o es estrictamente indispensable para diferenciar la celda.",
     "Usa 'categoria_nombre' únicamente en el array raíz de categorías; NO repitas el nombre de la categoría dentro de cada objeto del vector de valores.",
-    "Conceptos permitidos en esta llamada (Máximo 12 ID canónicos): SUELDO_BASICO, NO_REMUNERATIVO, TOTAL_REMUNERATIVO, VALOR_HORA, VALOR_DIARIO, VALOR_JORNAL, VIATICO. No crees conceptos por mes (Prohibido BASICO_OCT_25).",
+    "No extraigas conceptos, adicionales, ámbitos ni deducciones en esta llamada. Esta función solo arma la malla salarial de categorías y valores.",
     
     // Clasificación y Tratamiento Rápido
     "SUELDO_BASICO: tipo_concepto haber, naturaleza remunerativo, base escala_salarial. NO_REMUNERATIVO: tipo_concepto haber, naturaleza no_remunerativo, base escala_salarial.",
     "El Sueldo Anual Complementario (SAC) no es SUELDO_BASICO. Si aparece en la tabla, crear concepto 'SAC' por separado.",
-    "Si una categoría tiene importes separados por modalidad, rama o subdivisión visible en la tabla (ej: Con Retiro / Sin Retiro, Rama A / Rama B, Personal con retiro / Personal sin retiro), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante. Cuando una tabla tenga encabezados de rama/grupo o subencabezados de modalidad, copiá ese texto en grupo_nombre, rama y modalidad_aplicable. No dejes esos campos vacíos si el PDF muestra una separación por rama o modalidad.",
+    "Si una categoría tiene importes separados por modalidad, rama o subdivisión visible en la tabla (ej: Con Retiro / Sin Retiro, Rama A / Rama B, Personal con retiro / Personal sin retiro), crea categorías con IDs diferenciados en el listado raíz y apunta cada valor a su respectivo ID variante. Cuando una tabla tenga encabezados de rama/grupo o subencabezados de modalidad, copiá ese texto en grupo_nombre, rama y modalidad_aplicable. Muchas tablas usan la rama como titulo general de bloque, no como nombre de categoria: aun asi debe diferenciar la categoria. No dejes esos campos vacíos si el PDF muestra una separación por rama o modalidad.",
     "Reconstruye filas partidas del PDF: una categoría seguida por varias líneas de importes numéricos corresponden a la misma fila de la matriz.",
     "Formato numérico argentino obligatorio: el punto (.) son miles y la coma (,) son decimales.",
 
