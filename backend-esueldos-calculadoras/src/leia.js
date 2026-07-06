@@ -182,7 +182,8 @@ async function askGeminiOnce({ apiKey, model, systemInstruction, message, histor
 async function askGemini({ apiKey, model, fallbackModels, systemInstruction, message, history, maxOutputTokens, temperature }) {
   const models = geminiModelList(model, fallbackModels);
   const errors = [];
-
+  const warnings = [];
+  const details = [];
   for (const currentModel of models) {
     try {
       const answer = await askGeminiOnce({

@@ -17,8 +17,13 @@ function currentPeriod() {
 }
 
 async function findActiveScale(db, conventionId, period) {
+  const [first] = await findActiveScales(db, conventionId, period);
+  return first || null;
+}
+
+async function findActiveScales(db, conventionId, period) {
   const normalized = normalizePeriod(period) || currentPeriod();
-  return db.collection("salaryScales").findOne(
+  return db.collection("salaryScales").find(
     {
       conventionId,
       status: "APROBADA",
@@ -27,12 +32,13 @@ async function findActiveScale(db, conventionId, period) {
     {
       sort: { period: -1, approvedAt: -1, createdAt: -1 }
     }
-  );
+  ).toArray();
 }
 
 module.exports = {
   currentPeriod,
   findActiveScale,
+  findActiveScales,
   normalizePeriod,
   periodIdToMonth
 };

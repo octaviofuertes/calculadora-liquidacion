@@ -1,3 +1,4 @@
+const { ObjectId } = require("mongodb");
 const { EXCEL_SCHEMA_VERSION, toRuntimeConvention } = require("../models/convenio.model");
 
 function stripCatalogConvention(doc) {
@@ -43,7 +44,10 @@ async function listConventions(db) {
 }
 
 async function getConventionById(db, conventionId) {
-  const doc = await db.collection("conventions").findOne({ id: conventionId });
+  const filter = ObjectId.isValid(conventionId)
+    ? { $or: [{ id: conventionId }, { _id: new ObjectId(conventionId) }] }
+    : { id: conventionId };
+  const doc = await db.collection("conventions").findOne(filter);
   return stripCatalogConvention(doc);
 }
 

@@ -325,11 +325,14 @@ function buildPayrollConvention(convenio, period) {
   const runtime = toRuntimeConvention(convenio);
   const extractedRules = extractRules(convenio.conceptos || []);
   const sourceById = new Map((convenio.conceptos || []).map((concept) => [concept.concepto_id, concept]));
-  const grouped = { concepts: [], deductions: [], retentions: [], employerContributions: [] };
+  const grouped = { concepts: [], deductions: [], retentions: [], employerContributions: [], references: [] };
   (runtime.liquidationModel?.concepts || []).forEach((concept) => {
     const source = sourceById.get(concept.id) || {};
-    const kind = conceptKind(source);
-    if (concept.rowType === "reference" || isBasicConcept(source) || extractedRules.ruleConceptIds.has(concept.id)) return;
+    const kind = concept.rowType || conceptKind(source);
+    if (concept.rowType === "reference" || isBasicConcept(source) || extractedRules.ruleConceptIds.has(concept.id)) {
+      grouped.references.push({ ...concept, defaultValue: false });
+      return;
+    }
     if (kind === "employer") grouped.employerContributions.push({ ...concept, defaultValue: true });
     else if (kind === "deduction" && /retencion/.test(matchText(source.tipo_concepto))) grouped.retentions.push({ ...concept, defaultValue: true });
     else if (kind === "deduction") grouped.deductions.push({ ...concept, defaultValue: true });
@@ -358,6 +361,7 @@ async function buildPayrollDataForConvenio(db, convenioId, period, baseCatalog =
   ])).values());
   const activeScale = activeScales[0] ? {
     ...activeScales[0],
+    availableScales: activeScales,
     parsedScale: {
       ...activeScales[0].parsedScale,
       categories: mergedCategories
@@ -375,7 +379,8 @@ async function buildPayrollDataForConvenio(db, convenioId, period, baseCatalog =
       ...baseCatalog,
       conventions: { ...(baseCatalog.conventions || {}), [payrollConvention.id]: payrollConvention }
     },
-    activeScale
+    activeScale,
+    activeScales
   };
 }
 

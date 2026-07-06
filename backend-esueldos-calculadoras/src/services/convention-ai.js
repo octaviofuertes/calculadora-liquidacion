@@ -1,5 +1,6 @@
 const { GeminiConventionError, extractConventionFromPdfs } = require("./convention-rag-classified");
 const { normalizeConvention } = require("./convention-normalizers");
+const { normalizeConventionStructure, ConventionNormalizer } = require("../convention-normalizer");
 const { buildConventionPrompt, buildScalePrompt, buildScaleCompactPrompt } = require("./convention-prompts");
 const { sanitizeGenericConventionCategories } = require("./convention-generic");
 const { classifyDocument } = require("./document-classifier");
@@ -107,6 +108,8 @@ module.exports = {
   GeminiConventionError,
   processAndStructureConvention,
   normalizeConvention,
+  normalizeConventionStructure,
+  ConventionNormalizer,
   buildConventionPrompt,
   buildScalePrompt,
   buildScaleCompactPrompt,

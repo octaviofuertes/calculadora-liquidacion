@@ -274,14 +274,21 @@ function validateConvenioBusinessRules(convenio) {
     ...convenio.adicionales.map((item) => item.convenio_id)
   ].filter(Boolean));
   const details = [];
+  const warnings = [];
   if (convenioIds.size > 1) {
     details.push({ path: "convenio_id", message: `Hay mas de un convenio_id: ${Array.from(convenioIds).join(", ")}` });
   }
   convenio.escalas.forEach((escala) => {
     assertNoDuplicates(escala.valores, "valor_id", `valores de escala ${escala.escala_id}`);
+
     if (escala.valores.length && !scalePeriodIds(escala).length) {
-      details.push({ path: `escalas.${escala.escala_id}`, message: "Escala con importes pero sin periodo detectable" });
+      warnings.push({
+        path: `escalas.${escala.escala_id}`,
+        message: "Escala con importes pero sin período detectable. Revisar manualmente."
+      });
     }
+  
+
     escala.valores.forEach((value) => {
       if (value.categoria_id && !categoryIds.has(value.categoria_id)) {
         console.warn(`[CCT normalize] Escala ${escala.escala_id} apunta a categoria inexistente: ${value.categoria_id}`);

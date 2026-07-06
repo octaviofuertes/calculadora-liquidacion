@@ -1,4 +1,5 @@
 const EXCEL_SCHEMA_VERSION = "esueldos-cct-estructura-excel-v1";
+const { normalizeConventionStructure } = require("../convention-normalizer");
 
 function array(value) {
   return Array.isArray(value) ? value : (value ? [value] : []);
@@ -107,12 +108,16 @@ function normalizeConvention(parsed = {}, { fallbackName = "Convenio generado po
     nombre_escala: text(item.nombre_escala || item.nombre || item.name || item.periodo || item.period),
     periodo_desde: text(item.periodo_desde || item.vigencia_desde || item.desde || item.periodFrom || item.period),
     periodo_hasta: text(item.periodo_hasta || item.vigencia_hasta || item.hasta || item.periodTo),
+    periodicidad: text(item.periodicidad || item.period || item.mes || item.nombre_escala || item.vigencia_desde || item.vigencia_hasta),
+    mes: text(item.mes || item.period || item.periodicidad || item.nombre_escala),
     moneda: text(item.moneda || item.currency),
     alcance: text(item.alcance || item.scope),
     zona: text(item.zona || item.zone),
     grupo_nombre: text(item.grupo_nombre || item.group || item.rama || item.branch),
     rama: text(item.rama || item.group || item.branch),
     fuente_documento: text(item.fuente_documento || item.source),
+    evidencia: text(item.evidencia || item.detail),
+    contexto: text(item.contexto || item.context),
     valores: array(item.valores || item.values || item.importes || item.rows || item.filas || item.items).map((value, valueIndex) => ({
       valor_id: text(value.valor_id || value.id || `valor-${valueIndex + 1}`),
       escala_id: text(value.escala_id || item.id || `escala-${index + 1}`),
@@ -131,6 +136,7 @@ function normalizeConvention(parsed = {}, { fallbackName = "Convenio generado po
       vigencia_hasta: text(value.vigencia_hasta || value.hasta || value.periodo_hasta),
       fuente_documento: text(value.fuente_documento || value.source),
       evidencia: text(value.evidencia || value.detail),
+      contexto: text(value.contexto || value.context),
       pagina: text(value.pagina || value.page),
       confianza: value.confianza ?? value.confidence ?? null
     }))
@@ -157,6 +163,7 @@ function normalizeConvention(parsed = {}, { fallbackName = "Convenio generado po
       vigencia_hasta: text(scale.periodo_hasta || scale.vigencia_hasta),
       fuente_documento: text(scale.fuente_documento || scale.source),
       evidencia: text(scale.evidencia || scale.detail),
+      contexto: text(scale.contexto || scale.context),
       pagina: text(scale.pagina || scale.page),
       confianza: scale.confianza ?? scale.confidence ?? null
     }];
@@ -213,7 +220,7 @@ function normalizeConvention(parsed = {}, { fallbackName = "Convenio generado po
       valores: categorias.flatMap((category) => expandCategoryValues(category, "escala-1"))
     });
   }
-  return {
+  const result = {
     schemaVersion: parsed.schemaVersion || source.schemaVersion || EXCEL_SCHEMA_VERSION,
     convenio: {
       convenio_id: text(source.convenio_id || source.id || source.numero || source.number || fallbackName),
@@ -296,6 +303,11 @@ function normalizeConvention(parsed = {}, { fallbackName = "Convenio generado po
       confianza: item.confianza ?? item.confidence ?? null
     }))
   };
+
+  const { convention: normalizedConvention, warnings, fixes } = normalizeConventionStructure(result);
+  normalizedConvention.normalizationWarnings = warnings;
+  normalizedConvention.normalizationFixes = fixes;
+  return normalizedConvention;
 }
 
 module.exports = { normalizeConvention };

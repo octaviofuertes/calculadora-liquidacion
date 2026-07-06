@@ -6,6 +6,9 @@ function createCategoriesExtractionAgent({ ragService }) {
     name: "CategoriesExtractionAgent",
     instructions: [
       "Extraé categorias laborales, agrupamientos, ramas, clases/letras, descripcion, basicos y escalas salariales.",
+      "La categoria representa unicamente el cargo. Nunca incluyas rama ni zona en el nombre.",
+      "Los encabezados de tabla son contexto (grupo/rama/zona), no categorias.",
+      "Si solo cambia la rama o la zona, reutilizá la misma categoria y diferenciá en la escala salarial.",
       "Si una categoria no tiene basico detectado, usá sueldo_basico 0.",
       "No extraigas conceptos ni licencias."
     ].join("\n"),

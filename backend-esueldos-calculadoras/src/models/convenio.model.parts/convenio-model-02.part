@@ -467,7 +467,20 @@ function runtimeConceptInputType(concept = {}) {
 function toRuntimeConvention(input = {}) {
   const excel = normalizeConvenio(input);
   const id = excel.convenio.convenio_id || text(input.id);
-  const periods = Array.from(new Set(excel.escalas.flatMap(scalePeriodIds).filter(Boolean)))
+  const currentYear = String(new Date().getFullYear());
+  const detectedPeriods = Array.from(new Set(excel.escalas.flatMap(scalePeriodIds).filter(Boolean)));
+  const inferredPeriods = detectedPeriods.length ? detectedPeriods : Array.from(new Set(excel.escalas.flatMap((scale) => periodIds(
+    scale.periodo_desde,
+    scale.periodo_hasta,
+    scale.nombre_escala,
+    scale.periodicidad,
+    scale.mes,
+    scale.evidencia,
+    scale.contexto,
+    scale.fuente_documento,
+    currentYear
+  )).filter(Boolean)));
+  const periods = Array.from(new Set(inferredPeriods.length ? inferredPeriods : [new Date().toISOString().slice(0, 7)]))
     .sort()
     .map((period) => ({ id: period, label: period }));
   const zones = Array.from(new Set(excel.escalas.flatMap((scale) => [

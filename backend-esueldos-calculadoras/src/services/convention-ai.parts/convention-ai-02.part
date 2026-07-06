@@ -285,6 +285,8 @@ async function extractConventionFromPdfs({ apiKey, model, fallbackModels, cctPdf
 
   const models = geminiModelList(model, fallbackModels);
   const errors = [];
+  const warnings = [];
+  const details = [];
   const tryLocalFallback = (aiError) => {
     const context = { draftName, notes, cctPdf, scalePdf, cctText: cctMarkdown, scaleText: scaleMarkdown, aiError };
     const fallback = LOCAL_CONVENTION_FALLBACKS.find((strategy) => strategy.matches(context));

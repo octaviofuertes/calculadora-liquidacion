@@ -387,6 +387,10 @@ async function findActiveScale(conventionId, period) {
   return scaleRepository.findActiveScale(db, conventionId, period);
 }
 
+async function findActiveScales(conventionId, period) {
+  return scaleRepository.findActiveScales(db, conventionId, period);
+}
+
 async function monthTimeline(conventionId) {
   const convention = await getConventionOr404(conventionId);
   const docs = await db.collection("salaryScales").find({ conventionId }).sort({ period: -1, createdAt: -1 }).toArray();
@@ -404,17 +408,19 @@ async function monthTimeline(conventionId) {
   const months = Array.from(monthSet).sort().reverse();
   return Promise.all(months.map(async (period) => {
     const submissions = docs
-      .filter((doc) => doc.period === period)
-      .map(serializeScale);
-    const activeScale = await findActiveScale(conventionId, period);
-    return {
-      period,
-      label: monthLabel(period),
-      activeScale: serializeScale(activeScale),
-      submissions
-    };
-  }));
-}
+        .filter((doc) => doc.period === period)
+        .map(serializeScale);
+      const activeScales = await findActiveScales(conventionId, period);
+      const activeScale = activeScales[0] || null;
+      return {
+        period,
+        label: monthLabel(period),
+        activeScale: serializeScale(activeScale),
+        activeScales: activeScales.map(serializeScale),
+        submissions
+      };
+    }));
+  }
 
 app.use(createHealthRouter({ getDb: getDbInstance }));
 app.use(createCatalogRouter({ getDb: getDbInstance }));

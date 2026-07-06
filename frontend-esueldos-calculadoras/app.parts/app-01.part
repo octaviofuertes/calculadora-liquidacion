@@ -183,7 +183,8 @@
   }
 
   function getPeriod(conv) {
-    return str("period", conv.periods[0].id);
+    const firstPeriod = Array.isArray(conv?.periods) && conv.periods.length ? conv.periods[0].id : currentMonthValue();
+    return str("period", firstPeriod || currentMonthValue());
   }
 
   function getZone(conv) {

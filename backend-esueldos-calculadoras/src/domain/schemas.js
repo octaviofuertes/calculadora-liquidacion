@@ -58,6 +58,7 @@ const liquidationResultSchema = z.object({
   employee: employeeSchema,
   category: z.object({ id: z.string().optional(), label: z.string().optional() }).passthrough(),
   zone: z.object({ id: z.string().optional(), label: z.string().optional() }).passthrough(),
+  activeScales: z.array(z.any()).optional().default([]),
   activeScale: z.any().nullable().optional(),
   remunerative: z.array(moneyRowSchema),
   nonRemunerative: z.array(moneyRowSchema),

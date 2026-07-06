@@ -346,11 +346,13 @@ function buildResult(ctx, rows, warnings = []) {
     employee: ctx.employee,
     category: ctx.category,
     zone: ctx.zone,
+    activeScales: ctx.activeScale?.availableScales || [],
     activeScale: ctx.activeScale ? {
       id: ctx.activeScale.id,
       period: ctx.activeScale.period,
       periodLabel: ctx.activeScale.periodLabel,
-      approvedAt: ctx.activeScale.approvedAt
+      approvedAt: ctx.activeScale.approvedAt,
+      availableScales: ctx.activeScale.availableScales || []
     } : null,
     remunerative: rows.remRows,
     nonRemunerative: rows.noRemRows,

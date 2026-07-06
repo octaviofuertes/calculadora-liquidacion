@@ -235,7 +235,8 @@ async function extractScalesFromPdf({ apiKey, model, fallbackModels, convention,
 
   const models = modelList(model, fallbackModels);
   const errors = [];
-
+  const warnings = [];
+  const details = [];
   for (const currentModel of models) {
     try {
       const result = await requestScaleExtractionOnce({

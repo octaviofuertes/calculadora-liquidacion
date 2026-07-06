@@ -152,7 +152,17 @@ function scalePeriodIds(scale = {}) {
   const range = periodRangeIds(scale.periodo_desde, scale.periodo_hasta);
   return Array.from(new Set([
     ...range,
-    ...periodIds(scale.periodo_desde, scale.periodo_hasta, scale.nombre_escala, scale.escala_id),
+    ...periodIds(
+      scale.periodo_desde,
+      scale.periodo_hasta,
+      scale.nombre_escala,
+      scale.periodicidad,
+      scale.mes,
+      scale.fuente_documento,
+      scale.evidencia,
+      scale.contexto,
+      scale.escala_id
+    ),
     ...array(scale.valores).flatMap((value) => periodIds(
       value.periodicidad,
       value.periodo,
@@ -161,7 +171,10 @@ function scalePeriodIds(scale = {}) {
       value.periodo_desde,
       value.periodo_hasta,
       value.vigencia_desde,
-      value.vigencia_hasta
+      value.vigencia_hasta,
+      value.fuente_documento,
+      value.evidencia,
+      value.contexto
     ))
   ].filter(Boolean)));
 }
