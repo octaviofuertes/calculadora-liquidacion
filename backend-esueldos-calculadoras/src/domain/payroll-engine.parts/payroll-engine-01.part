@@ -1,4 +1,4 @@
-﻿const ENGINE_VERSION = "backend-payroll-engine-v3";
+const ENGINE_VERSION = "backend-payroll-engine-v3";
 
 function amount(value) {
   const number = Number(value);
@@ -453,13 +453,17 @@ function calcGeneric(ctx) {
             : ["categoryday", "valor dia", "jornal"].includes(baseKey) ? categoryDay : basic;
     const usesQuantity = genericConceptUsesQuantity(concept);
     const unitAmount = genericConceptUnitAmount(ctx, concept, period);
+    const isNumberInput = concept.inputType === "number" || usesQuantity;
+    const pct = Number(concept.percent) > 0 ? Number(concept.percent) : (isNumberInput ? enabled : 0);
+    const multiplier = Number(concept.percent) > 0 ? enabled : 1;
+
     let value = usesQuantity
       ? unitAmount * enabled
       : concept.calculation === "fixed"
         ? (periodAmountValue(concept, period, ["amountByPeriod", "amountPorPeriodo"]) ?? amount(concept.amount)) * enabled
         : concept.calculation === "amountPerUnit"
           ? unitAmount * enabled
-          : base * ((Number(concept.percent || 0) || 0) / 100) * enabled;
+          : base * (pct / 100) * multiplier;
     if (!value) {
       const scaleVal = activeCatRow?.conceptValues?.[concept.id] ?? periodAmountValue(ctx.category, period, [`concept_${concept.id}`]);
       if (scaleVal) value = scaleVal * monthPct * enabled;
@@ -467,7 +471,7 @@ function calcGeneric(ctx) {
     const rowType = genericConceptRowType(concept);
     const detail = usesQuantity ? `${unitAmount} x ${enabled}`
       : concept.calculation === "fixed" ? `${value} x 1`
-        : `${base} x ${Number(concept.percent || 0) || 0} / 100 x ${enabled}`;
+        : `${base} x ${pct} / 100 x ${multiplier}`;
     addRow(rowType === "nonRemunerative" ? rows.noRemRows : rowType === "deduction" ? rows.deductionRows : rows.remRows, concept.label, value, detail);
   });
   if (inputBool(ctx.inputs, "genNonRemScale", rules.nonRemunerativeScale?.enabled !== false)) {

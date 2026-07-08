@@ -1,7 +1,7 @@
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio, parseConvenio, parseEscala, toRuntimeConvention } = require("../models/convenio.model");
 const { normalizePeriod } = require("../repositories/scale-repository");
 
-const COLLECTION = "convenios";
+const COLLECTION = "conventions";
 
 function collection(db) {
   return db.collection(COLLECTION);
@@ -22,7 +22,21 @@ function notFound() {
 function numberValue(value) {
   if (value === null || value === undefined || value === "") return 0;
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  const parsed = Number(String(value).replace(/\$/g, "").replace(/\./g, "").replace(",", ".").trim());
+  const raw = String(value).trim().replace(/\\s/g, "").replace(/\\$/g, "");
+  const lastComma = raw.lastIndexOf(",");
+  const lastDot = raw.lastIndexOf(".");
+  let cleaned = raw;
+  if (lastComma >= 0 && lastDot >= 0) {
+    const decimalSep = lastComma > lastDot ? "," : ".";
+    const thousandsSep = decimalSep === "," ? "." : ",";
+    cleaned = raw.replace(new RegExp(`\\\\${thousandsSep}`, "g"), "").replace(decimalSep, ".");
+  } else if (lastComma >= 0) {
+    cleaned = /^\\d{1,3}(,\\d{3})+$/.test(raw) ? raw.replace(/,/g, "") : raw.replace(",", ".");
+  } else if (lastDot >= 0) {
+    cleaned = /^\\d{1,3}(\\.\\d{3})+$/.test(raw) ? raw.replace(/\\./g, "") : raw;
+  }
+  cleaned = cleaned.replace(/[^0-9.-]/g, "");
+  const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 

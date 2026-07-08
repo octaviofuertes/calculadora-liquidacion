@@ -1,4 +1,4 @@
-﻿const { z } = require("zod");
+const { z } = require("zod");
 const { periodIds, scalePeriodIds } = require("../domain/conventions/periods");
 
 const EXCEL_SCHEMA_VERSION = "esueldos-cct-estructura-excel-v1";
@@ -443,19 +443,19 @@ function normalizeCategoria(item = {}, convenioId = "", index = 0) {
 
 function normalizeConcepto(item = {}, convenioId = "", index = 0, forcedType = "") {
   const nombre = text(item.nombre || item.name || item.label);
-  const concepto_id = canonConceptId(item.concepto_id || item.id || `concepto-${index + 1}`, nombre);
+  const concepto_id = canonConceptId(item.concepto_id || item.codigo_interno || item.id || `concepto-${index + 1}`, nombre);
   const defaults = conceptDefaults({ ...item, concepto_id, nombre });
   return {
     concepto_id,
     convenio_id: canonConvenioId(item.convenio_id || convenioId),
-    codigo: text(item.codigo || item.code),
+    codigo: text(item.codigo || item.codigo_interno || item.code),
     nombre: nombre || defaults.nombre,
-    tipo_concepto: text(item.tipo_concepto || item.type || forcedType || defaults.tipo_concepto),
+    tipo_concepto: text(item.tipo_concepto || item.tipo || item.type || forcedType || defaults.tipo_concepto),
     naturaleza: text(item.naturaleza || item.nature || item.rowType || defaults.naturaleza),
     unidad_calculo: text(item.unidad_calculo || item.unit || item.inputType || defaults.unidad_calculo),
-    formula_base: text(item.formula_base || item.formula || item.calculation || defaults.formula_base),
-    base_calculo: text(item.base_calculo || item.base || defaults.base_calculo),
-    porcentaje: text(item.porcentaje ?? item.percentage ?? item.percent),
-    importe_fijo: amount(item.importe_fijo ?? item.fixedAmount ?? item.amount),
+    formula_base: text(item.formula_base || item.metodo_calculo || item.formula || item.calculation || defaults.formula_base),
+    base_calculo: text(item.base_calculo || item.parametros?.base_calculo || item.base || defaults.base_calculo),
+    porcentaje: text(item.porcentaje ?? item.parametros?.porcentaje ?? item.percentage ?? item.percent),
+    importe_fijo: amount(item.importe_fijo ?? item.parametros?.importe_fijo ?? item.parametros?.importe ?? item.parametros?.valor ?? item.fixedAmount ?? item.amount),
     aplica_a: text(item.aplica_a || item.appliesTo),
-    condicion: text(item.condicion || item.condition || item.detail || defaults.condicion),
+    condicion: text(item.condicion || item.condicion_aplicacion || item.condition || item.detail || defaults.condicion),

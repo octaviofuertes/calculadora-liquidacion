@@ -1,4 +1,4 @@
-﻿    fuente_documento: text(item.fuente_documento || item.source),
+    fuente_documento: text(item.fuente_documento || item.source),
     es_liquidable: item.es_liquidable === undefined ? defaults.es_liquidable : Boolean(item.es_liquidable),
     ...traceFields(item)
   };
@@ -460,6 +460,7 @@ function runtimeConceptCalculation(concept = {}) {
 function runtimeConceptInputType(concept = {}) {
   const calculation = runtimeConceptCalculation(concept);
   if (calculation === "amountPerUnit") return "number";
+  if (calculation === "percentOfBase" && !numericAmount(concept.porcentaje)) return "number";
   const raw = slugId(`${concept.unidad_calculo || ""} ${concept.formula_base || ""}`);
   return /CANTIDAD|UNIDAD|HORAS?|DIAS?|KM|VIAJE/.test(raw) ? "number" : "checkbox";
 }

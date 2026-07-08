@@ -75,6 +75,32 @@ const convenioColectivoJsonSchema = {
       },
       required: ["vacaciones", "especiales"]
     },
+    escalas: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          nombre_escala: { type: "string" },
+          periodo_desde: { type: "string" },
+          periodo_hasta: { type: "string" },
+          valores: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                categoria_id: { type: "string" },
+                concepto_id: { type: "string" },
+                valor: { type: "number" }
+              },
+              required: ["categoria_id", "valor"]
+            }
+          }
+        },
+        required: ["nombre_escala", "valores"]
+      }
+    },
     contexto: { type: "string" }
   },
   required: [
@@ -103,6 +129,7 @@ function emptyConvenioColectivo() {
       vacaciones: { metodo_calculo: "", escalas: [] },
       especiales: []
     },
+    escalas: [],
     contexto: ""
   };
 }

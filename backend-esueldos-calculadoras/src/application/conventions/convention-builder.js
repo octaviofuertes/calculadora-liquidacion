@@ -27,6 +27,7 @@ function normalizeConcepto(item = {}, index) {
   const allowedTipos = new Set(["REMUNERATIVO", "NO_REMUNERATIVO", "RETENCION"]);
   const allowedMetodos = new Set(["PORCENTAJE_SOBRE_BASES", "DIVISION_REGLA_FIJA", "SUMA_FIJA_CATEGORIA", "FORMULA_CUSTOM", "NO_DETECTADO"]);
   return {
+    ...item,
     codigo_interno: String(item.codigo_interno || `CONCEPTO_${index + 1}`).trim(),
     nombre: String(item.nombre || "").trim(),
     tipo: allowedTipos.has(item.tipo) ? item.tipo : "REMUNERATIVO",
@@ -46,20 +47,45 @@ function createConventionBuilder() {
       const metadata = pickAllowed(parts.metadata || {}, ["cct_id", "nombre_convenio", "version_acuerdo", "vigencia", "organizaciones", "contexto"]);
       const licenses = parts.licenses?.regimen_licencias || parts.licenses || {};
 
+      const categories = Array.isArray(parts.categories?.categorias)
+        ? parts.categories.categorias.map(normalizeCategoria)
+        : [];
+      
+      const periodDesde = String(metadata.vigencia?.desde || "").trim();
+      const periodHasta = String(metadata.vigencia?.hasta || "").trim();
+      
+      let escalas = Array.isArray(parts.categories?.escalas) ? parts.categories.escalas : [];
+      if (!escalas.length) {
+        const values = categories.filter(c => c.sueldo_basico > 0).map(c => ({
+          categoria_id: c.id,
+          concepto_id: "SUELDO_BASICO",
+          valor: c.sueldo_basico
+        }));
+        
+        const baseScaleName = periodDesde ? `Escala ${periodDesde}` : "Escala Inicial";
+        
+        if (values.length) {
+          escalas = [{
+            nombre_escala: baseScaleName,
+            periodo_desde: periodDesde,
+            periodo_hasta: periodHasta,
+            valores: values
+          }];
+        }
+      }
+
       return {
         ...base,
         ...metadata,
         vigencia: {
-          desde: String(metadata.vigencia?.desde || "").trim(),
-          hasta: String(metadata.vigencia?.hasta || "").trim()
+          desde: periodDesde,
+          hasta: periodHasta
         },
         organizaciones: {
           sindical: String(metadata.organizaciones?.sindical || "").trim(),
           patronal: Array.isArray(metadata.organizaciones?.patronal) ? metadata.organizaciones.patronal.map(String) : []
         },
-        categorias: Array.isArray(parts.categories?.categorias)
-          ? parts.categories.categorias.map(normalizeCategoria)
-          : [],
+        categorias: categories,
         conceptos: Array.isArray(parts.concepts?.conceptos)
           ? parts.concepts.conceptos.map(normalizeConcepto)
           : [],
@@ -70,6 +96,7 @@ function createConventionBuilder() {
           },
           especiales: Array.isArray(licenses.especiales) ? licenses.especiales : []
         },
+        escalas,
         contexto: String(metadata.contexto || parts.contexto || "").trim()
       };
     }

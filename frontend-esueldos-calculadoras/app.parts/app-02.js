@@ -369,8 +369,29 @@
   }
 
   function parseCalcNumber(value = "") {
-    const number = Number(String(value).replace(/\$/g, "").replace(/\./g, "").replace(",", ".").trim());
-    return Number.isFinite(number) ? number : null;
+    if (typeof value === "number") return value;
+    const strVal = String(value || "").trim();
+    if (!strVal) return 0;
+    
+    const hasComma = strVal.includes(",");
+    const hasDot = strVal.includes(".");
+    
+    let normalized = strVal;
+    if (hasComma && hasDot) {
+      if (strVal.lastIndexOf(",") > strVal.lastIndexOf(".")) {
+        // 1.234,56 -> 1234.56
+        normalized = strVal.replace(/\./g, "").replace(",", ".");
+      } else {
+        // 1,234.56 -> 1234.56
+        normalized = strVal.replace(/,/g, "");
+      }
+    } else if (hasComma) {
+      // 1234,56 -> 1234.56
+      normalized = strVal.replace(",", ".");
+    }
+    
+    const parsed = Number(normalized);
+    return isNaN(parsed) ? 0 : parsed;
   }
 
   function mathExpressionFromText(value = "") {

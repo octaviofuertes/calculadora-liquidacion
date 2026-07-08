@@ -377,7 +377,8 @@ app.post("/api/convention-drafts/:id/approve", async (req, res, next) => {
     const updatedDraft = updatedDocument(result);
     res.json({
       draft: serializeConventionDraft(updatedDraft),
-      convention
+      convention,
+      conventionId
     });
   } catch (error) {
     next(error);

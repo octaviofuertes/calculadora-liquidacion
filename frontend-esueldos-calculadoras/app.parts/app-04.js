@@ -1,4 +1,4 @@
-﻿      || activeScaleFor(conv)?.parsedScale?.reglasNoRemunerativas
+      || activeScaleFor(conv)?.parsedScale?.reglasNoRemunerativas
       || {};
     rules.nonRemunerativeScale = { ...(rules.nonRemunerativeScale || {}), ...activeScaleRules };
     const salaryType = genericSalaryTypeForCategory(conv, cat);
@@ -16,20 +16,26 @@
     const employerRows = [];
     const details = [];
 
+    const isMonthlyUnit = !activeCatRow?.unidad_pago || activeCatRow?.unidad_pago === "mes" || activeCatRow?.unidad_pago === "mensual";
     const categoryMonthlyRaw = firstFinite(
       activeCatRow?.monthly,
+      isMonthlyUnit ? activeCatRow?.valor : null,
       periodAmountValue(activeCatRow, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]),
       periodAmountValue(cat, period, ["monthlyByPeriod", "monthlyByPeriodo", "basicoPorPeriodo"]),
       cat.monthly
     );
+    const isDailyUnit = activeCatRow?.unidad_pago === "dia" || activeCatRow?.unidad_pago === "jornal";
     const categoryDayRaw = firstFinite(
       activeCatRow?.day,
+      isDailyUnit ? activeCatRow?.valor : null,
       periodAmountValue(activeCatRow, period, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]),
       periodAmountValue(cat, period, ["dayByPeriod", "jornalPorPeriodo", "valorDiaPorPeriodo"]),
       cat.day
     );
+    const isHourlyUnit = activeCatRow?.unidad_pago === "hora";
     const categoryHourlyRaw = firstFinite(
       activeCatRow?.hourly,
+      isHourlyUnit ? activeCatRow?.valor : null,
       periodAmountValue(activeCatRow, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]),
       periodAmountValue(cat, period, ["hourlyByPeriod", "horaPorPeriodo", "valorHoraPorPeriodo"]),
       cat.hourly

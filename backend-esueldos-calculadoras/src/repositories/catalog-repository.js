@@ -17,8 +17,14 @@ function toCatalogPayload(constantsDoc, conventionDocs, legalReferenceDocs) {
   const conventions = {};
 
   conventionDocs.forEach((doc) => {
-    const convention = stripCatalogConvention(doc);
-    conventions[convention.id] = convention;
+    try {
+      const convention = stripCatalogConvention(doc);
+      if (convention && convention.id) {
+        conventions[convention.id] = convention;
+      }
+    } catch (error) {
+      console.error(`[Catalog] Error converting convention ${doc?.id || doc?._id}: ${error.message}`);
+    }
   });
 
   return {

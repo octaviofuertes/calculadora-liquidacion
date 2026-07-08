@@ -1,4 +1,4 @@
-﻿    const labelKey = summaryKey(item.label || item.name || item.nombre || item.concepto || "");
+    const labelKey = summaryKey(item.label || item.name || item.nombre || item.concepto || "");
     const idKey = summaryKey(item.id || item.concepto_id || "");
     const key = summaryKey([
       item.id,
@@ -14,7 +14,6 @@
     if (isExtraHoursConcept(item)) return true;
     if (has("sueldo", "basico") || has("valor", "hora") || has("valor", "dia")) return true;
     if (labelKey === "no_remunerativo" || idKey === "no_remunerativo" || key.includes("no_remunerativo_de_escala")) return true;
-    if (has("zona", "desfavorable")) return true;
     if (key.includes("agravamiento_indemnizatorio")) return true;
     if (key.includes("total_remunerativo") || key.includes("total_no_remunerativo") || key.includes("total_72_horas") || key.includes("total_horas")) return true;
     // Solo filtramos conceptos de despido/indemnizacion (no son haberes corrientes)
@@ -418,7 +417,9 @@
     if (concept.calculation === "amountPerUnit") {
       return conceptPeriodAmount(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"], concept.unitAmount || concept.amount) * inputValue;
     }
-    return baseValue * ((Number(concept.percent || 0) || 0) / 100) * inputValue;
+    const pct = Number(concept.percent) > 0 ? Number(concept.percent) : (conceptUsesNumberInput(concept) ? inputValue : 0);
+    const multiplier = Number(concept.percent) > 0 ? inputValue : 1;
+    return baseValue * (pct / 100) * multiplier;
   }
 
   function applyGenericDeductions(deductionRows, employerRows, remTotal, noRemTotal, basic, period, conv) {

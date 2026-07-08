@@ -22,6 +22,20 @@ function createCategoriesExtractionAgent({ ragService }) {
           descripcion: "",
           sueldo_basico: 0
         }
+      ],
+      escalas: [
+        {
+          nombre_escala: "",
+          periodo_desde: "",
+          periodo_hasta: "",
+          valores: [
+            {
+              categoria_id: "",
+              concepto_id: "SUELDO_BASICO",
+              valor: 0
+            }
+          ]
+        }
       ]
     }
   });

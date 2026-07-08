@@ -1,4 +1,4 @@
-﻿    excel.escalas.forEach((scale) => {
+    excel.escalas.forEach((scale) => {
       const scalePeriods = scalePeriodIds(scale);
       scale.valores
         .filter((value) => value.categoria_id === category.categoria_id)
@@ -68,11 +68,12 @@
     zones: zones.length ? zones.map((zone) => ({ id: zone, label: zone, coef: 1 })) : [{ id: "general", label: "General", coef: 1 }],
     categories: runtimeCategories,
     rules,
-    liquidationModel: {
-      version: "generic-v1",
-      rules,
-      concepts: excel.conceptos.map((concept) => {
-        const calculation = runtimeConceptCalculation(concept);
+    liquidationModel: (() => {
+      const parsed = excel.conceptos.map((concept) => {
+        const matchingAdicional = (excel.adicionales || []).find((a) => a.concepto_id === concept.concepto_id);
+        const percent = numericAmount(concept.porcentaje) ?? numericAmount(matchingAdicional?.porcentaje) ?? 0;
+        const conceptForCalc = { ...concept, porcentaje: percent > 0 ? String(percent) : concept.porcentaje };
+        const calculation = runtimeConceptCalculation(conceptForCalc);
         const amountValue = numericAmount(concept.importe_fijo);
         const isLiquidable = concept.es_liquidable !== false;
         return {
@@ -82,18 +83,66 @@
           naturaleza: concept.naturaleza,
           unidad_calculo: concept.unidad_calculo,
           formula_base: concept.formula_base,
-          rowType: runtimeConceptRowType(concept),
+          rowType: runtimeConceptRowType(conceptForCalc),
           calculation,
-          inputType: runtimeConceptInputType(concept),
+          inputType: runtimeConceptInputType(conceptForCalc),
           amount: calculation === "amountPerUnit" ? null : amountValue,
           unitAmount: calculation === "amountPerUnit" ? amountValue : null,
-          percent: numericAmount(concept.porcentaje) || 0,
+          percent,
           base: concept.base_calculo || "requiere_revision_manual",
           defaultValue: isLiquidable,
           detail: concept.condicion || concept.formula_base || concept.fuente_documento
         };
-      }).filter((concept) => concept.id && concept.label)
-    },
+      }).filter((concept) => concept.id && concept.label);
+      
+      const mappedAdicionalIds = new Set(excel.conceptos.map(c => c.concepto_id));
+      const unmappedAdicionales = (excel.adicionales || []).filter(a => a.concepto_id && !mappedAdicionalIds.has(a.concepto_id));
+      
+      unmappedAdicionales.forEach(a => {
+        const percent = numericAmount(a.porcentaje) ?? 0;
+        const amountValue = numericAmount(a.importe_fijo);
+        const conceptForCalc = { ...a, porcentaje: percent > 0 ? String(percent) : a.porcentaje, es_liquidable: true, naturaleza: "REMUNERATIVO" };
+        parsed.push({
+          id: a.concepto_id,
+          label: a.nombre,
+          group: "Adicionales",
+          naturaleza: "REMUNERATIVO",
+          unidad_calculo: a.base_calculo,
+          formula_base: a.formula,
+          rowType: runtimeConceptRowType(conceptForCalc),
+          calculation: runtimeConceptCalculation(conceptForCalc),
+          inputType: runtimeConceptInputType(conceptForCalc),
+          amount: runtimeConceptCalculation(conceptForCalc) === "amountPerUnit" ? null : amountValue,
+          unitAmount: runtimeConceptCalculation(conceptForCalc) === "amountPerUnit" ? amountValue : null,
+          percent,
+          base: a.base_calculo || "requiere_revision_manual",
+          defaultValue: true,
+          detail: a.condicion || a.formula
+        });
+      });
+      
+      const seniorityIndex = parsed.findIndex(c => slugId(c.label).includes("ANTIGUEDAD") && c.rowType !== "nonRemunerative");
+      if (seniorityIndex !== -1) {
+        rules.seniority = { enabled: true, percentPerYear: parsed[seniorityIndex].percent || 1, capYears: 0 };
+        parsed.splice(seniorityIndex, 1);
+      }
+      
+      const presentismIndex = parsed.findIndex(c => (slugId(c.label).includes("PRESENTISMO") || slugId(c.label).includes("ASISTENCIA")) && c.rowType !== "nonRemunerative");
+      if (presentismIndex !== -1) {
+        rules.presentism = { enabled: true, percent: parsed[presentismIndex].percent || 8.33, requiresNoUnjustifiedAbsence: true };
+        parsed.splice(presentismIndex, 1);
+      }
+      
+      return {
+        version: "generic-v1",
+        rules,
+        concepts: parsed.filter(c => c.rowType !== "deduction" && c.rowType !== "employerContribution" && c.rowType !== "nonRemunerative"),
+        deductions: parsed.filter(c => c.rowType === "deduction"),
+        retentions: [],
+        employerContributions: parsed.filter(c => c.rowType === "employerContribution"),
+        nonRemunerative: parsed.filter(c => c.rowType === "nonRemunerative")
+      };
+    })(),
     excelConvention: excel
   };
 }
