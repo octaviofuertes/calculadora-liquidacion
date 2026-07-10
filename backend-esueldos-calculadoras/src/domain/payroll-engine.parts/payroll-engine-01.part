@@ -423,7 +423,12 @@ function calcGeneric(ctx) {
   }
   let basic = salaryType === "daily" ? categoryDay * workUnits : salaryType === "hourly" ? categoryHourly * workUnits : categoryMonthly * monthPct;
   addRow(rows.remRows, "Basico", basic, salaryType === "monthly" ? `${categoryMonthly} x ${monthPct * 100} / 100` : `${salaryType === "hourly" ? categoryHourly : categoryDay} x ${workUnits}`);
-  addRow(rows.remRows, "Inasistencia injustificada", -(salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays), salaryType === "monthly" ? `${basic} / ${monthDivisor} x ${absentDays}` : `${categoryDay} x ${absentDays}`);
+  const presentismRule = rules.presentism || {};
+  const hasPresentism = inputBool(ctx.inputs, "genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0);
+  const presentismPct = hasPresentism ? (Number(presentismRule.percent || 0) / 100) : 0;
+
+  const absenceDiscount = salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays;
+  addRow(rows.remRows, "Inasistencia injustificada", -absenceDiscount, salaryType === "monthly" ? `${basic} / ${monthDivisor} x ${absentDays}` : `${categoryDay} x ${absentDays}`);
   const seniorityRule = rules.seniority || {};
   let seniority = 0;
   if (inputBool(ctx.inputs, "genSeniority", seniorityRule.enabled !== false)) {
@@ -431,8 +436,7 @@ function calcGeneric(ctx) {
     seniority = basic * ((Number(seniorityRule.percentPerYear || 0) * yearsForCalc) / 100);
     addRow(rows.remRows, "Antiguedad", seniority, `${basic} x ${seniorityRule.percentPerYear || 0} x ${yearsForCalc} / 100`);
   }
-  const presentismRule = rules.presentism || {};
-  if (inputBool(ctx.inputs, "genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0) && (!presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0)) {
+  if (hasPresentism && (!presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0)) {
     addRow(rows.remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${basic + seniority} x ${presentismRule.percent || 0} / 100`);
   }
   const hourValue = (sumRows(rows.remRows) || basic) / hourDivisor;

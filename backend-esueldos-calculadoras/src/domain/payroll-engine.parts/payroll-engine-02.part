@@ -1,4 +1,4 @@
-﻿  addRow(rows.remRows, "Trabajo en altura", base * (inputValue(ctx.inputs, "uocraAltitude", 0) / 100), "Adicional");
+  addRow(rows.remRows, "Trabajo en altura", base * (inputValue(ctx.inputs, "uocraAltitude", 0) / 100), "Adicional");
   if (inputBool(ctx.inputs, "uocraSpecialTask", false)) addRow(rows.remRows, "Tareas especiales", base * 0.20, "20%");
   if (inputBool(ctx.inputs, "uocraSubmuracion", false)) addRow(rows.remRows, "Submuracion", base * 0.10, "10%");
   if (inputBool(ctx.inputs, "uocraHormigon", false)) addRow(rows.remRows, "Hormigon armado", base * 0.15, "15%");
@@ -148,6 +148,31 @@ const payrollCalculationStrategies = {
 };
 
 function calcKnown(ctx) {
+  // 1. Try to use generated specific calculator
+  try {
+    const calcPath = require("path").join(__dirname, "..", "calculators", `${ctx.convention.id}.js`);
+    const fs = require("fs");
+    if (fs.existsSync(calcPath)) {
+      const calcModule = require(calcPath);
+      
+      // Adapt ctx for the generated calculator
+      const specificCtx = {
+        inputs: ctx.inputs || {},
+        employee: ctx.employee || {},
+        activeCatRow: scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality),
+        rules: ctx.convention.rules || {}
+      };
+      
+      const rows = calcModule.calculate(specificCtx);
+      
+      // Format the result using the generic buildResult to keep the API contract
+      return buildResult(ctx, rows, []);
+    }
+  } catch (err) {
+    console.error("Failed to execute generated calculator:", err);
+  }
+
+  // 2. Fallback to generic engine or local strategies
   const calculate = payrollCalculationStrategies[ctx.convention.id] || calcGeneric;
   return calculate(ctx);
 }

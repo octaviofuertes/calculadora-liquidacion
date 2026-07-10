@@ -47,6 +47,7 @@ const { createConventionIngestionRouter } = require("./routes/convention-ingesti
 const { createEmployeesRouter } = require("./routes/employees.routes");
 const { createLiquidationsRouter } = require("./routes/liquidations.routes");
 const { createScalesRouter } = require("./routes/scales.routes");
+const createCalculatorRoutes = require("./routes/calculator.routes");
 const logger = require("./shared/logger");
 const { parseOrThrow, calculationInputSchema, employeeWriteSchema, liquidationResultSchema, savedLiquidationSchema } = require("./domain/schemas");
 
@@ -449,6 +450,7 @@ app.use(createLiquidationsRouter({
   serializeScale
 }));
 app.use(createAiRouter({ getDb: getDbInstance }));
+app.use('/api/calculators', createCalculatorRoutes({ getDb: getDbInstance }));
 
 app.get("/api/settings", async (req, res, next) => {
   try {

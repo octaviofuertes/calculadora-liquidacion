@@ -141,7 +141,8 @@
       button.classList.toggle("unreachable", step > maxReachedStep && step > currentStep + 1);
     });
 
-    $("prevStepBtn").disabled = currentStep === 1;
+    const isWidget = document.body.classList.contains("widget-mode");
+    $("prevStepBtn").disabled = currentStep === 1 || (isWidget && currentStep === 2);
     const nextBtn = $("nextStepBtn");
     nextBtn.style.display = currentStep === TOTAL_STEPS ? "none" : "inline-flex";
     // Disable Next based on step:
@@ -309,9 +310,12 @@
   }
 
   function rowHtml(row, negative = false) {
-    return `<div class="line ${negative ? "negative" : ""}">
+    const isNegativeRow = row.amount < 0;
+    const isNegativeStyles = negative || isNegativeRow;
+    const displayAmount = (negative ? "" : (isNegativeRow ? "- " : "")) + fmt(Math.abs(row.amount));
+    return `<div class="line ${isNegativeStyles ? "negative" : ""}">
       <div>${escapeHtml(row.label)}${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}</div>
-      <div class="amount">${fmt(Math.abs(row.amount))}</div>
+      <div class="amount">${displayAmount}</div>
     </div>`;
   }
 

@@ -2,6 +2,14 @@
   }
 
   async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isWidget = urlParams.get("widget") === "true";
+    const requestedConvId = urlParams.get("conventionId");
+
+    if (isWidget) {
+      document.body.classList.add("widget-mode");
+    }
+
     bindNavigation();
     await loadCatalog();
 
@@ -9,7 +17,23 @@
     conventionSelect.innerHTML = Object.values(DATA.conventions)
       .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
       .join("");
-    conventionSelect.value = firstConventionId();
+      
+    if (requestedConvId && DATA.conventions[requestedConvId]) {
+      conventionSelect.value = requestedConvId;
+      if (isWidget) {
+        conventionSelect.disabled = true;
+        setTimeout(() => {
+          goToStep(2);
+        }, 50);
+      }
+    } else {
+      conventionSelect.value = firstConventionId();
+      if (isWidget) {
+        setTimeout(() => {
+          goToStep(2);
+        }, 50);
+      }
+    }
 
     $("payrollForm").addEventListener("input", () => {
       markDirty();
@@ -101,7 +125,7 @@
     setActionButtonsEnabled(false);
     updateConvention();
     goToStep(1);
-    activateTab("audit");
+    activateTab(isWidget ? "receipt" : "audit");
   }
 
   function exportJson() {

@@ -1,4 +1,4 @@
-﻿    if (topicId === "rules") {
+    if (topicId === "rules") {
       return [...header, "", ...formatRules(conv)].join("\n");
     }
 
@@ -138,14 +138,22 @@
     syncLeiaContext();
   }
 
-  function renderDynamicFields(conv) {
+  async function renderDynamicFields(conv) {
     if (isGenericConvention(conv)) {
+      let metadata = [];
+      try {
+        const res = await fetch(apiUrl(`/api/calculators/${conv.id}/metadata`));
+        if (res.ok) {
+          metadata = await res.json();
+        }
+      } catch (e) {
+        console.warn("No se pudo cargar la metadata de la calculadora generada:", e);
+      }
+      
+      const category = getCategory(conv);
       const model = conv.liquidationModel || {};
       const rules = model.rules || {};
-      const visibleConcepts = userFacingConcepts(model.concepts || []);
-      const visibleDeductions = userFacingConcepts(model.deductions || []);
-      const visibleRetentions = userFacingConcepts(model.retentions || []);
-      const category = getCategory(conv);
+      
       const availableSalaryTypes = [
         (category?.monthly || Object.keys(category?.monthlyByPeriod || {}).length) && "monthly",
         (category?.day || Object.keys(category?.dayByPeriod || {}).length) && "daily",
@@ -161,64 +169,27 @@
         : (rules.monthDivisor || rules.dayDivisor || 30);
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
-      const period = getPeriod(conv);
-      const conceptInputHtml = (concept) => {
-        if (conceptUsesQuantity(concept)) {
-          const unitAmount = genericConceptUnitAmount(concept, period);
-          const quantityField = `<label class="field"><span>${escapeHtml(concept.label)} (${escapeHtml(conceptQuantityUnit(concept))})</span><input id="gen_${escapeHtml(concept.id)}" data-concept-id="${escapeHtml(concept.id)}" data-concept-suffix="" type="number" min="0" step="0.01" value="${escapeHtml(concept.defaultValue || 0)}" placeholder="0"></label>`;
-          const unitField = unitAmount ? "" : `<label class="field"><span>${escapeHtml(concept.label)} - importe unitario</span><input id="gen_${escapeHtml(concept.id)}_unit" data-concept-id="${escapeHtml(concept.id)}" data-concept-suffix="_unit" type="number" min="0" step="0.01" value="0" placeholder="0"></label>`;
-          return `${quantityField}${unitField}`;
+      const dynamicInputsHtml = metadata.map(field => {
+        if (field.type === "checkbox") {
+          return `<label class="check-row"><input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}><span>${escapeHtml(field.label)}</span></label>`;
         }
-        if (concept.inputType === "number") {
-          return `<label class="field"><span>${escapeHtml(concept.label)}</span><input id="gen_${escapeHtml(concept.id)}" data-concept-id="${escapeHtml(concept.id)}" data-concept-suffix="" type="number" min="0" step="0.01" value="${escapeHtml(concept.defaultValue || 0)}" placeholder="0"></label>`;
-        }
-        return `<label class="check-row"><input id="gen_${escapeHtml(concept.id)}" type="checkbox" ${concept.defaultValue ? "checked" : ""}><span>${escapeHtml(concept.label)}</span></label>`;
-      };
-      const grouped = visibleConcepts.reduce((acc, concept) => {
-        const key = concept.group || "Adicionales";
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(concept);
-        return acc;
-      }, {});
-      const conceptHtml = Object.entries(grouped).map(([group, concepts]) => `
-        <div class="generic-section-title">${escapeHtml(userFacingGroupName(group))}</div>
-        <div class="check-grid generic-checks">
-          ${concepts.map(conceptInputHtml).join("")}
-        </div>`).join("");
-      const deductionHtml = visibleDeductions.length ? `
-        <div class="generic-section-title">Descuentos del convenio</div>
-        <div class="check-grid generic-checks">
-          ${visibleDeductions.map((item) => `
-            <label class="check-row"><input id="gen_deduction_${escapeHtml(item.id)}" type="checkbox" ${item.defaultValue === false ? "" : "checked"}><span>${escapeHtml(item.label)}</span></label>
-          `).join("")}
-        </div>` : "";
-      const retentionHtml = visibleRetentions.length ? `
-        <div class="generic-section-title">Retenciones del convenio</div>
-        <div class="check-grid generic-checks">
-          ${visibleRetentions.map((item) => `
-            <label class="check-row"><input id="gen_retention_${escapeHtml(item.id)}" type="checkbox" ${item.defaultValue === false ? "" : "checked"}><span>${escapeHtml(item.label)}</span></label>
-          `).join("")}
-        </div>` : "";
+        return `<label class="field"><span>${escapeHtml(field.label)}</span><input id="${field.id}" type="number" min="0" step="0.01" value="${escapeHtml(field.defaultValue || 0)}" placeholder="0"></label>`;
+      }).join("");
 
       $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card">
         <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
-        <div class="generic-section-title">Base del convenio IA</div>
+        <div class="generic-section-title">Base de Liquidacion</div>
         <div class="grid three">
           ${salaryTypeField}
           ${workUnitsField}
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Hs extra 50%</span><input id="genExtra50" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs extra 100%</span><input id="genExtra100" type="number" min="0" step="0.01" value="0"></label>
         </div>
+        <div class="generic-section-title">Parametros Dinamicos</div>
         <div class="check-grid generic-checks">
-          <label class="check-row"><input id="genSeniority" type="checkbox" ${rules.seniority?.enabled !== false || (rules.nonRemunerativeScale?.seniorityEnabled !== false && Number(rules.nonRemunerativeScale?.seniorityPercentPerYear || 0) > 0) ? "checked" : ""}><span>Antiguedad segun convenio</span></label>
-          <label class="check-row"><input id="genPresentism" type="checkbox" ${rules.presentism?.enabled || (rules.nonRemunerativeScale?.presentismEnabled !== false && Number(rules.nonRemunerativeScale?.presentismPercent || 0) > 0) ? "checked" : ""}><span>Presentismo segun convenio</span></label>
+          ${dynamicInputsHtml}
         </div>
-        ${conceptHtml || `<p class="generic-note">Este convenio no tiene conceptos variables adicionales. Pod&eacute;s editarlos desde Convenios IA.</p>`}
-        ${deductionHtml}
-        ${retentionHtml}
         <p class="generic-note">
-          <strong>Motor leIA:</strong> usa reglas aprobadas del convenio, escala vigente si existe, conceptos variables y auditoria automatica del recibo.
+          <strong>Calculadora Específica Activa:</strong> Esta pantalla usa el script de calculo generado especificamente para este convenio.
         </p>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));
@@ -425,17 +396,18 @@
     setOptions($("zone"), conv.zones, str("zone"));
     setOptions($("category"), conv.categories, str("category"));
     refreshPayrollModalityOptions();
-    renderDynamicFields(conv);
-    enhanceFieldHelp($("payrollFormPanel"));
-    syncScaleConvention();
-    if ($("scaleConvention")) {
-      $("scaleConvention").value = conv.id;
-      $("scalePeriod").value = selectedPeriodMonth(conv);
-      loadScaleDashboard();
-      refreshActiveScaleContext();
-    }
-    syncLeiaContext();
-    markDirty();
+    renderDynamicFields(conv).then(() => {
+      enhanceFieldHelp($("payrollFormPanel"));
+      syncScaleConvention();
+      if ($("scaleConvention")) {
+        $("scaleConvention").value = conv.id;
+        $("scalePeriod").value = selectedPeriodMonth(conv);
+        loadScaleDashboard();
+        refreshActiveScaleContext();
+      }
+      syncLeiaContext();
+      markDirty();
+    });
   }
 
   function bindNavigation() {

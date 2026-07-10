@@ -53,9 +53,12 @@
       : `${calcNum(salaryType === "hourly" ? categoryHourly : categoryDay)} x ${workUnits}`;
     addRow(remRows, "Basico", basic, salaryType === "monthly" ? `${monthPct * 100}% del mes` : `${workUnits} ${salaryType === "hourly" ? "horas" : "jornales"}`, basicFormula);
 
+    const presentismRule = rules.presentism || {};
+    const hasPresentism = checked("genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0);
+    const presentismPct = hasPresentism ? (Number(presentismRule.percent || 0) / 100) : 0;
+
     const absenceDiscount = salaryType === "monthly" ? (basic / monthDivisor) * absentDays : categoryDay * absentDays;
     addRow(remRows, "Inasistencia injustificada", -absenceDiscount, `${absentDays} dia${absentDays !== 1 ? "s" : ""} / divisor ${monthDivisor}`, salaryType === "monthly" ? `${calcNum(basic)} / ${monthDivisor} x ${absentDays}` : `${calcNum(categoryDay)} x ${absentDays}`);
-
     const seniorityRule = rules.seniority || {};
     let seniority = 0;
     if (checked("genSeniority", seniorityRule.enabled !== false)) {
@@ -64,8 +67,7 @@
       addRow(remRows, "Antiguedad", seniority, `${Number(seniorityRule.percentPerYear || 0)}% x ${yearsForCalc} años`, `${calcNum(basic)} x ${Number(seniorityRule.percentPerYear || 0)} x ${yearsForCalc} / 100`);
     }
 
-    const presentismRule = rules.presentism || {};
-    if (checked("genPresentism", presentismRule.enabled && Number(presentismRule.percent || 0) > 0)) {
+    if (hasPresentism) {
       const allowed = !presentismRule.requiresNoUnjustifiedAbsence || absentDays === 0;
       if (allowed) addRow(remRows, "Presentismo", (basic + seniority) * ((Number(presentismRule.percent || 0) || 0) / 100), `${presentismRule.percent}%`, `${calcNum(basic + seniority)} x ${presentismRule.percent} / 100`);
       else addRow(details, "Presentismo", 0, "No corresponde por inasistencias injustificadas");

@@ -1,5 +1,6 @@
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio, parseConvenio, parseEscala, toRuntimeConvention } = require("../models/convenio.model");
 const { normalizePeriod } = require("../repositories/scale-repository");
+const { buildCalculator } = require("./calculator-builder");
 
 const COLLECTION = "conventions";
 
@@ -88,6 +89,14 @@ async function createConvenio(db, payload) {
   const now = new Date();
   const doc = { ...convenio, createdAt: now, updatedAt: now };
   const result = await collection(db).insertOne(doc);
+  
+  // Build specific calculator
+  try {
+    await buildCalculator(doc);
+  } catch (err) {
+    console.error("Failed to build calculator for new convention:", err);
+  }
+  
   return serialize({ _id: result.insertedId, ...doc });
 }
 
@@ -130,6 +139,14 @@ async function updateConvenio(db, convenioId, payload) {
   });
   const doc = { _id: current._id, ...merged, createdAt: current.createdAt, updatedAt: new Date() };
   await collection(db).replaceOne({ _id: current._id }, doc);
+  
+  // Rebuild specific calculator
+  try {
+    await buildCalculator(doc);
+  } catch (err) {
+    console.error("Failed to rebuild calculator:", err);
+  }
+  
   return serialize(doc);
 }
 
@@ -227,7 +244,7 @@ function conceptMap(convenio) {
 }
 
 function isBasicConcept(concept = {}) {
-  return /basico|sueldo basico|salario basico/.test(matchText([concept.concepto_id, concept.codigo, concept.nombre].join(" ")));
+  return /basico|sueldo basico|salario basico|valor hora|jornal diario/.test(matchText([concept.concepto_id, concept.codigo, concept.nombre].join(" ")));
 }
 
 function salaryField(concept = {}, value = {}) {
@@ -273,6 +290,9 @@ function extractRules(conceptos = []) {
     }
     if (/^PRESENTISMO/.test(id) && pct) {
       rules.presentism = { enabled: true, percent: pct };
+      ruleConceptIds.add(id);
+    }
+    if (/hora extra|horas extra|horas extras|hora extras/i.test(matchText([id, concept.codigo, concept.nombre].join(" ")))) {
       ruleConceptIds.add(id);
     }
   }
@@ -414,6 +434,7 @@ module.exports = {
   getPayrollBases,
   getScaleValues,
   getScales,
+  buildPayrollConvention,
   listConvenios,
   saveEscala,
   updateConvenio
