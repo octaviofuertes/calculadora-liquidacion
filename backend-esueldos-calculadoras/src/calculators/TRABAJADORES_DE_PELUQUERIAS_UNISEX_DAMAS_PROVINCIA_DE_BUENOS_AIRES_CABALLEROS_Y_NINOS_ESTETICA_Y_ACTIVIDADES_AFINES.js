@@ -30,9 +30,9 @@ module.exports = {
     const absentDays = Number(inputs.absentDays || 0);
     
     // Scale values
-    const categoryMonthly = Number(activeCatRow?.valor || 0);
-    const categoryDay = Number(activeCatRow?.valor_diario || categoryMonthly / 30);
-    const categoryHourly = Number(activeCatRow?.valor_hora || categoryMonthly / 200);
+    const categoryMonthly = Number(activeCatRow?.monthly || activeCatRow?.valor || 0);
+    const categoryDay = Number(activeCatRow?.day || activeCatRow?.valor_diario || categoryMonthly / 30);
+    const categoryHourly = Number(activeCatRow?.hourly || activeCatRow?.valor_hora || categoryMonthly / 200);
     
     const monthDivisor = Number(ctx.rules?.dayDivisor || 30);
     const hourDivisor = Number(ctx.rules?.hourDivisor || 200);
@@ -116,9 +116,9 @@ module.exports = {
     
     
     // Default Social Deductions
-    addRow(rows.deductionRows, "Jubilacion", -(remTotal * 0.11), "11%");
-    addRow(rows.deductionRows, "Ley 19.032 (PAMI)", -(remTotal * 0.03), "3%");
-    addRow(rows.deductionRows, "Obra Social", -(remTotal * 0.03), "3%");
+    addRow(rows.deductionRows, "Jubilacion", (remTotal * 0.11), "11%");
+    addRow(rows.deductionRows, "Ley 19.032 (PAMI)", (remTotal * 0.03), "3%");
+    addRow(rows.deductionRows, "Obra Social", (remTotal * 0.03), "3%");
 
     return rows;
   }

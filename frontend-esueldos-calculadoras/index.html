@@ -10,6 +10,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=4">
   <link rel="stylesheet" href="leia-styles.css">
+  <script>
+    if (window.location.search.includes("widget=true")) {
+      document.documentElement.classList.add("widget-mode");
+      document.documentElement.classList.add("widget-init");
+      document.write('<link rel="stylesheet" href="widget.css?v=2">');
+    }
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -365,22 +372,6 @@
 
             <div id="dynamicFields"></div>
 
-            <div class="divider"></div>
-
-            <div class="grid two">
-              <label class="field">
-                <span>Otros remunerativos</span>
-                <input id="otherRem" type="number" min="0" step="0.01" value="0">
-              </label>
-              <label class="field">
-                <span>Otros no remunerativos</span>
-                <input id="otherNoRem" type="number" min="0" step="0.01" value="0">
-              </label>
-              <label class="field">
-                <span>Descuentos varios</span>
-                <input id="otherDeductions" type="number" min="0" step="0.01" value="0">
-              </label>
-            </div>
           </section>
 
           <section class="form-step" data-step="4">

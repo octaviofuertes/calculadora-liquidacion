@@ -526,28 +526,4 @@
   font-weight: 800;
 }
 
-body.widget-mode .page-shell {
-  padding-top: 0 !important;
-}
 
-/* Widget Mode */
-body.widget-mode .topbar,
-body.widget-mode .nav-link,
-body.widget-mode #leiaWidget,
-body.widget-mode #leiaToggle,
-body.widget-mode .payroll-head,
-body.widget-mode #wizardSteps,
-body.widget-mode [data-tab="audit"],
-body.widget-mode #auditResult {
-  display: none !important;
-}
-
-body.widget-mode #prevStepBtn:disabled {
-  visibility: hidden;
-}
-
-body.widget-mode .app-shell {
-  padding: 0 !important;
-  margin: 0 !important;
-  max-width: none !important;
-}

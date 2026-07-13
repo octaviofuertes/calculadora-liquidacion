@@ -124,6 +124,11 @@
           globalLaborLawText
         });
         parsedConvention = result.parsedConvention;
+        const inputName = String(req.body.name || "").trim();
+        if (inputName) {
+          if (!parsedConvention.convenio) parsedConvention.convenio = {};
+          parsedConvention.convenio.denominacion = inputName;
+        }
         documentClassification = result.documentClassification || parsedConvention.clasificacionDocumental || null;
         laborLawStatus = result.laborLawStatus || laborLawStatus;
         tokenUsage = result.tokenUsage || null;

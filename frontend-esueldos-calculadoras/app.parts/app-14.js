@@ -8,6 +8,7 @@
 
     if (isWidget) {
       document.body.classList.add("widget-mode");
+      document.documentElement.classList.add("widget-mode");
     }
 
     bindNavigation();
@@ -22,17 +23,9 @@
       conventionSelect.value = requestedConvId;
       if (isWidget) {
         conventionSelect.disabled = true;
-        setTimeout(() => {
-          goToStep(2);
-        }, 50);
       }
     } else {
       conventionSelect.value = firstConventionId();
-      if (isWidget) {
-        setTimeout(() => {
-          goToStep(2);
-        }, 50);
-      }
     }
 
     $("payrollForm").addEventListener("input", () => {
@@ -84,6 +77,7 @@
       setTimeout(async () => {
         await refreshActiveScaleContext();
         await calculate();
+        document.body.classList.add("has-result");
         btn.textContent = originalText;
         btn.disabled = false;
         goToStep(4);
@@ -124,7 +118,13 @@
     setupLeia();
     setActionButtonsEnabled(false);
     updateConvention();
-    goToStep(1);
+    if (isWidget) {
+      maxReachedStep = Math.max(maxReachedStep, 2);
+      goToStep(2);
+    } else {
+      goToStep(1);
+    }
+    document.documentElement.classList.remove("widget-init");
     activateTab(isWidget ? "receipt" : "audit");
   }
 

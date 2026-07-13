@@ -169,26 +169,61 @@
         : (rules.monthDivisor || rules.dayDivisor || 30);
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
-      const dynamicInputsHtml = metadata.map(field => {
+      const checkboxes = [];
+      const numberFields = [];
+      metadata.forEach(field => {
         if (field.type === "checkbox") {
-          return `<label class="check-row"><input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}><span>${escapeHtml(field.label)}</span></label>`;
+          checkboxes.push(`<label class="check-row"><input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}><span>${escapeHtml(field.label)}</span></label>`);
+        } else {
+          let label = escapeHtml(field.label);
+          let badge = "";
+          const match = label.match(/(\d+)\s*%/);
+          if (match) {
+             badge = `<span class="concept-badge">+${match[1]}%</span>`;
+             label = label.replace(match[0], "").replace(/\(\s*\)/g, "").trim();
+          }
+          numberFields.push(`
+            <div class="concept-table-row">
+              <div class="concept-table-label">
+                <strong>${label}</strong>
+              </div>
+              <div class="concept-table-badge">${badge}</div>
+              <div class="concept-table-input">
+                <input id="${field.id}" type="number" min="0" step="0.01" value="${escapeHtml(field.defaultValue || 0)}" placeholder="0">
+              </div>
+            </div>
+          `);
         }
-        return `<label class="field"><span>${escapeHtml(field.label)}</span><input id="${field.id}" type="number" min="0" step="0.01" value="${escapeHtml(field.defaultValue || 0)}" placeholder="0"></label>`;
-      }).join("");
+      });
 
-      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card">
-        <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
-        <div class="generic-section-title">Base de Liquidacion</div>
-        <div class="grid three">
+      const tableHtml = numberFields.length > 0 ? `
+        <div class="concept-table">
+          <div class="concept-table-head">
+            <div class="concept-table-th-label">CONCEPTO</div>
+            <div class="concept-table-th-badge"></div>
+            <div class="concept-table-th-input">CANTIDAD</div>
+          </div>
+          ${numberFields.join("")}
+        </div>
+      ` : "";
+
+      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
+        <div class="grid three" style="margin-bottom: 24px;">
           ${salaryTypeField}
           ${workUnitsField}
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
         </div>
-        <div class="generic-section-title">Parametros Dinamicos</div>
-        <div class="check-grid generic-checks">
-          ${dynamicInputsHtml}
+        
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Conceptos Variables</h3>
         </div>
-        <p class="generic-note">
+        
+        ${tableHtml}
+        
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${checkboxes.join("")}
+        </div>
+        <p class="generic-note" style="display: none;">
           <strong>Calculadora Específica Activa:</strong> Esta pantalla usa el script de calculo generado especificamente para este convenio.
         </p>
       </div>`;
