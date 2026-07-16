@@ -13,12 +13,12 @@ function sumRows(rows) {
 module.exports = {
   getMetadata: () => {
     return [
-      { id: "genPresentism", label: "Presentismo", type: "checkbox", defaultValue: true },
-      { id: "genSeniority", label: "Antigüedad", type: "checkbox", defaultValue: true },
-      { id: "genExtra50", label: "Horas extra 50%", type: "number", defaultValue: 0 },
-      { id: "genExtra100", label: "Horas extra 100%", type: "number", defaultValue: 0 },
-      { id: "concept_PRESENTISMO_PUNTUALIDAD", label: "Presentismo - Puntualidad", type: "checkbox", defaultValue: true },
-      { id: "concept_VIATICO", label: "Viático", type: "checkbox", defaultValue: true }
+      { id: "genPresentism", label: "Presentismo", type: "checkbox", defaultValue: true, detail: "Calculo: (Básico + Antigüedad) x 8.33%", group: "remunerative" },
+      { id: "genSeniority", label: "Antigüedad", type: "checkbox", defaultValue: true, detail: "Calculo: Básico x 1% x Años", group: "remunerative" },
+      { id: "genExtra50", label: "Horas extra 50%", type: "number", defaultValue: 0, detail: "Calculo: Valor hora x 1.5 x Horas", group: "remunerative" },
+      { id: "genExtra100", label: "Horas extra 100%", type: "number", defaultValue: 0, detail: "Calculo: Valor hora x 2 x Horas", group: "remunerative" },
+      { id: "concept_PRESENTISMO_PUNTUALIDAD", label: "Presentismo - Puntualidad", type: "number", defaultValue: 0, detail: "Aplica segun puntualidad<br><br><b>Calculo: Monto ingresado manualmente</b>", group: "remunerative" },
+      { id: "concept_PROLONGACION_JORNADA", label: "Prolongación de Jornada", type: "number", defaultValue: 0, detail: "Aplica cuando existe prolongacion de jornada | Prestar servicios 1 hora más por día<br><br><b>Calculo: Valor Unidad x Cantidad</b>", group: "remunerative" }
     ].filter(Boolean);
   },
 
@@ -62,7 +62,7 @@ module.exports = {
     const hasSeniority = inputs.genSeniority !== false && String(inputs.genSeniority) !== "false";
     if (hasSeniority) {
       const years = Math.min(employee.years || 0, 99);
-      const pctPerYear = 12;
+      const pctPerYear = 1;
       seniority = basic * ((pctPerYear * years) / 100);
       if (seniority > 0) {
         addRow(rows.remRows, "Antiguedad", seniority, (pctPerYear * years) + "%", basic + " x " + pctPerYear + " x " + years + " / 100");
@@ -94,13 +94,19 @@ module.exports = {
     
     if (inputs["concept_PRESENTISMO_PUNTUALIDAD"] !== false && String(inputs["concept_PRESENTISMO_PUNTUALIDAD"]) !== "false" && inputs["concept_PRESENTISMO_PUNTUALIDAD"] !== "0") {
       const val = (sumRows(rows.remRows) * 0 / 100);
-      if (val !== 0) addRow(rows.remRows, "Presentismo - Puntualidad", val, "0%");
+      if (val !== 0) {
+        const isNoRem = false;
+        addRow(isNoRem ? rows.noRemRows : rows.remRows, "Presentismo - Puntualidad", val, "0%");
+      }
     }
     
 
-    if (inputs["concept_VIATICO"] !== false && String(inputs["concept_VIATICO"]) !== "false" && inputs["concept_VIATICO"] !== "0") {
+    if (inputs["concept_PROLONGACION_JORNADA"] !== false && String(inputs["concept_PROLONGACION_JORNADA"]) !== "false" && inputs["concept_PROLONGACION_JORNADA"] !== "0") {
       const val = (sumRows(rows.remRows) * 0 / 100);
-      if (val !== 0) addRow(rows.remRows, "Viático", val, "0%");
+      if (val !== 0) {
+        const isNoRem = false;
+        addRow(isNoRem ? rows.noRemRows : rows.remRows, "Prolongación de Jornada", val, "0%");
+      }
     }
     
 

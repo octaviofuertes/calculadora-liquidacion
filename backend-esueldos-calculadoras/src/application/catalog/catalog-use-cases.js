@@ -28,7 +28,7 @@ function createCatalogUseCases({ catalogRepository }) {
 
       const result = await catalogRepository.deleteConventionWithScales(conventionId);
       if (result.status === "not_found") {
-        const error = new Error("Convenio no encontrado");
+        const error = new Error("Convenio no encontrado: " + conventionId);
         error.status = 404;
         throw error;
       }

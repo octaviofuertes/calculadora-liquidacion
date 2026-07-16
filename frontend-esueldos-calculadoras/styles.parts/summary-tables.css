@@ -125,7 +125,8 @@
   .leia-widget,
   .form-panel,
   .summary-grid,
-  .tabs {
+  .tabs,
+  .no-print {
     display: none !important;
   }
 

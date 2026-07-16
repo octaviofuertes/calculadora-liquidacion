@@ -38,7 +38,7 @@ body::before {
   inset: 0 !important;
   z-index: 0 !important;
   pointer-events: none !important;
-  background-image: url("../assets/esueldos-hero-background.svg?v=3") !important;
+  background-image: url("assets/esueldos-hero-background.svg?v=3") !important;
   background-repeat: no-repeat !important;
   background-position: top center !important;
   background-size: 100vw auto !important;
@@ -100,21 +100,10 @@ body > * {
   }
 }
 
-/* Match the referenced site header: navigation floats over the blue hero shape. */
 .topbar {
-  background: transparent !important;
+  background: #2563eb !important;
   border-bottom: 0 !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
-.topbar::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: -1 !important;
-  pointer-events: none !important;
-  background: linear-gradient(180deg, rgba(7, 24, 84, 0.32), rgba(7, 24, 84, 0)) !important;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.15) !important;
 }
 
 .topbar-inner {

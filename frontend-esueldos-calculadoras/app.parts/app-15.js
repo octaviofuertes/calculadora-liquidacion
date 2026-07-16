@@ -271,7 +271,6 @@
       }
     });
   }
-
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initGlobalSettings, { once: true });
   } else {

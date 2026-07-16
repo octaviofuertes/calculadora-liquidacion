@@ -75,7 +75,7 @@
     editor.querySelectorAll("[data-audit-convenio-field], .convention-audit-general [data-field]").forEach((field) => {
       convenio[field.dataset.auditConvenioField || field.dataset.field] = field.value;
     });
-    const collectRows = (section) => Array.from((tablesArea || document).querySelectorAll(`[data-audit-section="${section}"] tbody tr:not(.audit-empty-row)`))
+    const collectRows = (section) => Array.from((tablesArea || document).querySelectorAll(section === "escalas" ? `[data-audit-section^="escalas_"] tbody tr:not(.audit-empty-row)` : `[data-audit-section="${section}"] tbody tr:not(.audit-empty-row)`))
       .map((row) => {
         const item = {};
         row.querySelectorAll("[data-field]").forEach((field) => {
@@ -173,7 +173,7 @@
     if (section === "conceptos_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "conceptos_no_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "no_remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "conceptos_deducciones") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "descuento", naturaleza: "retencion", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
-    if (section === "escalas") parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", moneda: "ARS", valores: [{ concepto_id: "SUELDO_BASICO", categoria_id: "", valor: "", periodicidad: "" }] }];
+    if (section.startsWith("escalas")) parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", moneda: "ARS", valores: [{ concepto_id: "SUELDO_BASICO", categoria_id: "", valor: "", periodicidad: "" }] }];
     if (section === "adicionales") parsed.adicionales = [...(parsed.adicionales || []), { adicional_id: `adicional-${nextIndex(parsed.adicionales)}`, concepto_id: "", nombre: "", formula: "", base_calculo: "", porcentaje: "", importe_fijo: "", condicion: "" }];
     conventionBuilderState.selected.parsedConvention = parsed;
     renderConventionJsonEditor(conventionBuilderState.selected);
@@ -190,7 +190,7 @@
     const removedScaleIds = [];
     checkedRows.forEach((checkbox) => {
       const row = checkbox.closest("tr");
-      if (section === "escalas") {
+      if (section.startsWith("escalas")) {
         const scaleId = row?.querySelector('[data-field="escala_id"]')?.value;
         if (scaleId) removedScaleIds.push(scaleId);
       }

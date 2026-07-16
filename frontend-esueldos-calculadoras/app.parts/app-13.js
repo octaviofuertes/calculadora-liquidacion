@@ -142,7 +142,7 @@
     if (isGenericConvention(conv)) {
       let metadata = [];
       try {
-        const res = await fetch(apiUrl(`/api/calculators/${conv.id}/metadata`));
+        const res = await fetch(apiUrl(`/api/calculators/${encodeURIComponent(conv.id)}/metadata`));
         if (res.ok) {
           metadata = await res.json();
         }
@@ -169,11 +169,32 @@
         : (rules.monthDivisor || rules.dayDivisor || 30);
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
-      const checkboxes = [];
-      const numberFields = [];
+          
+      const groups = { remunerative: { checks: [], numbers: [] }, non_remunerative: { checks: [], numbers: [] } };
       metadata.forEach(field => {
+        const targetGroup = field.group === 'non_remunerative' ? groups.non_remunerative : groups.remunerative;
         if (field.type === "checkbox") {
-          checkboxes.push(`<label class="check-row"><input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}><span>${escapeHtml(field.label)}</span></label>`);
+          let descText = field.description || field.detail || "";
+          let infoBtn = descText ? `
+            <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          ` : "";
+          let descHtml = descText ? `<div class="check-desc" style="display: none; padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--line); width: 100%; color: var(--muted); font-size: 0.9em;">${descText}</div>` : "";
+          targetGroup.checks.push(`
+            <label class="check-row ${descHtml ? 'has-desc' : ''}" style="flex-wrap: wrap; align-self: flex-start;">
+              <div style="display: flex; align-items: center; width: 100%; gap: 9px;">
+                <input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}>
+                <div class="check-label-wrap" style="flex: 1;">
+                  <span>${escapeHtml(field.label)}</span>
+                </div>
+                ${infoBtn}
+              </div>
+              ${descHtml}
+            </label>
+          `);
         } else {
           let label = escapeHtml(field.label);
           let badge = "";
@@ -182,10 +203,23 @@
              badge = `<span class="concept-badge">+${match[1]}%</span>`;
              label = label.replace(match[0], "").replace(/\(\s*\)/g, "").trim();
           }
-          numberFields.push(`
+          let descText = field.description || field.detail || "";
+          let infoBtn = descText ? `
+            <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          ` : "";
+          let descHtml = descText ? `<div class="check-desc" style="display: none; margin-top: 2px; color: var(--muted); font-size: 0.9em;">${descText}</div>` : "";
+          targetGroup.numbers.push(`
             <div class="concept-table-row">
               <div class="concept-table-label">
-                <strong>${label}</strong>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <strong>${label}</strong>
+                  ${infoBtn}
+                </div>
+                ${descHtml}
               </div>
               <div class="concept-table-badge">${badge}</div>
               <div class="concept-table-input">
@@ -196,16 +230,32 @@
         }
       });
 
-      const tableHtml = numberFields.length > 0 ? `
-        <div class="concept-table">
-          <div class="concept-table-head">
-            <div class="concept-table-th-label">CONCEPTO</div>
-            <div class="concept-table-th-badge"></div>
-            <div class="concept-table-th-input">CANTIDAD</div>
+      const buildSection = (title, data) => {
+        if (data.checks.length === 0 && data.numbers.length === 0) return "";
+        const tableHtml = data.numbers.length > 0 ? `
+          <div class="concept-table">
+            <div class="concept-table-head">
+              <div class="concept-table-th-label">CONCEPTO</div>
+              <div class="concept-table-th-badge"></div>
+              <div class="concept-table-th-input">CANTIDAD</div>
+            </div>
+            ${data.numbers.join("")}
           </div>
-          ${numberFields.join("")}
-        </div>
-      ` : "";
+        ` : "";
+        return `
+          <div class="step-copy" style="margin-top: 32px;">
+            <h3>${title}</h3>
+          </div>
+          ${tableHtml}
+          <div class="check-grid generic-checks" style="margin-top: 16px;">
+            ${data.checks.join("")}
+          </div>
+        `;
+      };
+
+      const remHtml = buildSection("Haberes Remunerativos", groups.remunerative);
+      const noRemHtml = buildSection("Haberes No Remunerativos", groups.non_remunerative);
+      const allSections = remHtml + noRemHtml;
 
       $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
         <div class="grid three" style="margin-bottom: 24px;">
@@ -214,15 +264,8 @@
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
         </div>
         
-        <div class="step-copy" style="margin-top: 32px;">
-          <h3>Conceptos Variables</h3>
-        </div>
+        ${allSections || '<div class="empty" style="margin-top: 24px;">No hay conceptos variables definidos para este convenio.</div>'}
         
-        ${tableHtml}
-        
-        <div class="check-grid generic-checks" style="margin-top: 16px;">
-          ${checkboxes.join("")}
-        </div>
         <p class="generic-note" style="display: none;">
           <strong>Calculadora Específica Activa:</strong> Esta pantalla usa el script de calculo generado especificamente para este convenio.
         </p>
@@ -242,9 +285,44 @@
       const defaultMode = isSereno ? "mensual" : "1";
       const defaultHours = isSereno ? 176 : 88;
 
-      $("dynamicFields").innerHTML = `<div class="dynamic-card">
-        <h2 class="dynamic-title">Parametros UOCRA</h2>
-        <div class="grid three">
+      const infoBtn = (desc) => desc ? `
+        <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      ` : "";
+      const descHtml = (desc) => desc ? `<div class="check-desc" style="display: none; margin-top: 2px; color: var(--muted); font-size: 0.9em;">${desc}</div>` : "";
+      const numRow = (id, label, badge, desc) => `
+          <div class="concept-table-row">
+            <div class="concept-table-label">
+              <div style="display: flex; align-items: center; gap: 4px;"><strong>${label}</strong>${infoBtn(desc)}</div>
+              ${descHtml(desc)}
+            </div>
+            <div class="concept-table-badge">${badge}</div>
+            <div class="concept-table-input"><input id="${id}" type="number" min="0" step="0.01" value="0" placeholder="0"></div>
+          </div>`;
+      const selRow = (id, label, badge, desc, options) => `
+          <div class="concept-table-row">
+            <div class="concept-table-label">
+              <div style="display: flex; align-items: center; gap: 4px;"><strong>${label}</strong>${infoBtn(desc)}</div>
+              ${descHtml(desc)}
+            </div>
+            <div class="concept-table-badge">${badge}</div>
+            <div class="concept-table-input" style="justify-content: flex-end;">
+              <select id="${id}" style="width: auto; padding: 4px; border: 1px solid var(--border); border-radius: 4px;">${options}</select>
+            </div>
+          </div>`;
+      const chkRow = (id, label, desc, checked) => `
+          <label class="check-row ${desc ? 'has-desc' : ''}" style="flex-wrap: wrap; align-self: flex-start;">
+            <div style="display: flex; align-items: center; width: 100%; gap: 9px;">
+              <input id="${id}" type="checkbox" ${checked ? "checked" : ""}>
+              <div class="check-label-wrap" style="flex: 1;"><span>${label}</span></div>
+              ${infoBtn(desc)}
+            </div>
+            ${descHtml(desc)}
+          </label>`;
+
+      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
+        <div class="grid three" style="margin-bottom: 24px;">
           <label class="field"><span>Liquidacion</span><select id="uocraPeriodMode">
             <option value="1"${defaultMode === "1" ? " selected" : ""}>1ra quincena</option>
             <option value="2"${defaultMode === "2" ? " selected" : ""}>2da quincena</option>
@@ -252,22 +330,45 @@
           </select></label>
           <label class="field"><span>Horas normales</span><input id="uocraHours" type="number" min="0" step="0.01" value="${defaultHours}"></label>
           <label class="field"><span>Hs inasist. injust.</span><input id="uocraAbsence" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Franco trabajado hs</span><input id="uocraFrancoTrab" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Feriado no trab. hs</span><input id="uocraFeriadoNoTrab" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Altura %</span><select id="uocraAltitude"><option value="0">No aplica</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option></select></label>
-          <label class="field"><span>Hs extra 50%</span><input id="uocraExtra50" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs extra 100%</span><input id="uocraExtra100" type="number" min="0" step="0.01" value="0"></label>
         </div>
-        <div class="check-grid" style="margin-top:12px">
-          <label class="check-row"><input id="uocraAfiliado" type="checkbox" checked><span>Afiliado UOCRA (cuota sindical 2,5%)</span></label>
-          <label class="check-row"><input id="uocraSNR" type="checkbox" checked><span>SNR paritaria</span></label>
-          <label class="check-row"><input id="uocraSeniority" type="checkbox" checked><span>Antiguedad</span></label>
-          <label class="check-row"><input id="uocraPresentism" type="checkbox" checked><span>Presentismo 20%</span></label>
-          <label class="check-row"><input id="uocraVestimenta" type="checkbox"><span>Asignacion vestimenta (Art.35)</span></label>
-          <label class="check-row"><input id="uocraSpecialTask" type="checkbox"><span>Tareas especiales 20%</span></label>
-          <label class="check-row"><input id="uocraSubmuracion" type="checkbox"><span>Submuracion 10%</span></label>
-          <label class="check-row"><input id="uocraHormigon" type="checkbox"><span>Hormigon armado 15%</span></label>
-          <label class="check-row"><input id="uocraEncargado" type="checkbox"><span>Encargado 10%</span></label>
+
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Haberes Remunerativos</h3>
+        </div>
+        <div class="concept-table">
+          <div class="concept-table-head">
+            <div class="concept-table-th-label">CONCEPTO</div>
+            <div class="concept-table-th-badge"></div>
+            <div class="concept-table-th-input">CANTIDAD</div>
+          </div>
+          ${numRow("uocraFrancoTrab", "Franco trabajado hs", "x2", "Horas trabajadas durante el descanso semanal, se liquidan al 100% de recargo.")}
+          ${numRow("uocraFeriadoNoTrab", "Feriado no trab. hs", "Jornal", "Horas correspondientes a feriados nacionales no trabajados.")}
+          ${selRow("uocraAltitude", "Altura %", "Adicional", "Porcentaje adicional por trabajos en altura o profundidad.", '<option value="0">No aplica</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option>')}
+          ${numRow("uocraExtra50", "Hs extra 50%", "x1,5", "Horas extraordinarias realizadas en días hábiles.")}
+          ${numRow("uocraExtra100", "Hs extra 100%", "x2", "Horas extraordinarias realizadas en fines de semana o feriados.")}
+        </div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chkRow("uocraSeniority", "Antiguedad", "Se calcula aplicando un porcentaje (dependiendo la zona y categoría) por cada año de antigüedad sobre el salario básico.", true)}
+          ${chkRow("uocraPresentism", "Presentismo 20%", "Premio a la asistencia perfecta, calculado como el 20% del salario básico y algunos adicionales.", true)}
+          ${chkRow("uocraSpecialTask", "Tareas especiales 20%", "Adicional por la realización de tareas riesgosas o insalubres estipuladas en convenio.", false)}
+          ${chkRow("uocraSubmuracion", "Submuracion 10%", "Adicional por tareas de submuración, excavaciones o trabajos afines.", false)}
+          ${chkRow("uocraHormigon", "Hormigon armado 15%", "Adicional por manipulación y trabajos específicos con hormigón armado.", false)}
+          ${chkRow("uocraEncargado", "Encargado 10%", "Adicional por cumplir funciones de encargado, capataz o liderazgo de grupo.", false)}
+        </div>
+
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Haberes No Remunerativos</h3>
+        </div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chkRow("uocraSNR", "SNR paritaria", "Suma No Remunerativa vigente pactada en la última revisión paritaria de UOCRA.", true)}
+          ${chkRow("uocraVestimenta", "Asignacion vestimenta (Art.35)", "Asignación especial por falta de provisión de ropa de trabajo (Art. 35).", false)}
+        </div>
+
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Deducciones / Aportes</h3>
+        </div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chkRow("uocraAfiliado", "Afiliado UOCRA (cuota sindical 2,5%)", "Retención de la cuota sindical para trabajadores afiliados a la Unión Obrera de la Construcción.", true)}
         </div>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));

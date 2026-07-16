@@ -1,11 +1,11 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { buildPayrollConvention } = require('./convenio-service');
 
 /**
  * Builds a JS calculator file for a given convention JSON
  */
 async function buildCalculator(rawConvenio) {
+  const { buildPayrollConvention } = require('./convenio-service');
   const convenio = buildPayrollConvention(rawConvenio, "");
   const model = convenio.liquidationModel || {};
   const rules = model.rules || convenio.rules || {};
@@ -29,11 +29,35 @@ function sumRows(rows) {
 module.exports = {
   getMetadata: () => {
     return [
-      ${presentismRule.enabled ? `{ id: "genPresentism", label: "Presentismo", type: "checkbox", defaultValue: true },` : ''}
-      ${seniorityRule.enabled !== false ? `{ id: "genSeniority", label: "Antigüedad", type: "checkbox", defaultValue: true },` : ''}
-      { id: "genExtra50", label: "Horas extra 50%", type: "number", defaultValue: 0 },
-      { id: "genExtra100", label: "Horas extra 100%", type: "number", defaultValue: 0 },
-      ${concepts.map(c => `{ id: "concept_${c.id}", label: "${c.label || c.concepto}", type: "${c.calculationType === 'fixed_amount' ? 'number' : 'checkbox'}", defaultValue: ${c.calculationType === 'fixed_amount' ? '0' : 'true'} }`).join(',\n      ')}
+      ${presentismRule.enabled ? `{ id: "genPresentism", label: "Presentismo", type: "checkbox", defaultValue: true, detail: "Calculo: (Básico + Antigüedad) x ${presentismRule.percent || 8.33}%", group: "remunerative" },` : ''}
+      ${seniorityRule.enabled !== false ? `{ id: "genSeniority", label: "Antigüedad", type: "checkbox", defaultValue: true, detail: "Calculo: Básico x ${seniorityRule.percent || 1}% x Años", group: "remunerative" },` : ''}
+      { id: "genExtra50", label: "Horas extra 50%", type: "number", defaultValue: 0, detail: "Calculo: Valor hora x 1.5 x Horas", group: "remunerative" },
+      { id: "genExtra100", label: "Horas extra 100%", type: "number", defaultValue: 0, detail: "Calculo: Valor hora x 2 x Horas", group: "remunerative" },
+      ${concepts.map(c => {
+        let calcDesc = "";
+        let inputType = "checkbox";
+        
+        if (c.calculation === 'amountPerUnit') {
+          inputType = "number";
+          calcDesc = `Calculo: Valor Unidad x Cantidad`;
+        } else if (c.calculation === 'fixed' || (!c.percent && !c.calculation)) {
+          if (c.amount) {
+            inputType = "checkbox";
+            calcDesc = `Calculo: $${c.amount} (Fijo)`;
+          } else {
+            inputType = "number";
+            calcDesc = `Calculo: Monto ingresado manualmente`;
+          }
+        } else {
+          inputType = "checkbox";
+          const baseName = c.base && !String(c.base).includes('revision_manual') ? String(c.base).replace(/_/g, ' ') : 'Sueldo Básico';
+          calcDesc = `Calculo: ${baseName} x ${c.percent || 0}%`;
+        }
+        
+        const textDetail = (c.detail || c.description || '').replace(/"/g, '\\"').replace(/\n/g, ' ');
+        const finalDetail = textDetail ? `${textDetail}<br><br><b>${calcDesc}</b>` : `<b>${calcDesc}</b>`;
+        return `{ id: "concept_${c.id}", label: "${c.label || c.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'non_remunerative' : 'remunerative'}" }`;
+      }).join(',\n      ')}
     ].filter(Boolean);
   },
 
@@ -109,7 +133,10 @@ module.exports = {
     ${concepts.map(c => `
     if (inputs["concept_${c.id}"] !== false && String(inputs["concept_${c.id}"]) !== "false" && inputs["concept_${c.id}"] !== "0") {
       const val = ${c.calculationType === 'fixed_amount' ? `Number(inputs["concept_${c.id}"] || 0)` : `(sumRows(rows.remRows) * ${c.percent || 0} / 100)`};
-      if (val !== 0) addRow(rows.remRows, "${c.label || c.concepto}", val, "${c.calculationType === 'fixed_amount' ? '' : `${c.percent || 0}%`}");
+      if (val !== 0) {
+        const isNoRem = ${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'true' : 'false'};
+        addRow(isNoRem ? rows.noRemRows : rows.remRows, "${c.label || c.concepto}", val, "${c.calculationType === 'fixed_amount' ? '' : `${c.percent || 0}%`}");
+      }
     }
     `).join('\n')}
 

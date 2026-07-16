@@ -13,12 +13,12 @@ function sumRows(rows) {
 module.exports = {
   getMetadata: () => {
     return [
-      { id: "genPresentism", label: "Presentismo", type: "checkbox", defaultValue: true },
-      { id: "genSeniority", label: "Antigüedad", type: "checkbox", defaultValue: true },
-      { id: "genExtra50", label: "Horas extra 50%", type: "number", defaultValue: 0 },
-      { id: "genExtra100", label: "Horas extra 100%", type: "number", defaultValue: 0 },
-      { id: "concept_ADICIONAL_1", label: "Adicional por Zona Desfavorable", type: "checkbox", defaultValue: true },
-      { id: "concept_ZONA_DESFAVORABLE", label: "Adicional Zona Desfavorable (Sur)", type: "checkbox", defaultValue: true }
+      { id: "genPresentism", label: "Presentismo", type: "checkbox", defaultValue: true, detail: "Calculo: (Básico + Antigüedad) x 8.33%", group: "remunerative" },
+      { id: "genSeniority", label: "Antigüedad", type: "checkbox", defaultValue: true, detail: "Calculo: Básico x 1% x Años", group: "remunerative" },
+      { id: "genExtra50", label: "Horas extra 50%", type: "number", defaultValue: 0, detail: "Calculo: Valor hora x 1.5 x Horas", group: "remunerative" },
+      { id: "genExtra100", label: "Horas extra 100%", type: "number", defaultValue: 0, detail: "Calculo: Valor hora x 2 x Horas", group: "remunerative" },
+      { id: "concept_ADICIONAL_1", label: "Adicional por Zona Desfavorable", type: "checkbox", defaultValue: true, detail: "Aplica segun categoria, periodo y jornada | Aplicable en Provincias de La Pampa, Río Negro, Chubut, Neuquén, Santa Cruz, Tierra del Fuego, Antártida e Islas del Atlántico Sur, o Partido de Patagones (Bs. As.)<br><br><b>Calculo: Sueldo Básico x 31%</b>", group: "remunerative" },
+      { id: "concept_ZONA_DESFAVORABLE", label: "Adicional Zona Desfavorable (Sur)", type: "checkbox", defaultValue: true, detail: "Aplica en zona sur<br><br><b>Calculo: sueldo basico x 30%</b>", group: "remunerative" }
     ].filter(Boolean);
   },
 
@@ -94,13 +94,19 @@ module.exports = {
     
     if (inputs["concept_ADICIONAL_1"] !== false && String(inputs["concept_ADICIONAL_1"]) !== "false" && inputs["concept_ADICIONAL_1"] !== "0") {
       const val = (sumRows(rows.remRows) * 31 / 100);
-      if (val !== 0) addRow(rows.remRows, "Adicional por Zona Desfavorable", val, "31%");
+      if (val !== 0) {
+        const isNoRem = false;
+        addRow(isNoRem ? rows.noRemRows : rows.remRows, "Adicional por Zona Desfavorable", val, "31%");
+      }
     }
     
 
     if (inputs["concept_ZONA_DESFAVORABLE"] !== false && String(inputs["concept_ZONA_DESFAVORABLE"]) !== "false" && inputs["concept_ZONA_DESFAVORABLE"] !== "0") {
       const val = (sumRows(rows.remRows) * 30 / 100);
-      if (val !== 0) addRow(rows.remRows, "Adicional Zona Desfavorable (Sur)", val, "30%");
+      if (val !== 0) {
+        const isNoRem = false;
+        addRow(isNoRem ? rows.noRemRows : rows.remRows, "Adicional Zona Desfavorable (Sur)", val, "30%");
+      }
     }
     
 

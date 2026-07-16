@@ -20,6 +20,7 @@ for (const [name, payload] of Object.entries(fixtures)) {
     const parsed = liquidationResultSchema.safeParse(result);
     assert.equal(parsed.success, true, parsed.error?.message);
     assert.equal(result.conventionId, payload.conventionId);
+    if (!(result.totals.gross > 0)) console.log("FAILED GROSS:", name, result.totals, result.remunerative, result.nonRemunerative);
     assert.ok(result.totals.gross > 0);
     assert.ok(result.totals.employerCost >= result.totals.gross);
     assert.ok(result.remunerative.length > 0);

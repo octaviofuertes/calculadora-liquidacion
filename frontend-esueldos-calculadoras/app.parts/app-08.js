@@ -1,4 +1,4 @@
-﻿  function renderAuditFinding(finding) {
+  function renderAuditFinding(finding) {
     return `<article class="audit-finding ${auditSeverityClass(finding.severity)}">
       <div>
         <span>${escapeHtml(finding.severity || "baja")}</span>
@@ -190,7 +190,8 @@
         const input = parameters[`gen_${concept.id}`];
         return conceptUsesNumberInput(concept) ? Number(input || 0) > 0 : !!input;
       });
-      const remLabels = (result.remRows || []).map((row) => String(row.label || "").toLowerCase()).join(" | ");
+      const remRows = result.remRows || result.remunerative || [];
+      const remLabels = remRows.map((row) => String(row.label || "").toLowerCase()).join(" | ");
       addChecklist("Convenio IA: motor generico activo", true, "La liquidacion uso reglas aprobadas de Convenios IA.");
       addChecklist("Convenio IA: categorias con importes", (result.conv.categories || []).length > 0, `${(result.conv.categories || []).length} categorias cargadas.`);
       addChecklist("Convenio IA: conceptos variables", enabledConcepts.length >= 0, `${enabledConcepts.length} conceptos variables activados.`);

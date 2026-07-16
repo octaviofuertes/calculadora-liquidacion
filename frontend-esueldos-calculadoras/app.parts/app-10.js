@@ -220,7 +220,10 @@
           </thead>
           <tbody>
             ${cleanRows.length ? cleanRows.map((row, index) => `<tr data-row-index="${index}" data-audit-row-id="${escapeHtml(auditRowIdentity(row))}">
-              <td class="audit-check-cell"><input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}></td>
+              <td class="audit-check-cell">
+                <input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}>
+                ${options.hiddenFields ? options.hiddenFields.map(hf => `<input type="hidden" data-field="${escapeHtml(hf)}" value="${escapeHtml(row?.[hf] || "")}">`).join("") : ""}
+              </td>
               ${displayColumns.map((column) => `<td>${auditInput(column.field, row?.[column.field], { ...column, locked })}</td>`).join("")}
             </tr>`).join("") : `<tr class="audit-empty-row"><td colspan="${displayColumns.length + 1}">Sin datos extraidos. Podés agregar filas manualmente.</td></tr>`}
           </tbody>
@@ -470,7 +473,7 @@
           { field: "sueldo_base", label: salaryLabel }
         ],
         group.rows,
-        { locked, defaultOrigin: "CCT / Escala", expanded: index === 0 }
+        { locked, defaultOrigin: "CCT / Escala", expanded: index === 0, hiddenFields: ["mes"] }
       )).join("")
       : `<div class="audit-empty-row">Sin datos de escalas extraídos.</div>`;
 

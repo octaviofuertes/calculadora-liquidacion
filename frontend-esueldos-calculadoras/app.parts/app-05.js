@@ -1,4 +1,4 @@
-﻿      addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`, `${calcNum(seniorityBase)} x ${calcNum(pctAnt)} / 100`);
+      addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`, `${calcNum(seniorityBase)} x ${calcNum(pctAnt)} / 100`);
     }
 
     const regularRem = sumRows(remRows);
@@ -379,17 +379,25 @@
       <div class="line-total"><span>Total bruto</span><span class="amount">${fmt(result.totals.gross)}</span></div>
       <div class="line-total" data-receipt-section="deductions-total"><span>Total deducciones</span><span class="amount">${fmt(result.totals.deductions)}</span></div>
       <div class="line-total net-total" data-receipt-section="net"><span>Neto a cobrar</span><span class="amount">${fmt(result.totals.net)}</span></div>
+      <div class="receipt-actions no-print" style="margin-top: 20px; text-align: left;">
+        <button class="primary-action is-inline" onclick="window.print()" type="button" aria-label="Descargar o imprimir recibo" style="padding: 10px 16px; border-radius: 6px; font-weight: 500;">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;vertical-align:middle;margin-right:8px;fill:currentColor">
+            <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path>
+          </svg>
+          Descargar recibo
+        </button>
+      </div>
     </div>`;
   }
 
   function renderDetails(result) {
-    const remRows = result.remRows || [];
-    const noRemRows = result.noRemRows || [];
-    const deductionRows = result.deductionRows || [];
+    const remRows = result.remRows || result.remunerative || [];
+    const noRemRows = result.noRemRows || result.nonRemunerative || [];
+    const deductionRows = result.deductionRows || result.deductions || [];
     const calcRows = [...remRows, ...noRemRows, ...deductionRows];
     const employerRows = [
       { label: "Bruto trabajador", amount: result.totals.gross, detail: "" },
-      ...(result.employerRows || []),
+      ...(result.employerRows || result.employer || []),
       { label: "Costo total estimado", amount: result.totals.employerCost, detail: "Bruto + contribuciones" }
     ];
     return `<div class="detail-grid">

@@ -506,6 +506,7 @@
       conventionPage * CONVENTIONS_PER_PAGE,
       (conventionPage + 1) * CONVENTIONS_PER_PAGE
 
+
     );
     container.innerHTML = visibleConventions
       .map((conv) => {
@@ -649,7 +650,8 @@
       button.classList.toggle("unreachable", step > maxReachedStep && step > currentStep + 1);
     });
 
-    $("prevStepBtn").disabled = currentStep === 1;
+    const isWidget = document.body.classList.contains("widget-mode");
+    $("prevStepBtn").disabled = currentStep === 1 || (isWidget && currentStep === 2);
     const nextBtn = $("nextStepBtn");
     nextBtn.style.display = currentStep === TOTAL_STEPS ? "none" : "inline-flex";
     // Disable Next based on step:
@@ -981,6 +983,7 @@
   }
 
   function isSystemPayrollConcept(item = {}) {
+
 
     const labelKey = summaryKey(item.label || item.name || item.nombre || item.concepto || "");
     const idKey = summaryKey(item.id || item.concepto_id || "");
@@ -1445,6 +1448,7 @@
     const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
     const activeScaleRules = activeScaleFor(conv)?.parsedScale?.nonRemunerativeRules
 
+
       || activeScaleFor(conv)?.parsedScale?.reglasNoRemunerativas
       || {};
     rules.nonRemunerativeScale = { ...(rules.nonRemunerativeScale || {}), ...activeScaleRules };
@@ -1904,7 +1908,8 @@
     if (on("farmSeniority")) {
       seniorityAmount = seniorityBase * (pctAnt / 100);
 
-﻿      addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`, `${calcNum(seniorityBase)} x ${calcNum(pctAnt)} / 100`);
+
+      addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`, `${calcNum(seniorityBase)} x ${calcNum(pctAnt)} / 100`);
     }
 
     const regularRem = sumRows(remRows);
@@ -2285,17 +2290,25 @@
       <div class="line-total"><span>Total bruto</span><span class="amount">${fmt(result.totals.gross)}</span></div>
       <div class="line-total" data-receipt-section="deductions-total"><span>Total deducciones</span><span class="amount">${fmt(result.totals.deductions)}</span></div>
       <div class="line-total net-total" data-receipt-section="net"><span>Neto a cobrar</span><span class="amount">${fmt(result.totals.net)}</span></div>
+      <div class="receipt-actions no-print" style="margin-top: 20px; text-align: left;">
+        <button class="primary-action is-inline" onclick="window.print()" type="button" aria-label="Descargar o imprimir recibo" style="padding: 10px 16px; border-radius: 6px; font-weight: 500;">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;vertical-align:middle;margin-right:8px;fill:currentColor">
+            <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"></path>
+          </svg>
+          Descargar recibo
+        </button>
+      </div>
     </div>`;
   }
 
   function renderDetails(result) {
-    const remRows = result.remRows || [];
-    const noRemRows = result.noRemRows || [];
-    const deductionRows = result.deductionRows || [];
+    const remRows = result.remRows || result.remunerative || [];
+    const noRemRows = result.noRemRows || result.nonRemunerative || [];
+    const deductionRows = result.deductionRows || result.deductions || [];
     const calcRows = [...remRows, ...noRemRows, ...deductionRows];
     const employerRows = [
       { label: "Bruto trabajador", amount: result.totals.gross, detail: "" },
-      ...(result.employerRows || []),
+      ...(result.employerRows || result.employer || []),
       { label: "Costo total estimado", amount: result.totals.employerCost, detail: "Bruto + contribuciones" }
     ];
     return `<div class="detail-grid">
@@ -2354,6 +2367,7 @@
     if (typeof value === "object") {
       const readable = value.label || value.nombre || value.name || value.titulo || value.title || value.descripcion || value.description || value.detalle || value.detail || value.value || value.id;
       return readable ? summaryValue(readable, fallback) : JSON.stringify(value);
+
 
 ﻿    }
     return String(value);
@@ -2806,6 +2820,7 @@
           ["PAMI", "3%", "Base SS"],
           ["Obra social OSMICON", "3%", "Rem + SNR"],
 
+
 ﻿          ["Cuota sindical UOCRA", "2,50%", "Remunerativo"],
           ["Aporte solidario (abr-may 26)", "2,00%", "Remunerativo"],
           ["Aporte UOCRA SS", "1,80%", "Remunerativo"],
@@ -3257,7 +3272,8 @@
   }
 
 
-﻿  function renderAuditFinding(finding) {
+
+  function renderAuditFinding(finding) {
     return `<article class="audit-finding ${auditSeverityClass(finding.severity)}">
       <div>
         <span>${escapeHtml(finding.severity || "baja")}</span>
@@ -3449,7 +3465,8 @@
         const input = parameters[`gen_${concept.id}`];
         return conceptUsesNumberInput(concept) ? Number(input || 0) > 0 : !!input;
       });
-      const remLabels = (result.remRows || []).map((row) => String(row.label || "").toLowerCase()).join(" | ");
+      const remRows = result.remRows || result.remunerative || [];
+      const remLabels = remRows.map((row) => String(row.label || "").toLowerCase()).join(" | ");
       addChecklist("Convenio IA: motor generico activo", true, "La liquidacion uso reglas aprobadas de Convenios IA.");
       addChecklist("Convenio IA: categorias con importes", (result.conv.categories || []).length > 0, `${(result.conv.categories || []).length} categorias cargadas.`);
       addChecklist("Convenio IA: conceptos variables", enabledConcepts.length >= 0, `${enabledConcepts.length} conceptos variables activados.`);
@@ -3707,6 +3724,7 @@
           <strong>${escapeHtml(scale.conventionName || scale.shortName || scale.conventionId)}</strong>
           <span>${escapeHtml(scaleDisplayName(scale))}</span>
         </div>
+
 
 ﻿        <span class="status-pill ${scale.status === "APROBADA" ? "ok" : scale.status === "RECHAZADA" ? "bad" : ""}">${escapeHtml(statusLabel(scale.status))}</span>
       </div>
@@ -4160,6 +4178,7 @@
 
   function conventionErrorMessage(payload = {}, fallback = "No se pudo estructurar el convenio.") {
 
+
     const errors = Array.isArray(payload.errores) ? payload.errores : [];
     if (errors.length) {
       return errors.slice(0, 5).map((item) => [item.path, item.message].filter(Boolean).join(": ") || String(item)).join(" | ");
@@ -4382,7 +4401,10 @@
           </thead>
           <tbody>
             ${cleanRows.length ? cleanRows.map((row, index) => `<tr data-row-index="${index}" data-audit-row-id="${escapeHtml(auditRowIdentity(row))}">
-              <td class="audit-check-cell"><input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}></td>
+              <td class="audit-check-cell">
+                <input type="checkbox" data-audit-row-check="${escapeHtml(section)}" ${locked ? "disabled" : ""}>
+                ${options.hiddenFields ? options.hiddenFields.map(hf => `<input type="hidden" data-field="${escapeHtml(hf)}" value="${escapeHtml(row?.[hf] || "")}">`).join("") : ""}
+              </td>
               ${displayColumns.map((column) => `<td>${auditInput(column.field, row?.[column.field], { ...column, locked })}</td>`).join("")}
             </tr>`).join("") : `<tr class="audit-empty-row"><td colspan="${displayColumns.length + 1}">Sin datos extraidos. Podés agregar filas manualmente.</td></tr>`}
           </tbody>
@@ -4632,7 +4654,7 @@
           { field: "sueldo_base", label: salaryLabel }
         ],
         group.rows,
-        { locked, defaultOrigin: "CCT / Escala", expanded: index === 0 }
+        { locked, defaultOrigin: "CCT / Escala", expanded: index === 0, hiddenFields: ["mes"] }
       )).join("")
       : `<div class="audit-empty-row">Sin datos de escalas extraídos.</div>`;
 
@@ -4762,6 +4784,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 6h18"></path>
 
+
           <path d="M8 6V4h8v2"></path>
           <path d="M19 6l-1 14H6L5 6"></path>
           <path d="M10 11v5"></path>
@@ -4839,7 +4862,7 @@
     editor.querySelectorAll("[data-audit-convenio-field], .convention-audit-general [data-field]").forEach((field) => {
       convenio[field.dataset.auditConvenioField || field.dataset.field] = field.value;
     });
-    const collectRows = (section) => Array.from((tablesArea || document).querySelectorAll(`[data-audit-section="${section}"] tbody tr:not(.audit-empty-row)`))
+    const collectRows = (section) => Array.from((tablesArea || document).querySelectorAll(section === "escalas" ? `[data-audit-section^="escalas_"] tbody tr:not(.audit-empty-row)` : `[data-audit-section="${section}"] tbody tr:not(.audit-empty-row)`))
       .map((row) => {
         const item = {};
         row.querySelectorAll("[data-field]").forEach((field) => {
@@ -4937,7 +4960,7 @@
     if (section === "conceptos_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "conceptos_no_remunerativos") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "haber", naturaleza: "no_remunerativo", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
     if (section === "conceptos_deducciones") parsed.conceptos = [...(parsed.conceptos || []), { concepto_id: "", nombre: "", tipo_concepto: "descuento", naturaleza: "retencion", unidad_calculo: "mensual", formula_base: "requiere_revision_manual", base_calculo: "requiere_revision_manual", porcentaje: "", importe_fijo: "", condicion: "", es_liquidable: true }];
-    if (section === "escalas") parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", moneda: "ARS", valores: [{ concepto_id: "SUELDO_BASICO", categoria_id: "", valor: "", periodicidad: "" }] }];
+    if (section.startsWith("escalas")) parsed.escalas = [...(parsed.escalas || []), { escala_id: `escala-${nextIndex(parsed.escalas)}`, nombre_escala: "", periodo_desde: "", moneda: "ARS", valores: [{ concepto_id: "SUELDO_BASICO", categoria_id: "", valor: "", periodicidad: "" }] }];
     if (section === "adicionales") parsed.adicionales = [...(parsed.adicionales || []), { adicional_id: `adicional-${nextIndex(parsed.adicionales)}`, concepto_id: "", nombre: "", formula: "", base_calculo: "", porcentaje: "", importe_fijo: "", condicion: "" }];
     conventionBuilderState.selected.parsedConvention = parsed;
     renderConventionJsonEditor(conventionBuilderState.selected);
@@ -4954,7 +4977,7 @@
     const removedScaleIds = [];
     checkedRows.forEach((checkbox) => {
       const row = checkbox.closest("tr");
-      if (section === "escalas") {
+      if (section.startsWith("escalas")) {
         const scaleId = row?.querySelector('[data-field="escala_id"]')?.value;
         if (scaleId) removedScaleIds.push(scaleId);
       }
@@ -5271,6 +5294,7 @@
         .join("");
       conventionSelect.value = DATA.conventions[selectedId] ? selectedId : fallbackId;
       updateConvention();
+
 
     }
   }
@@ -5754,6 +5778,7 @@
     }
 
 
+
     if (topicId === "rules") {
       return [...header, "", ...formatRules(conv)].join("\n");
     }
@@ -5898,7 +5923,7 @@
     if (isGenericConvention(conv)) {
       let metadata = [];
       try {
-        const res = await fetch(apiUrl(`/api/calculators/${conv.id}/metadata`));
+        const res = await fetch(apiUrl(`/api/calculators/${encodeURIComponent(conv.id)}/metadata`));
         if (res.ok) {
           metadata = await res.json();
         }
@@ -5925,26 +5950,104 @@
         : (rules.monthDivisor || rules.dayDivisor || 30);
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
-      const dynamicInputsHtml = metadata.map(field => {
+          
+      const groups = { remunerative: { checks: [], numbers: [] }, non_remunerative: { checks: [], numbers: [] } };
+      metadata.forEach(field => {
+        const targetGroup = field.group === 'non_remunerative' ? groups.non_remunerative : groups.remunerative;
         if (field.type === "checkbox") {
-          return `<label class="check-row"><input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}><span>${escapeHtml(field.label)}</span></label>`;
+          let descText = field.description || field.detail || "";
+          let infoBtn = descText ? `
+            <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          ` : "";
+          let descHtml = descText ? `<div class="check-desc" style="display: none; padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--line); width: 100%; color: var(--muted); font-size: 0.9em;">${descText}</div>` : "";
+          targetGroup.checks.push(`
+            <label class="check-row ${descHtml ? 'has-desc' : ''}" style="flex-wrap: wrap; align-self: flex-start;">
+              <div style="display: flex; align-items: center; width: 100%; gap: 9px;">
+                <input id="${field.id}" type="checkbox" ${field.defaultValue ? "checked" : ""}>
+                <div class="check-label-wrap" style="flex: 1;">
+                  <span>${escapeHtml(field.label)}</span>
+                </div>
+                ${infoBtn}
+              </div>
+              ${descHtml}
+            </label>
+          `);
+        } else {
+          let label = escapeHtml(field.label);
+          let badge = "";
+          const match = label.match(/(\d+)\s*%/);
+          if (match) {
+             badge = `<span class="concept-badge">+${match[1]}%</span>`;
+             label = label.replace(match[0], "").replace(/\(\s*\)/g, "").trim();
+          }
+          let descText = field.description || field.detail || "";
+          let infoBtn = descText ? `
+            <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          ` : "";
+          let descHtml = descText ? `<div class="check-desc" style="display: none; margin-top: 2px; color: var(--muted); font-size: 0.9em;">${descText}</div>` : "";
+          targetGroup.numbers.push(`
+            <div class="concept-table-row">
+              <div class="concept-table-label">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <strong>${label}</strong>
+                  ${infoBtn}
+                </div>
+                ${descHtml}
+              </div>
+              <div class="concept-table-badge">${badge}</div>
+              <div class="concept-table-input">
+                <input id="${field.id}" type="number" min="0" step="0.01" value="${escapeHtml(field.defaultValue || 0)}" placeholder="0">
+              </div>
+            </div>
+          `);
         }
-        return `<label class="field"><span>${escapeHtml(field.label)}</span><input id="${field.id}" type="number" min="0" step="0.01" value="${escapeHtml(field.defaultValue || 0)}" placeholder="0"></label>`;
-      }).join("");
+      });
 
-      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card">
-        <h2 class="dynamic-title">${escapeHtml(conv.shortName || conv.name)}</h2>
-        <div class="generic-section-title">Base de Liquidacion</div>
-        <div class="grid three">
+      const buildSection = (title, data) => {
+        if (data.checks.length === 0 && data.numbers.length === 0) return "";
+        const tableHtml = data.numbers.length > 0 ? `
+          <div class="concept-table">
+            <div class="concept-table-head">
+              <div class="concept-table-th-label">CONCEPTO</div>
+              <div class="concept-table-th-badge"></div>
+              <div class="concept-table-th-input">CANTIDAD</div>
+            </div>
+            ${data.numbers.join("")}
+          </div>
+        ` : "";
+        return `
+          <div class="step-copy" style="margin-top: 32px;">
+            <h3>${title}</h3>
+          </div>
+          ${tableHtml}
+          <div class="check-grid generic-checks" style="margin-top: 16px;">
+            ${data.checks.join("")}
+          </div>
+        `;
+      };
+
+      const remHtml = buildSection("Haberes Remunerativos", groups.remunerative);
+      const noRemHtml = buildSection("Haberes No Remunerativos", groups.non_remunerative);
+      const allSections = remHtml + noRemHtml;
+
+      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
+        <div class="grid three" style="margin-bottom: 24px;">
           ${salaryTypeField}
           ${workUnitsField}
           <label class="field"><span>Dias ausentes injust.</span><input id="genAbsentDays" type="number" min="0" step="1" value="0"></label>
         </div>
-        <div class="generic-section-title">Parametros Dinamicos</div>
-        <div class="check-grid generic-checks">
-          ${dynamicInputsHtml}
-        </div>
-        <p class="generic-note">
+        
+        ${allSections || '<div class="empty" style="margin-top: 24px;">No hay conceptos variables definidos para este convenio.</div>'}
+        
+        <p class="generic-note" style="display: none;">
           <strong>Calculadora Específica Activa:</strong> Esta pantalla usa el script de calculo generado especificamente para este convenio.
         </p>
       </div>`;
@@ -5963,9 +6066,44 @@
       const defaultMode = isSereno ? "mensual" : "1";
       const defaultHours = isSereno ? 176 : 88;
 
-      $("dynamicFields").innerHTML = `<div class="dynamic-card">
-        <h2 class="dynamic-title">Parametros UOCRA</h2>
-        <div class="grid three">
+      const infoBtn = (desc) => desc ? `
+        <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      ` : "";
+      const descHtml = (desc) => desc ? `<div class="check-desc" style="display: none; margin-top: 2px; color: var(--muted); font-size: 0.9em;">${desc}</div>` : "";
+      const numRow = (id, label, badge, desc) => `
+          <div class="concept-table-row">
+            <div class="concept-table-label">
+              <div style="display: flex; align-items: center; gap: 4px;"><strong>${label}</strong>${infoBtn(desc)}</div>
+              ${descHtml(desc)}
+            </div>
+            <div class="concept-table-badge">${badge}</div>
+            <div class="concept-table-input"><input id="${id}" type="number" min="0" step="0.01" value="0" placeholder="0"></div>
+          </div>`;
+      const selRow = (id, label, badge, desc, options) => `
+          <div class="concept-table-row">
+            <div class="concept-table-label">
+              <div style="display: flex; align-items: center; gap: 4px;"><strong>${label}</strong>${infoBtn(desc)}</div>
+              ${descHtml(desc)}
+            </div>
+            <div class="concept-table-badge">${badge}</div>
+            <div class="concept-table-input" style="justify-content: flex-end;">
+              <select id="${id}" style="width: auto; padding: 4px; border: 1px solid var(--border); border-radius: 4px;">${options}</select>
+            </div>
+          </div>`;
+      const chkRow = (id, label, desc, checked) => `
+          <label class="check-row ${desc ? 'has-desc' : ''}" style="flex-wrap: wrap; align-self: flex-start;">
+            <div style="display: flex; align-items: center; width: 100%; gap: 9px;">
+              <input id="${id}" type="checkbox" ${checked ? "checked" : ""}>
+              <div class="check-label-wrap" style="flex: 1;"><span>${label}</span></div>
+              ${infoBtn(desc)}
+            </div>
+            ${descHtml(desc)}
+          </label>`;
+
+      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
+        <div class="grid three" style="margin-bottom: 24px;">
           <label class="field"><span>Liquidacion</span><select id="uocraPeriodMode">
             <option value="1"${defaultMode === "1" ? " selected" : ""}>1ra quincena</option>
             <option value="2"${defaultMode === "2" ? " selected" : ""}>2da quincena</option>
@@ -5973,22 +6111,45 @@
           </select></label>
           <label class="field"><span>Horas normales</span><input id="uocraHours" type="number" min="0" step="0.01" value="${defaultHours}"></label>
           <label class="field"><span>Hs inasist. injust.</span><input id="uocraAbsence" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Franco trabajado hs</span><input id="uocraFrancoTrab" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Feriado no trab. hs</span><input id="uocraFeriadoNoTrab" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Altura %</span><select id="uocraAltitude"><option value="0">No aplica</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option></select></label>
-          <label class="field"><span>Hs extra 50%</span><input id="uocraExtra50" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs extra 100%</span><input id="uocraExtra100" type="number" min="0" step="0.01" value="0"></label>
         </div>
-        <div class="check-grid" style="margin-top:12px">
-          <label class="check-row"><input id="uocraAfiliado" type="checkbox" checked><span>Afiliado UOCRA (cuota sindical 2,5%)</span></label>
-          <label class="check-row"><input id="uocraSNR" type="checkbox" checked><span>SNR paritaria</span></label>
-          <label class="check-row"><input id="uocraSeniority" type="checkbox" checked><span>Antiguedad</span></label>
-          <label class="check-row"><input id="uocraPresentism" type="checkbox" checked><span>Presentismo 20%</span></label>
-          <label class="check-row"><input id="uocraVestimenta" type="checkbox"><span>Asignacion vestimenta (Art.35)</span></label>
-          <label class="check-row"><input id="uocraSpecialTask" type="checkbox"><span>Tareas especiales 20%</span></label>
-          <label class="check-row"><input id="uocraSubmuracion" type="checkbox"><span>Submuracion 10%</span></label>
-          <label class="check-row"><input id="uocraHormigon" type="checkbox"><span>Hormigon armado 15%</span></label>
-          <label class="check-row"><input id="uocraEncargado" type="checkbox"><span>Encargado 10%</span></label>
+
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Haberes Remunerativos</h3>
+        </div>
+        <div class="concept-table">
+          <div class="concept-table-head">
+            <div class="concept-table-th-label">CONCEPTO</div>
+            <div class="concept-table-th-badge"></div>
+            <div class="concept-table-th-input">CANTIDAD</div>
+          </div>
+          ${numRow("uocraFrancoTrab", "Franco trabajado hs", "x2", "Horas trabajadas durante el descanso semanal, se liquidan al 100% de recargo.")}
+          ${numRow("uocraFeriadoNoTrab", "Feriado no trab. hs", "Jornal", "Horas correspondientes a feriados nacionales no trabajados.")}
+          ${selRow("uocraAltitude", "Altura %", "Adicional", "Porcentaje adicional por trabajos en altura o profundidad.", '<option value="0">No aplica</option><option value="15">15%</option><option value="20">20%</option><option value="25">25%</option>')}
+          ${numRow("uocraExtra50", "Hs extra 50%", "x1,5", "Horas extraordinarias realizadas en días hábiles.")}
+          ${numRow("uocraExtra100", "Hs extra 100%", "x2", "Horas extraordinarias realizadas en fines de semana o feriados.")}
+        </div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chkRow("uocraSeniority", "Antiguedad", "Se calcula aplicando un porcentaje (dependiendo la zona y categoría) por cada año de antigüedad sobre el salario básico.", true)}
+          ${chkRow("uocraPresentism", "Presentismo 20%", "Premio a la asistencia perfecta, calculado como el 20% del salario básico y algunos adicionales.", true)}
+          ${chkRow("uocraSpecialTask", "Tareas especiales 20%", "Adicional por la realización de tareas riesgosas o insalubres estipuladas en convenio.", false)}
+          ${chkRow("uocraSubmuracion", "Submuracion 10%", "Adicional por tareas de submuración, excavaciones o trabajos afines.", false)}
+          ${chkRow("uocraHormigon", "Hormigon armado 15%", "Adicional por manipulación y trabajos específicos con hormigón armado.", false)}
+          ${chkRow("uocraEncargado", "Encargado 10%", "Adicional por cumplir funciones de encargado, capataz o liderazgo de grupo.", false)}
+        </div>
+
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Haberes No Remunerativos</h3>
+        </div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chkRow("uocraSNR", "SNR paritaria", "Suma No Remunerativa vigente pactada en la última revisión paritaria de UOCRA.", true)}
+          ${chkRow("uocraVestimenta", "Asignacion vestimenta (Art.35)", "Asignación especial por falta de provisión de ropa de trabajo (Art. 35).", false)}
+        </div>
+
+        <div class="step-copy" style="margin-top: 32px;">
+          <h3>Deducciones / Aportes</h3>
+        </div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chkRow("uocraAfiliado", "Afiliado UOCRA (cuota sindical 2,5%)", "Retención de la cuota sindical para trabajadores afiliados a la Unión Obrera de la Construcción.", true)}
         </div>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));
@@ -6192,10 +6353,20 @@
         }
       });
 
+
     });
   }
 
   async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isWidget = urlParams.get("widget") === "true";
+    const requestedConvId = urlParams.get("conventionId");
+
+    if (isWidget) {
+      document.body.classList.add("widget-mode");
+      document.documentElement.classList.add("widget-mode");
+    }
+
     bindNavigation();
     await loadCatalog();
 
@@ -6203,7 +6374,15 @@
     conventionSelect.innerHTML = Object.values(DATA.conventions)
       .map((conv) => `<option value="${conv.id}">${escapeHtml(conv.name)}</option>`)
       .join("");
-    conventionSelect.value = firstConventionId();
+      
+    if (requestedConvId && DATA.conventions[requestedConvId]) {
+      conventionSelect.value = requestedConvId;
+      if (isWidget) {
+        conventionSelect.disabled = true;
+      }
+    } else {
+      conventionSelect.value = firstConventionId();
+    }
 
     $("payrollForm").addEventListener("input", () => {
       markDirty();
@@ -6254,6 +6433,7 @@
       setTimeout(async () => {
         await refreshActiveScaleContext();
         await calculate();
+        document.body.classList.add("has-result");
         btn.textContent = originalText;
         btn.disabled = false;
         goToStep(4);
@@ -6294,8 +6474,14 @@
     setupLeia();
     setActionButtonsEnabled(false);
     updateConvention();
-    goToStep(1);
-    activateTab("audit");
+    if (isWidget) {
+      maxReachedStep = Math.max(maxReachedStep, 2);
+      goToStep(2);
+    } else {
+      goToStep(1);
+    }
+    document.documentElement.classList.remove("widget-init");
+    activateTab(isWidget ? "receipt" : "audit");
   }
 
   function exportJson() {
@@ -6374,6 +6560,7 @@
     init();
   }
 })();
+
 
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -6648,7 +6835,6 @@
       }
     });
   }
-
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initGlobalSettings, { once: true });
   } else {

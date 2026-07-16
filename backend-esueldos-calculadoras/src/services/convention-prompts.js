@@ -26,7 +26,14 @@ function universalConventionTemplateForPrompt() {
     ambitos: [],
     categorias: [],
     conceptos: [],
-    escalas: [],
+    escalas: [
+      {
+        nombre_escala: "",
+        vigencia_desde: "",
+        vigencia_hasta: "",
+        valores: []
+      }
+    ],
     adicionales: []
   };
 }
@@ -431,7 +438,7 @@ function buildScaleCompactPrompt({ draftName, notes, baseCategories = [], baseCo
   return [
     "Extrae SOLO la escala salarial en JSON válido. Sé lo más exhaustivo posible para no perder filas ni categorías. No resumas la tabla." + baseCategoriesText + baseConceptsText,
     categoryHierarchyRulesForPrompt(),
-    "Devuelve exclusivamente el contrato JSON sin notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"categorias\":[],\"escalas\":[]}.",
+    "Devuelve exclusivamente el contrato JSON sin notas ni explicaciones: {\"schemaVersion\":\"esueldos-cct-estructura-excel-v1\",\"convenio\":{},\"categorias\":[],\"escalas\":[{\"nombre_escala\":\"\",\"vigencia_desde\":\"YYYY-MM-DD o YYYY-MM\",\"vigencia_hasta\":\"\",\"valores\":[]}]}.",
     "[AISLAMIENTO ABSOLUTO] Usa únicamente el texto de esta escala salarial. Si falta información usa null o [].",
     "Si el texto esta vacio o fragmentado, usa la vision del archivo original para recorrer todas las paginas y reconstruir la tabla. No inventes celdas ilegibles y marca su baja confianza.",
     

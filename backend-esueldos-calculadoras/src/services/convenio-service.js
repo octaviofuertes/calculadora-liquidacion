@@ -363,7 +363,7 @@ function buildPayrollConvention(convenio, period) {
   (runtime.liquidationModel?.concepts || []).forEach((concept) => {
     const source = sourceById.get(concept.id) || {};
     const kind = concept.rowType || conceptKind(source);
-    if (concept.rowType === "reference" || isBasicConcept(source) || extractedRules.ruleConceptIds.has(concept.id)) {
+    if (concept.rowType === "reference" || isBasicConcept(source) || isBasicConcept({ concepto_id: concept.id, nombre: concept.label }) || extractedRules.ruleConceptIds.has(concept.id)) {
       grouped.references.push({ ...concept, defaultValue: false });
       return;
     }
