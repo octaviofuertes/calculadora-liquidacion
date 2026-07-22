@@ -1,1 +1,13 @@
-const { MongoClient } = require('mongodb'); async function run() { const client = new MongoClient('mongodb://localhost:27017'); await client.connect(); const db = client.db('esueldos'); const conv = await db.collection('conventions').findOne({ 'convenio.denominacion': /panadero/i }); console.log(JSON.stringify(conv ? conv.conceptos : 'Not found', null, 2)); await client.close(); } run();
+const { MongoClient } = require('mongodb');
+async function run() {
+  const uri = 'mongodb+srv://joni:esueldos1234@cluster0.fljoqhs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+  const client = new MongoClient(uri);
+  await client.connect();
+  const db = client.db('esueldos_calculadoras');
+  
+  const allIds = await db.collection('conventions').find({}, { projection: { id: 1, 'convenio.convenio_id': 1 } }).toArray();
+  console.log('All DB Conventions:', allIds);
+
+  await client.close();
+}
+run().catch(console.error);

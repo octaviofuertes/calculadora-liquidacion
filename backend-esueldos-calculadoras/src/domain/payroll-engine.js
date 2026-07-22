@@ -168,13 +168,15 @@ function calculateGanancias(constants, inputs, remunerative, civilStatus) {
 }
 
 function commonContext({ catalog, convention, payload, activeScale }) {
-  const category = (convention.categories || []).find((item) => item.id === payload.categoryId);
+  const categoryIdNorm = normalizeMatchText(payload.categoryId);
+  const category = (convention.categories || []).find((item) => normalizeMatchText(item.id) === categoryIdNorm || normalizeMatchText(item.label) === normalizeMatchText(payload.categoryLabel || ''));
   if (!category) {
     const error = new Error(`Categoria invalida para el convenio: ${payload.categoryId}`);
     error.status = 422;
     throw error;
   }
-  const zone = (convention.zones || []).find((item) => item.id === payload.zoneId);
+  const zoneIdNorm = normalizeMatchText(payload.zoneId);
+  const zone = (convention.zones || []).find((item) => normalizeMatchText(item.id) === zoneIdNorm || normalizeMatchText(item.label) === normalizeMatchText(payload.zoneLabel || ''));
   if (!zone) {
     const error = new Error(`Zona invalida para el convenio: ${payload.zoneId}`);
     error.status = 422;

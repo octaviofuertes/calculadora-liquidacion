@@ -104,6 +104,23 @@
           { id: "C", label: "Zona C", coef: 1 },
           { id: "CAustral", label: "Zona C Austral", coef: 1 }
         ],
+        rules: {
+          presentismPct: 20,
+          seniorityPct: 1
+        },
+        additionals: {
+          altura: { label: "Trabajo en Altura/Profundidad (15%, 20%, 25%)", type: "remunerative" },
+          tareasEspeciales: { label: "Tareas Especiales (20%)", type: "remunerative" },
+          submuracion: { label: "Submuración (10%)", type: "remunerative" },
+          hormigon: { label: "Hormigón Armado (15%)", type: "remunerative" },
+          encargado: { label: "Encargado / Capataz (10%)", type: "remunerative" },
+          asignacionVestimenta: { label: "Asignación Vestimenta (Art. 35 CCT 76/75)", type: "non_remunerative" }
+        },
+        deductions: {
+          cuotaSindical: { label: "Cuota Sindical UOCRA", percent: 2.5 },
+          aporteSS: { label: "Aporte Seguro Social (SS)", percent: 1.8 },
+          contribucionSolidaria: { label: "Contribución Solidaria", percent: 2.3 }
+        },
         categories: UOCRA_CATEGORIES,
         scaleKind: "Jornal diario; sereno mensual",
         scales: {
@@ -210,6 +227,28 @@
           { id: "surSantaCruz", label: "Sur Santa Cruz / coef. 1,40", coef: 1.4 }
         ],
         categories: CAMIONEROS_CATEGORIES,
+        rules: {
+          seniorityPct: 1,
+          presentismPct: 8.33
+        },
+        additionals: {
+          largaDistancia: { label: "Chofer larga distancia (10% del básico)", type: "remunerative" },
+          lacteos: { label: "Transporte de lácteos (15%)", type: "remunerative" },
+          auxilio: { label: "Auxilio y taller (10%)", type: "remunerative" },
+          blindado: { label: "Camión blindado (20%)", type: "remunerative" },
+          combustibles: { label: "Transporte de combustibles (15%)", type: "remunerative" },
+          peligrosas: { label: "Cargas peligrosas (20%)", type: "remunerative" },
+          pozos: { label: "Pozos petrolíferos (40%)", type: "remunerative" },
+          camaraFrio: { label: "Cámara frigorífica (20%)", type: "remunerative" },
+          logistica: { label: "Logística (18%)", type: "remunerative" },
+          comida: { label: "Viático comida ($15.318)", type: "non_remunerative" },
+          pernoctada: { label: "Pernoctada ($17.841,22)", type: "non_remunerative" },
+          plusVacacional: { label: "Plus vacacional por día ($23.384,27)", type: "non_remunerative" }
+        },
+        deductions: {
+          cuotaSindical: { label: "Cuota Sindical FATCSA", percent: 2 },
+          fondoSolidario: { label: "Fondo Solidario FATCSA", percent: 0.5 }
+        },
         items: {
           comida: 15318,
           viaticoEspecial: 7686.55,

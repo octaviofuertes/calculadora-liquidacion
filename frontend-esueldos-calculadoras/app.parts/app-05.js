@@ -293,11 +293,14 @@
   }
 
   async function calculate() {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
     try {
       const response = await fetch(apiUrl("/api/liquidations/calculate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildBackendCalculationPayload())
+        body: JSON.stringify(buildBackendCalculationPayload()),
+        signal: controller.signal
       });
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({}));
@@ -311,6 +314,8 @@
     } catch (error) {
       console.warn("Calculo backend no disponible; usando motor local.", error);
       calculateLocal();
+    } finally {
+      window.clearTimeout(timeout);
     }
   }
 
@@ -421,10 +426,19 @@
     const source = result.activeScale
       ? `<div class="scale-source-note">Liquidacion basada en escala aprobada vigente: ${escapeHtml(result.activeScale.periodLabel || monthLabel(result.activeScale.period))}.</div>`
       : `<div class="scale-source-note">Liquidacion basada en la escala base cargada en el sistema.</div>`;
-    let content = renderGenericScale(result);
-    if (result.conv.id === "uocra") content = renderUocraScale(result);
-    if (result.conv.id === "farmacia") content = renderFarmaciaScale(result);
-    if (result.conv.id === "camioneros") content = renderCamionerosScale(result);
+    const rendererKey = result.conv?.scaleRenderer
+      || result.conv?.metadata?.scaleRenderer
+      || result.conv?.metadata?.scaleTemplate
+      || result.conv?.summaryRenderer
+      || result.conv?.metadata?.guideRenderer
+      || result.conv?.metadata?.guideTemplate
+      || result.conv?.id;
+    const scaleRenderers = {
+      uocra: renderUocraScale,
+      farmacia: renderFarmaciaScale,
+      camioneros: renderCamionerosScale
+    };
+    const content = (scaleRenderers[rendererKey] || renderGenericScale)(result);
     return `<div class="scale-compact-view">${source}${content}</div>`;
   }
 

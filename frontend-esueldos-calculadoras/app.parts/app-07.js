@@ -1,4 +1,4 @@
-﻿          ["Cuota sindical UOCRA", "2,50%", "Remunerativo"],
+          ["Cuota sindical UOCRA", "2,50%", "Remunerativo"],
           ["Aporte solidario (abr-may 26)", "2,00%", "Remunerativo"],
           ["Aporte UOCRA SS", "1,80%", "Remunerativo"],
           ["ISTIC", "0,50%", "Remunerativo"]
@@ -153,6 +153,20 @@
   function renderGenericConventionSummary(conv, result = null) {
     const { period, zone, category } = currentSummaryContext(conv, result);
     const model = conv.liquidationModel || {};
+    const uniqueByLabel = (items = []) => {
+      const seen = new Set();
+      return summaryArray(items).filter((item) => {
+        const key = String(item.label || item.id || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
     const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
     const seniority = rules.seniority || {};
     const presentism = rules.presentism || {};
@@ -167,7 +181,7 @@
     const legal = conv.legalFramework || {};
     const sources = summaryArray(legal.primarySources).map((source) => `${source.title || source.type || "Fuente"}${source.fileName ? ` - ${source.fileName}` : ""}`);
     const scope = conv.scope || {};
-    const concepts = summaryArray(model.concepts || conv.concepts);
+    const concepts = summaryArray([...(model.concepts || []), ...(model.nonRemunerative || []), ...(conv.concepts || [])]);
     const conceptSummaryRow = (item) => [
       humanizeTechnicalText(item.label || item.id),
       humanConceptType(item),
@@ -188,13 +202,13 @@
     const otherConceptRows = concepts
       .filter((item) => !["remunerative", "nonremunerative", "deduction"].includes(conceptType(item)))
       .map(conceptSummaryRow);
-    const deductionRows = summaryArray(model.deductions || conv.deductions).map((item) => [
+    const deductionRows = uniqueByLabel(model.deductions || conv.deductions).map((item) => [
       humanizeTechnicalText(item.label || item.id),
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
       humanConceptBase(item.base || "remunerative"),
       humanConceptDetail(item)
     ]);
-    const retentionRows = summaryArray(model.retentions || conv.retentions).map((item) => [
+    const retentionRows = uniqueByLabel(model.retentions || conv.retentions).map((item) => [
       humanizeTechnicalText(item.label || item.id),
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
       humanConceptBase(item.base || "remunerative"),
@@ -206,7 +220,7 @@
       item.evidence || "-",
       item.sourceFileName || item.source || "-"
     ]);
-    const employerRows = summaryArray(model.employerContributions || conv.employerContributions).map((item) => [
+    const employerRows = uniqueByLabel(model.employerContributions || conv.employerContributions).map((item) => [
       humanizeTechnicalText(item.label || item.id),
       item.percent ? `${item.percent}%` : (item.amount ? fmt(Number(item.amount)) : "-"),
       humanConceptBase(item.base || "remunerative"),
@@ -301,12 +315,25 @@
         <h3>Conceptos</h3>
         <div class="scale-table-scroll">
           <table><thead><tr><th>Concepto</th><th>Tipo</th><th>Cómo se calcula</th><th>Base de cálculo</th></tr></thead><tbody>
-            ${(model.concepts || []).map((concept) => `<tr>
+            ${([...(model.concepts || []), ...(model.nonRemunerative || [])]).map((concept) => `<tr>
               <td>${escapeHtml(humanizeTechnicalText(concept.label || concept.id))}</td>
               <td>${escapeHtml(humanConceptType(concept))}</td>
               <td>${escapeHtml(humanConceptCalculation(concept))}</td>
               <td>${escapeHtml(humanConceptBase(concept.base || "basic"))}</td>
             </tr>`).join("") || `<tr><td colspan="4">Sin conceptos variables cargados.</td></tr>`}
+          </tbody></table>
+        </div>
+      </section>
+      <section class="scale-table-card" style="margin-top: 16px;">
+        <h3>Retenciones y Aportes</h3>
+        <div class="scale-table-scroll">
+          <table><thead><tr><th>Concepto</th><th>Tipo</th><th>Cómo se calcula</th><th>Base de cálculo</th></tr></thead><tbody>
+            ${([...(model.deductions || []), ...(model.retentions || [])]).map((concept) => `<tr>
+              <td>${escapeHtml(humanizeTechnicalText(concept.label || concept.id))}</td>
+              <td>${concept.rowType === 'deduction' ? 'Deducción / Aporte' : 'Retención'}</td>
+              <td>${escapeHtml(humanConceptCalculation(concept))}</td>
+              <td>${escapeHtml(humanConceptBase(concept.base || "basic"))}</td>
+            </tr>`).join("") || `<tr><td colspan="4">Sin retenciones cargadas.</td></tr>`}
           </tbody></table>
         </div>
       </section>

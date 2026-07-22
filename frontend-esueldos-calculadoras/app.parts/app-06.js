@@ -199,8 +199,33 @@
     </details>`;
   }
 
+  function normalizeTableKey(value) {
+    return String(value ?? "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function uniqueTableRows(rows, keySelector = null) {
+    const seen = new Set();
+    return (rows || []).filter((row) => {
+      if (!row) return false;
+      const rawKey = typeof keySelector === "function"
+        ? keySelector(row)
+        : Array.isArray(row)
+          ? row[0]
+          : row.label || row.id || row.name || row.concept || row.title || "";
+      const key = normalizeTableKey(rawKey);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function renderSummaryTable(title, headers, rows) {
-    const cleanRows = (rows || []).filter(Boolean);
+    const cleanRows = uniqueTableRows(rows);
     if (!cleanRows.length) return "";
     return `<details class="summary-section summary-collapsible">
       <summary><span>${escapeHtml(title)}</span><em>${cleanRows.length} filas</em></summary>
@@ -333,6 +358,20 @@
     return `<div class="category-guide">${tables.join("")}</div>`;
   }
 
+  function conventionGuideRenderer(conv = {}) {
+    const rendererKey = conv.summaryRenderer
+      || conv.metadata?.guideRenderer
+      || conv.metadata?.guideTemplate
+      || conv.guideTemplate
+      || conv.id;
+    const renderers = {
+      uocra: renderUocraSummary,
+      farmacia: renderFarmaciaConventionSummary,
+      camioneros: renderCamionerosConventionSummary
+    };
+    return renderers[rendererKey] || renderGenericConventionSummary;
+  }
+
   function renderConventionSummary(result = null) {
     const conv = result?.conv || getConvention();
     const meta = conventionCardMeta(conv);
@@ -341,13 +380,7 @@
     const periodText = conv.periods?.find((item) => item.id === period)?.label || monthLabel(periodIdToMonth(period) || period);
     const scaleText = activeScale ? `${activeScale.periodLabel || monthLabel(activeScale.period)} aprobada` : "Escala base del sistema";
     const basicAmount = selectedScaleAmount(conv, category, zone, period);
-    const body = conv.id === "uocra"
-      ? renderUocraSummary(conv, result)
-      : conv.id === "farmacia"
-        ? renderFarmaciaConventionSummary(conv, result)
-        : conv.id === "camioneros"
-          ? renderCamionerosConventionSummary(conv, result)
-          : renderGenericConventionSummary(conv, result);
+    const body = conventionGuideRenderer(conv)(conv, result);
 
     return `<div class="convention-summary" style="--summary-accent:${accent.strong};--summary-soft:${accent.soft};--summary-ink:${accent.ink};">
       <div class="convention-summary-hero">

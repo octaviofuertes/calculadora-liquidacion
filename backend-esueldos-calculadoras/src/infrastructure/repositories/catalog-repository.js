@@ -25,9 +25,20 @@ function createCatalogRepository({ getDb }) {
 
       const conventionFilter = ObjectId.isValid(conventionId)
         ? { $or: [{ id: { $in: possibleIds } }, { _id: new ObjectId(conventionId) }, { _id: { $in: possibleIds } }] }
-        : { $or: [{ id: { $in: possibleIds } }, { _id: { $in: possibleIds } }, { "convenio.denominacion": conventionId }] };
+        : { $or: [{ id: { $in: possibleIds } }, { _id: { $in: possibleIds } }, { "convenio.denominacion": conventionId }, { "convenio.convenio_id": conventionId }] };
         
-      const convention = await database.collection("conventions").findOne(conventionFilter);
+      let convention = await database.collection("conventions").findOne(conventionFilter);
+      if (!convention) {
+        const { canonConvenioId } = require("../../models/convenio.model");
+        const all = await database.collection("conventions").find({}).project({ id: 1, _id: 1, "convenio.convenio_id": 1 }).toArray();
+        const match = all.find(c => {
+          const cid = c.convenio?.convenio_id || c.id;
+          return canonConvenioId(cid) === conventionId;
+        });
+        if (match) {
+          convention = await database.collection("conventions").findOne({ _id: match._id });
+        }
+      }
       if (!convention) return { status: "not_found" };
 
       const totalConventions = await database.collection("conventions").countDocuments();

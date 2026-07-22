@@ -102,8 +102,25 @@
     return conceptPeriodAmount(concept, period, ["unitAmountByPeriod", "valorUnidadPorPeriodo"], concept.unitAmount || concept.amount);
   }
 
+  function normalizeConceptKey(label) {
+    return String(label || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function addRow(targetRows, seen, label, amount, detail, formula) {
+    const key = normalizeConceptKey(label);
+    if (seen.has(key)) return;
+    seen.add(key);
+    addRow(targetRows, label, amount, detail, formula);
+  }
+
   function applyWorkerDeductions(deductionRows, remTotal, osBase, conv) {
     const c = DATA.constants;
+    const seen = new Set(deductionRows.map((row) => normalizeConceptKey(row.label)));
     // Aportes del trabajador se calculan sobre el total remunerativo bruto (sin detracción)
     const baseSS = remTotal;
     addRow(deductionRows, "Jubilacion SIPA 11%", baseSS * c.worker.jubilacion, `11% de ${fmt(baseSS)} (Base SS)`, `${calcNum(baseSS)} x 11 / 100`);
@@ -167,6 +184,7 @@
 
   function applyEmployerContribs(employerRows, remTotal, osBase, conv, baseSalary = remTotal) {
     const c = DATA.constants;
+    const seen = new Set(employerRows.map((row) => normalizeConceptKey(row.label)));
     const baseSS = Math.max(0, remTotal - c.detss);
     const er = c.employerBase;
 
@@ -307,7 +325,11 @@
     return scale ? `Escala vigente aprobada ${scale.periodLabel || monthLabel(scale.period)}` : "Escala base cargada";
   }
 
+  const STATIC_CATALOG_IDS = new Set(["camioneros", "uocra", "farmacia", "afa-553-09"]);
+
   function isGenericConvention(conv) {
+    if (!conv) return false;
+    if (STATIC_CATALOG_IDS.has(conv.id)) return false;
     return conv?.calculationMode === "generic-v1" || conv?.liquidationModel?.version === "generic-v1";
   }
 
@@ -460,3 +482,5 @@
     const model = conv.liquidationModel || {};
     const rules = { ...(conv.rules || {}), ...(model.rules || {}) };
     const activeScaleRules = activeScaleFor(conv)?.parsedScale?.nonRemunerativeRules
+
+

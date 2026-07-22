@@ -1412,5 +1412,6 @@ module.exports = {
   parseConvenio,
   parseEscala,
   canonCategoryId,
-  canonConceptId
+  canonConceptId,
+  canonConvenioId
 };

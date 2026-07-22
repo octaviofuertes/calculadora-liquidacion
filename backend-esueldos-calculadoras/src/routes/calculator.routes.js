@@ -16,12 +16,25 @@ function createCalculatorRoutes({ getDb }) {
       try {
         await fs.access(calcPath);
       } catch (err) {
-        // If calculator doesn't exist, try to build it
-        const doc = await convenioService.getConvenio(db(), req.params.id);
+        // If calculator doesn't exist, try to build it from DB or local catalog
+        let doc = null;
+        try {
+          doc = await convenioService.getConvenio(db(), req.params.id);
+        } catch (dbErr) {
+          // Not in DB - try local catalog fallback
+          const catalogPath = path.join(__dirname, '..', 'catalog', 'conventions', `${req.params.id}.json`);
+          try {
+            const raw = await fs.readFile(catalogPath, 'utf8');
+            doc = JSON.parse(raw);
+          } catch (catErr) {
+            return res.status(404).json({ error: 'Convenio no encontrado' });
+          }
+        }
         if (!doc) return res.status(404).json({ error: 'Convenio no encontrado' });
         
         const { buildCalculator } = require('../services/calculator-builder');
         await buildCalculator(doc);
+        delete require.cache[require.resolve(calcPath)];
       }
       
       const calcModule = require(calcPath);

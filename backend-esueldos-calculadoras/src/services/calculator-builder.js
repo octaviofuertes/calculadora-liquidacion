@@ -9,8 +9,11 @@ async function buildCalculator(rawConvenio) {
   const convenio = buildPayrollConvention(rawConvenio, "");
   const model = convenio.liquidationModel || {};
   const rules = model.rules || convenio.rules || {};
-  const concepts = model.concepts || [];
-  const deductions = model.deductions || [];
+  const concepts = [...(model.concepts || []), ...(model.nonRemunerative || [])];
+  if (concepts.length === 0 && convenio.concepts) {
+    concepts.push(...convenio.concepts);
+  }
+  const deductions = model.deductions || convenio.deductions || convenio.retentions || model.retentions || [];
   const presentismRule = rules.presentism || {};
   const seniorityRule = rules.seniority || {};
 
@@ -57,6 +60,14 @@ module.exports = {
         const textDetail = (c.detail || c.description || '').replace(/"/g, '\\"').replace(/\n/g, ' ');
         const finalDetail = textDetail ? `${textDetail}<br><br><b>${calcDesc}</b>` : `<b>${calcDesc}</b>`;
         return `{ id: "concept_${c.id}", label: "${c.label || c.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'non_remunerative' : 'remunerative'}" }`;
+      }).join(',\n      ')}${deductions.length > 0 ? ',' : ''}
+      ${deductions.map((d, i) => {
+        const dId = d.id || ('ded_' + i);
+        let calcDesc = d.percent ? `Calculo: Remunerativo x ${d.percent}%` : (d.amount ? `Calculo: Fijo $${d.amount}` : "Calculo: Manual");
+        const textDetail = (d.detail || d.description || '').replace(/"/g, '\\"').replace(/\n/g, ' ');
+        const finalDetail = textDetail ? `${textDetail}<br><br><b>${calcDesc}</b>` : `<b>${calcDesc}</b>`;
+        const inputType = (d.percent || d.amount) ? 'checkbox' : 'number';
+        return `{ id: "concept_${dId}", label: "${d.label || d.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "deduction" }`;
       }).join(',\n      ')}
     ].filter(Boolean);
   },
@@ -130,21 +141,30 @@ module.exports = {
     if (extra100 > 0) addRow(rows.remRows, "Horas extra 100%", hourValue * extra100 * 2, extra100 + " hs");
 
     // Additional Concepts
-    ${concepts.map(c => `
-    if (inputs["concept_${c.id}"] !== false && String(inputs["concept_${c.id}"]) !== "false" && inputs["concept_${c.id}"] !== "0") {
-      const val = ${c.calculationType === 'fixed_amount' ? `Number(inputs["concept_${c.id}"] || 0)` : `(sumRows(rows.remRows) * ${c.percent || 0} / 100)`};
+    ${concepts.map((c, i) => {
+      const cId = c.id || ('c_' + i);
+      return `
+    if (inputs["concept_${cId}"] !== false && String(inputs["concept_${cId}"]) !== "false" && inputs["concept_${cId}"] !== "0") {
+      const val = ${c.calculationType === 'fixed_amount' || (!c.percent && !c.calculation) ? `Number(inputs["concept_${cId}"] || ${c.amount || 0})` : `(sumRows(rows.remRows) * ${c.percent || 0} / 100)`};
       if (val !== 0) {
         const isNoRem = ${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'true' : 'false'};
         addRow(isNoRem ? rows.noRemRows : rows.remRows, "${c.label || c.concepto}", val, "${c.calculationType === 'fixed_amount' ? '' : `${c.percent || 0}%`}");
       }
     }
-    `).join('\n')}
+    `;
+    }).join('\n')}
 
     // Deductions
     const remTotal = sumRows(rows.remRows);
-    ${deductions.map(d => `
-    addRow(rows.deductionRows, "${d.label || d.concepto}", (remTotal * ${d.percent || 0} / 100), "${d.percent || 0}%");
-    `).join('\n')}
+    ${deductions.map((d, i) => {
+      const dId = d.id || ('ded_' + i);
+      return `
+    if (inputs["concept_${dId}"] !== false && String(inputs["concept_${dId}"]) !== "false" && inputs["concept_${dId}"] !== "0") {
+      const val = ${d.amount ? `Number(inputs["concept_${dId}"] || ${d.amount})` : (d.percent ? `(remTotal * ${d.percent} / 100)` : `Number(inputs["concept_${dId}"] || 0)`)};
+      addRow(rows.deductionRows, "${d.label || d.concepto}", val, "${d.percent ? d.percent + '%' : ''}");
+    }
+      `;
+    }).join('\n')}
     
     // Default Social Deductions
     addRow(rows.deductionRows, "Jubilacion", (remTotal * 0.11), "11%");

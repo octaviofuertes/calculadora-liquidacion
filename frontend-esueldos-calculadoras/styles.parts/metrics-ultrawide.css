@@ -54,7 +54,7 @@
     overflow: visible !important;
     border: 0 !important;
     border-radius: 0 !important;
-    background: url("assets/leia-widget-target.png") center / 100% 100% no-repeat !important;
+    background: url('../assets/leia-widget-target.png') center / 100% 100% no-repeat !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
     transform: none !important;

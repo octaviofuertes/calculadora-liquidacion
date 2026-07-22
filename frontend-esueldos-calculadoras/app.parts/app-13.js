@@ -170,9 +170,9 @@
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
           
-      const groups = { remunerative: { checks: [], numbers: [] }, non_remunerative: { checks: [], numbers: [] } };
+      const groups = { remunerative: { checks: [], numbers: [] }, non_remunerative: { checks: [], numbers: [] }, deduction: { checks: [], numbers: [] } };
       metadata.forEach(field => {
-        const targetGroup = field.group === 'non_remunerative' ? groups.non_remunerative : groups.remunerative;
+        const targetGroup = field.group === 'non_remunerative' ? groups.non_remunerative : field.group === 'deduction' ? groups.deduction : groups.remunerative;
         if (field.type === "checkbox") {
           let descText = field.description || field.detail || "";
           let infoBtn = descText ? `
@@ -255,7 +255,8 @@
 
       const remHtml = buildSection("Haberes Remunerativos", groups.remunerative);
       const noRemHtml = buildSection("Haberes No Remunerativos", groups.non_remunerative);
-      const allSections = remHtml + noRemHtml;
+      const dedHtml = buildSection("Retenciones y Descuentos del CCT", groups.deduction);
+      const allSections = remHtml + noRemHtml + dedHtml;
 
       $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
         <div class="grid three" style="margin-bottom: 24px;">

@@ -75,16 +75,17 @@
       btn.textContent = "Calculando...";
       btn.disabled = true;
       setTimeout(async () => {
-        await refreshActiveScaleContext();
-        await calculate();
-        document.body.classList.add("has-result");
-        btn.textContent = originalText;
-        btn.disabled = false;
-        goToStep(4);
-        // Scroll hacia resultados
-        document.querySelector(".results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        // Activar pestaña Recibo
-        activateTab("receipt");
+        try {
+          await refreshActiveScaleContext();
+          await calculate();
+          document.body.classList.add("has-result");
+          goToStep(4);
+          document.querySelector(".results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          activateTab("receipt");
+        } finally {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
       }, 50);
     });
 
@@ -204,3 +205,4 @@
     init();
   }
 })();
+

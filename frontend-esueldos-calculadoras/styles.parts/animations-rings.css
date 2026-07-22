@@ -38,7 +38,7 @@ body::before {
   inset: 0 !important;
   z-index: 0 !important;
   pointer-events: none !important;
-  background-image: url("assets/esueldos-hero-background.svg?v=3") !important;
+  background-image: url('../assets/esueldos-hero-background.svg?v=3') !important;
   background-repeat: no-repeat !important;
   background-position: top center !important;
   background-size: 100vw auto !important;

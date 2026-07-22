@@ -522,8 +522,6 @@
     const visibleConventions = conventions.slice(
       conventionPage * CONVENTIONS_PER_PAGE,
       (conventionPage + 1) * CONVENTIONS_PER_PAGE
-
-
     );
     container.innerHTML = visibleConventions
       .map((conv) => {
@@ -763,31 +761,6 @@
     });
   }
 
-  function normalizeTableKey(value) {
-    return String(value ?? "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-  }
-
-  function uniqueTableRows(rows, keySelector = null) {
-    const seen = new Set();
-    return (rows || []).filter((row) => {
-      if (!row) return false;
-      const rawKey = typeof keySelector === "function"
-        ? keySelector(row)
-        : Array.isArray(row)
-          ? row[0]
-          : row.label || row.id || row.name || row.concept || row.title || "";
-      const key = normalizeTableKey(rawKey);
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
   function highlightReceiptSection(section) {
     if (!lastResult) return;
     const target = document.querySelector(`[data-receipt-section="${section}"]`);
@@ -871,18 +844,16 @@
   }
 
   function tableRows(rows) {
-    const cleanRows = uniqueTableRows(rows);
-    if (!cleanRows.length) return `<div class="empty">Sin conceptos para mostrar.</div>`;
+    if (!rows.length) return `<div class="empty">Sin conceptos para mostrar.</div>`;
     return `<table><colgroup><col style="width:38%"><col style="width:37%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Detalle</th><th class="num">Monto</th></tr></thead><tbody>
-      ${cleanRows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.detail || "")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
+      ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.detail || "")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
     </tbody></table>`;
   }
 
   function calculationRows(rows) {
-    const cleanRows = uniqueTableRows(rows);
-    if (!cleanRows.length) return `<div class="empty">Sin calculos para mostrar.</div>`;
+    if (!rows.length) return `<div class="empty">Sin calculos para mostrar.</div>`;
     return `<table><colgroup><col style="width:34%"><col style="width:41%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Cuenta</th><th class="num">Resultado</th></tr></thead><tbody>
-      ${cleanRows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.formula || row.detail || "Importe informado")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
+      ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.formula || row.detail || "Importe informado")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
     </tbody></table>`;
   }
 
@@ -1027,8 +998,6 @@
   }
 
   function isSystemPayrollConcept(item = {}) {
-
-
     const labelKey = summaryKey(item.label || item.name || item.nombre || item.concepto || "");
     const idKey = summaryKey(item.id || item.concepto_id || "");
     const key = summaryKey([
@@ -1515,8 +1484,6 @@
     const activeScaleRules = activeScaleFor(conv)?.parsedScale?.nonRemunerativeRules
 
 
-
-
       || activeScaleFor(conv)?.parsedScale?.reglasNoRemunerativas
       || {};
     rules.nonRemunerativeScale = { ...(rules.nonRemunerativeScale || {}), ...activeScaleRules };
@@ -1975,8 +1942,6 @@
     let seniorityAmount = 0;
     if (on("farmSeniority")) {
       seniorityAmount = seniorityBase * (pctAnt / 100);
-
-
       addRow(remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de ${fmt(seniorityBase)} (Base Antiguedad)`, `${calcNum(seniorityBase)} x ${calcNum(pctAnt)} / 100`);
     }
 
@@ -2449,9 +2414,7 @@
     if (typeof value === "object") {
       const readable = value.label || value.nombre || value.name || value.titulo || value.title || value.descripcion || value.description || value.detalle || value.detail || value.value || value.id;
       return readable ? summaryValue(readable, fallback) : JSON.stringify(value);
-
-
-Ôªø    }
+    }
     return String(value);
   }
 
@@ -2469,12 +2432,12 @@
     const raw = summaryValue(value, "");
     if (!raw) return fallback;
     const exact = {
-      requiere_revision_manual: "Requiere revisi√≥n manual",
-      requires_review: "Requiere revisi√≥n manual",
-      requiresreview: "Requiere revisi√≥n manual",
-      valor_escala_categoria: "valor de escala de la categor√≠a",
+      requiere_revision_manual: "Requiere revisiÛn manual",
+      requires_review: "Requiere revisiÛn manual",
+      requiresreview: "Requiere revisiÛn manual",
+      valor_escala_categoria: "valor de escala de la categorÌa",
       escala_salarial: "escala salarial",
-      sueldo_basico: "sueldo b√°sico",
+      sueldo_basico: "sueldo b·sico",
       total_remunerativo: "total remunerativo",
       no_remunerativo: "no remunerativo"
     }[summaryKey(raw)];
@@ -2485,7 +2448,7 @@
       .replace(/\bcategoria\b/gi, "categoria")
       .replace(/\bperiodo\b/gi, "periodo")
       .replace(/\bjornada\b/gi, "jornada")
-      .replace(/\brequiere revision manual\b/gi, "Requiere revisi√≥n manual")
+      .replace(/\brequiere revision manual\b/gi, "Requiere revisiÛn manual")
       .trim();
   }
 
@@ -2499,16 +2462,16 @@
       non_remunerative: "Haber no remunerativo",
       no_remunerativo: "Haber no remunerativo",
       haber_no_remunerativo: "Haber no remunerativo",
-      deduction: "Deducci√≥n / retenci√≥n",
-      descuento: "Deducci√≥n / retenci√≥n",
-      retencion: "Deducci√≥n / retenci√≥n",
+      deduction: "DeducciÛn / retenciÛn",
+      descuento: "DeducciÛn / retenciÛn",
+      retencion: "DeducciÛn / retenciÛn",
       reference: "Valor de referencia",
       referencia: "Valor de referencia",
       referencial: "Valor de referencia",
-      employercontribution: "Contribuci√≥n empleador",
-      employer_contribution: "Contribuci√≥n empleador",
-      aporte_patronal: "Contribuci√≥n empleador",
-      contribucion_patronal: "Contribuci√≥n empleador"
+      employercontribution: "ContribuciÛn empleador",
+      employer_contribution: "ContribuciÛn empleador",
+      aporte_patronal: "ContribuciÛn empleador",
+      contribucion_patronal: "ContribuciÛn empleador"
     };
     return labels[key] || humanizeTechnicalText(item.group || item.rowType || "Concepto");
   }
@@ -2532,8 +2495,8 @@
       porcentaje_sobre_valor_hora: "Porcentaje sobre valor hora",
       reference: "Valor informativo",
       valor_referencia_escala: "Valor informativo",
-      requiresreview: "Requiere revisi√≥n manual",
-      requiere_revision_manual: "Requiere revisi√≥n manual"
+      requiresreview: "Requiere revisiÛn manual",
+      requiere_revision_manual: "Requiere revisiÛn manual"
     };
     let label = labels[key] || humanizeTechnicalText(item.calculation || item.formula_base, "-");
     if (item.percent) label += ` (${summaryValue(item.percent)}%)`;
@@ -2543,18 +2506,18 @@
 
   function humanConceptBase(value) {
     const labels = {
-      basic: "Sueldo b√°sico",
-      basico: "Sueldo b√°sico",
-      sueldo_basico: "Sueldo b√°sico",
-      escala_salarial: "Escala salarial de la categor√≠a",
+      basic: "Sueldo b·sico",
+      basico: "Sueldo b·sico",
+      sueldo_basico: "Sueldo b·sico",
+      escala_salarial: "Escala salarial de la categorÌa",
       total_remunerativo: "Total remunerativo",
       haberes_remunerativos: "Haberes remunerativos",
-      remuneracion_sujeta_a_aporte: "Remuneraci√≥n sujeta a aportes",
+      remuneracion_sujeta_a_aporte: "RemuneraciÛn sujeta a aportes",
       valor_hora: "Valor hora",
-      valor_dia: "Valor d√≠a",
+      valor_dia: "Valor dÌa",
       monto_fijo: "Monto fijo",
-      requiresreview: "Requiere revisi√≥n manual",
-      requiere_revision_manual: "Requiere revisi√≥n manual"
+      requiresreview: "Requiere revisiÛn manual",
+      requiere_revision_manual: "Requiere revisiÛn manual"
     };
     const key = summaryKey(value);
     return labels[key] || humanizeTechnicalText(value);
@@ -2563,7 +2526,7 @@
   function humanConceptDetail(item = {}) {
     const raw = item.detail || item.notes?.[0] || item.condicion || item.appliesWhen || item.formula_base || "";
     const detail = humanizeTechnicalText(raw, "");
-    return detail || "Sin condici√≥n especial informada.";
+    return detail || "Sin condiciÛn especial informada.";
   }
 
   function conventionCct(conv) {
@@ -2652,33 +2615,8 @@
     </details>`;
   }
 
-  function normalizeTableKey(value) {
-    return String(value ?? "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-  }
-
-  function uniqueTableRows(rows, keySelector = null) {
-    const seen = new Set();
-    return (rows || []).filter((row) => {
-      if (!row) return false;
-      const rawKey = typeof keySelector === "function"
-        ? keySelector(row)
-        : Array.isArray(row)
-          ? row[0]
-          : row.label || row.id || row.name || row.concept || row.title || "";
-      const key = normalizeTableKey(rawKey);
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
   function renderSummaryTable(title, headers, rows) {
-    const cleanRows = uniqueTableRows(rows);
+    const cleanRows = (rows || []).filter(Boolean);
     if (!cleanRows.length) return "";
     return `<details class="summary-section summary-collapsible">
       <summary><span>${escapeHtml(title)}</span><em>${cleanRows.length} filas</em></summary>
@@ -2890,7 +2828,7 @@
       </section>
       ${renderSummaryCards([
         { label: "Base de escala", value: isMonthly ? fmt(value) : `${fmt(value)} jornal`, detail: isMonthly ? "Sereno mensual proporcional segun periodo elegido." : "El valor hora se obtiene dividiendo el jornal por 8." },
-        { label: "Antiguedad", value: "1% por a√±o", detail: "Se calcula sobre el basico proporcional del periodo cuando el check esta activo." },
+        { label: "Antiguedad", value: "1% por aÒo", detail: "Se calcula sobre el basico proporcional del periodo cuando el check esta activo." },
         { label: "Presentismo", value: "20%", detail: "Sobre basico + antiguedad. No se paga si existen inasistencias injustificadas cargadas." },
         { label: "SNR paritaria", value: snr ? fmt(snr) : "Segun escala", detail: "Se informa por periodo, categoria y zona; integra la base de obra social cuando corresponde." }
       ])}
@@ -2934,8 +2872,6 @@
           ["Jubilacion SIPA", "11%", "Base SS"],
           ["PAMI", "3%", "Base SS"],
           ["Obra social OSMICON", "3%", "Rem + SNR"],
-
-
           ["Cuota sindical UOCRA", "2,50%", "Remunerativo"],
           ["Aporte solidario (abr-may 26)", "2,00%", "Remunerativo"],
           ["Aporte UOCRA SS", "1,80%", "Remunerativo"],
@@ -3413,8 +3349,6 @@
     return "low";
   }
 
-
-
   function renderAuditFinding(finding) {
     return `<article class="audit-finding ${auditSeverityClass(finding.severity)}">
       <div>
@@ -3866,9 +3800,7 @@
           <strong>${escapeHtml(scale.conventionName || scale.shortName || scale.conventionId)}</strong>
           <span>${escapeHtml(scaleDisplayName(scale))}</span>
         </div>
-
-
-Ôªø        <span class="status-pill ${scale.status === "APROBADA" ? "ok" : scale.status === "RECHAZADA" ? "bad" : ""}">${escapeHtml(statusLabel(scale.status))}</span>
+        <span class="status-pill ${scale.status === "APROBADA" ? "ok" : scale.status === "RECHAZADA" ? "bad" : ""}">${escapeHtml(statusLabel(scale.status))}</span>
       </div>
       <div class="scale-mini-grid">
         <div><span>Lectura IA</span><strong>${escapeHtml(scale.aiStatus || "-")}</strong></div>
@@ -4026,7 +3958,7 @@
     data.push(["", "", "", "Exportar Montos Categorias"]);
     data.push([
       "convenio", "idcategoria", "denominacion", 
-      "Asignaci√≥n Mensual (conv10)", "Asignacion Jornal (suel10)", 
+      "AsignaciÛn Mensual (conv10)", "Asignacion Jornal (suel10)", 
       "Adicional 1 (gara10)", "Adicional 2 (adic1)", "Adicional 3 (adic3)", 
       "Adicional 4 (adic4)", "Adicional 5 (adic5)", "Adicional 6 (adic6)", 
       "Adicional 7  (adic7)", "Adicional 8  (adic8)", "Adicional 9  (adic9)", "Adicional 10 (adic10)"
@@ -4325,8 +4257,6 @@
   }
 
   function conventionErrorMessage(payload = {}, fallback = "No se pudo estructurar el convenio.") {
-
-
     const errors = Array.isArray(payload.errores) ? payload.errores : [];
     if (errors.length) {
       return errors.slice(0, 5).map((item) => [item.path, item.message].filter(Boolean).join(": ") || String(item)).join(" | ");
@@ -4931,8 +4861,6 @@
       <button class="convention-draft-trash is-inline" id="deleteConventionDraftBtn" type="button" aria-label="Eliminar borrador">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 6h18"></path>
-
-
           <path d="M8 6V4h8v2"></path>
           <path d="M19 6l-1 14H6L5 6"></path>
           <path d="M10 11v5"></path>
@@ -5442,8 +5370,6 @@
         .join("");
       conventionSelect.value = DATA.conventions[selectedId] ? selectedId : fallbackId;
       updateConvention();
-
-
     }
   }
 
@@ -5924,8 +5850,6 @@
     if (topicId === "deductions") {
       return [...header, "", ...formatDeductions(conv)].join("\n");
     }
-
-
 
     if (topicId === "rules") {
       return [...header, "", ...formatRules(conv)].join("\n");
@@ -6501,8 +6425,6 @@
           }
         }
       });
-
-
     });
   }
 
@@ -6710,8 +6632,6 @@
     init();
   }
 })();
-
-
 
 (function () {
   const $ = (id) => document.getElementById(id);

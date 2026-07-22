@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>e-Sueldos | Liquidador multiconvenio</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon-cloud.svg?v=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="leia-styles.css">
+  <script>
+    if (window.location.search.includes("widget=true")) {
+      document.documentElement.classList.add("widget-mode");
+      document.documentElement.classList.add("widget-init");
+      document.write('<link rel="stylesheet" href="widget.css?v=2">');
+    }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#payrollForm" aria-label="Ir a liquidar sueldos">
+        <img class="brand-logo-img" src="assets/esueldos-logo-transparent.png" alt="e-Sueldos">
+      </a>
+
+      <nav class="main-nav" aria-label="Menu principal">
+        <a class="nav-link active" href="#payrollForm">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6" y="4" width="12" height="16" rx="2.4"/>
+            <path d="M9 8h6"/>
+            <path d="M9 12h6"/>
+            <path d="M9 16h4"/>
+          </svg>
+          <span>Sueldos</span>
+        </a>
+        <a class="nav-link" href="#scalesPanel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 19h16"/>
+            <path d="M7 16V9"/>
+            <path d="M12 16V5"/>
+            <path d="M17 16v-6"/>
+            <path d="M6 9h2"/>
+            <path d="M11 5h2"/>
+            <path d="M16 10h2"/>
+          </svg>
+          <span>Escalas</span>
+        </a>
+        <a class="nav-link" href="#conventionsPanel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 4h9l3 3v13H6z"/>
+            <path d="M15 4v4h4"/>
+            <path d="M9 12h6"/>
+            <path d="M9 15h6"/>
+          </svg>
+          <span>Convenios</span>
+        </a>
+      </nav>
+
+      <div class="topbar-actions" style="margin-left: auto; display: flex; align-items: center; padding-right: 16px;">
+        <button type="button" id="globalSettingsBtn" class="icon-btn" aria-label="Configuración Global" style="background: none; border: none; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span style="font-size: 13px; font-weight: 600;">Configuración</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="app-shell">
+      <section class="panel form-panel scales-panel" id="scalesPanel" style="display:none" aria-label="Gestion de escalas salariales">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Escalas IA</span>
+            <h2>Escalas salariales</h2>
+          </div>
+          <button class="icon-btn" id="refreshScalesBtn" type="button">Actualizar</button>
+        </div>
+
+        <div class="scale-layout">
+          <form class="scale-card scale-upload" id="scaleUploadForm">
+            <div class="scale-card-head">
+              <span class="scale-icon">PDF</span>
+              <div>
+                <h3>Cargar escala nueva</h3>
+                <p>leIA lee el PDF y crea una escala pendiente por cada mes detectado.</p>
+                <span class="ai-provider-label">IA: OpenAI</span>
+              </div>
+            </div>
+
+            <div class="grid three">
+              <label class="field">
+                <span>Convenio</span>
+                <select id="scaleConvention"></select>
+              </label>
+              <label class="field">
+                <span>Mes de vigencia</span>
+                <input id="scalePeriod" type="month">
+              </label>
+              <label class="field">
+                <span>Documento o imagen de escala</span>
+                <input id="scalePdf" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp" multiple>
+              </label>
+            </div>
+
+            <div class="scale-actions">
+              <button class="primary-action" id="uploadScaleBtn" type="submit">Subir y analizar documentos</button>
+              <span id="scaleUploadStatus" class="scale-status">Sin cargas en curso.</span>
+            </div>
+
+          </form>
+
+          <div class="scale-card scale-audit">
+            <div class="scale-card-head">
+              <span class="scale-icon scale-icon-audit">OK</span>
+              <div>
+                <h3>Auditoria humana</h3>
+                <p>Revis&aacute; los datos detectados antes de aprobarlos como vigentes.</p>
+              </div>
+            </div>
+            <div id="scaleAuditList" class="scale-audit-list"></div>
+            <div id="scaleEditor" class="scale-editor empty-state">Selecciona una escala pendiente para revisar.</div>
+          </div>
+        </div>
+
+        <div class="scale-card scale-months-card">
+          <div class="scale-card-head">
+            <span class="scale-icon scale-icon-months">MES</span>
+            <div>
+              <h3>Meses y escala vigente</h3>
+              <p>Para cada mes se muestra la ultima escala aprobada disponible hasta ese periodo.</p>
+            </div>
+          </div>
+          <div id="scaleMonthList" class="scale-month-list"></div>
+          <div id="scaleActiveViewer" class="scale-active-viewer empty-state">Toca Escala vigente para ver el detalle aprobado.</div>
+        </div>
+      </section>
+
+      <section class="panel form-panel conventions-panel" id="conventionsPanel" style="display:none" aria-label="Constructor de convenios">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Convenios IA</span>
+            <h2>Constructor de convenios</h2>
+            <p>Sub&iacute; CCT + escala, leIA estructura el convenio y lo deja listo para auditor&iacute;a humana.</p>
+          </div>
+          <button class="icon-btn" id="refreshConventionDraftsBtn" type="button">Actualizar</button>
+        </div>
+
+        <div class="convention-workspace-nav" role="tablist" aria-label="Flujo de convenios">
+          <button class="convention-workspace-tab is-active" id="conventionUploadTab" type="button" role="tab" aria-selected="true" aria-controls="conventionUploadView">1. Carga de documentos</button>
+          <button class="convention-workspace-tab" id="conventionAuditTab" type="button" role="tab" aria-selected="false" aria-controls="conventionAuditView">2. Auditor&iacute;a del convenio</button>
+        </div>
+
+        <div class="convention-workspace-view" id="conventionUploadView" role="tabpanel" aria-labelledby="conventionUploadTab">
+        <div class="convention-builder-layout convention-builder-upload-layout">
+          <form class="scale-card convention-builder-upload" id="conventionBuilderForm">
+            <div class="scale-card-head">
+              <span class="scale-icon convention-builder-icon">IA</span>
+              <div>
+                <h3>Crear convenio con leIA</h3>
+                <p>La IA lee PDF, DOCX e im&aacute;genes, arma categor&iacute;as, reglas, conceptos, aportes y checklist de auditor&iacute;a.</p>
+              </div>
+            </div>
+
+            <div class="convention-builder-fields">
+              <label class="field">
+                <span>Nombre del convenio</span>
+                <input id="builderConventionName" type="text" placeholder="Ej: Sanidad CCT 122/75">
+              </label>
+              <div class="field convention-file-field">
+                <span>Documento o imagen CCT / acta</span>
+                <input class="convention-file-input" id="builderCctPdf" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp">
+                <label class="convention-folder-picker" for="builderCctPdf" title="Seleccionar CCT o acta">
+                  <span class="convention-folder-icon" aria-hidden="true"></span>
+                  <strong>Seleccionar CCT</strong>
+                  <small id="builderCctPdfStatus">Ning&uacute;n archivo seleccionado</small>
+                </label>
+              </div>
+              <div class="field convention-file-field">
+                <span>Documento o imagen de escala salarial</span>
+                <input class="convention-file-input" id="builderScalePdf" type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp" multiple>
+                <label class="convention-folder-picker" for="builderScalePdf" title="Seleccionar escalas salariales">
+                  <span class="convention-folder-icon" aria-hidden="true"></span>
+                  <strong>Seleccionar escalas salariales</strong>
+                  <small id="builderScalePdfStatus">Ning&uacute;n archivo seleccionado</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="scale-actions">
+              <button class="primary-action convention-structure-button" id="buildConventionBtn" type="submit"><span aria-hidden="true">&#10022;</span> Estructurar convenio</button>
+              <span id="conventionBuilderStatus" class="scale-status">Sin cargas en curso.</span>
+            </div>
+
+            <!-- Token usage metrics card -->
+            <div id="conventionTokenUsageCard" class="token-usage-card" style="display: none; margin-top: 24px;">
+              <div class="token-usage-header">
+                <span class="token-usage-icon">📊</span>
+                <h4>Métricas de Consumo de Tokens (Gemini)</h4>
+              </div>
+              <div class="token-usage-body">
+                <div class="token-usage-row">
+                  <span>Modelo Utilizado:</span>
+                  <strong id="conventionTokenModel">-</strong>
+                </div>
+                <div class="token-usage-row">
+                  <span>Tokens de Entrada (Prompt):</span>
+                  <strong id="conventionTokenPrompt">0</strong>
+                </div>
+                <div class="token-usage-row">
+                  <span>Tokens de Salida (Respuesta):</span>
+                  <strong id="conventionTokenOutput">0</strong>
+                </div>
+                <div class="token-usage-divider"></div>
+                <div class="token-usage-row total">
+                  <span>Tokens Totales:</span>
+                  <strong id="conventionTokenTotal">0</strong>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <aside class="convention-upload-guide" aria-label="Guia para estructurar convenios">
+            <section class="convention-guide-card">
+              <h3><span aria-hidden="true">&#10022;</span> &iquest;C&oacute;mo funciona?</h3>
+              <ol class="convention-guide-steps">
+                <li><span>1</span><div><strong>Sub&iacute; los documentos</strong><small>Carg&aacute; el CCT, acta y las escalas salariales.</small></div></li>
+                <li><span>2</span><div><strong>leIA analiza</strong><small>Extrae y organiza la informaci&oacute;n clave del convenio.</small></div></li>
+                <li><span>3</span><div><strong>Auditor&iacute;a humana</strong><small>Revis&aacute;, valid&aacute; y public&aacute; el convenio con trazabilidad.</small></div></li>
+              </ol>
+              <div class="convention-guide-tips">
+                <strong><span aria-hidden="true">&#9737;</span> Consejos</strong>
+                <span>Us&aacute; PDFs legibles y completos.</span>
+                <span>Inclu&iacute; todas las escalas vigentes.</span>
+              </div>
+            </section>
+            <section class="convention-guide-card convention-security-card">
+              <h3><span aria-hidden="true">&#9672;</span> Seguridad y trazabilidad</h3>
+              <p>Tus documentos est&aacute;n protegidos. Cada cambio queda registrado.</p>
+            </section>
+          </aside>
+        </div>
+        </div>
+
+        <div class="convention-workspace-view" id="conventionAuditView" role="tabpanel" aria-labelledby="conventionAuditTab" hidden>
+          <div class="convention-audit-page-head">
+            <button class="icon-btn" id="backToConventionUploadBtn" type="button" aria-label="Volver a carga de documentos">&larr; Volver a carga</button>
+            <div>
+              <strong>Revisi&oacute;n del convenio estructurado</strong>
+              <span>Valid&aacute; la informaci&oacute;n antes de aprobarla y activarla.</span>
+            </div>
+          </div>
+          <div id="conventionAiAuditSummary" class="convention-ai-audit-summary empty-state">Seleccion&aacute; un convenio para ver el resultado de la auditor&iacute;a autom&aacute;tica.</div>
+          <div class="convention-builder-layout convention-builder-audit-layout">
+          <div class="scale-card convention-builder-audit">
+            <div class="scale-card-head">
+              <span class="scale-icon scale-icon-audit">IA</span>
+              <div>
+                <h3>Auditor&iacute;a humana del convenio</h3>
+                <p>Edit&aacute; tablas, conceptos y escalas si hace falta. Al aprobar, aparece autom&aacute;ticamente en Sueldos.</p>
+                <div class="convention-bulk-actions" aria-label="Acciones masivas de auditoria">
+                  <button class="convention-bulk-delete is-approved" id="deleteApprovedDraftsBtn" type="button">
+                    Eliminar todos los borradores
+                  </button>
+                  <button class="convention-bulk-delete is-rejected" id="deleteRejectedDraftsBtn" type="button">
+                    Eliminar todos los rechazados
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div id="conventionDraftList" class="scale-audit-list convention-draft-list"></div>
+            <div id="conventionJsonEditor" class="scale-editor empty-state">Seleccion&aacute; un convenio generado para revisar los datos extra&iacute;dos.</div>
+          </div>
+          </div>
+          <div id="conventionAuditTablesArea" class="convention-audit-tables-area"></div>
+        </div>
+      </section>
+
+      <section class="panel form-panel" id="payrollFormPanel" aria-label="Carga de liquidacion">
+        <form id="payrollForm">
+          <div class="section-head payroll-head">
+            <div>
+              <span class="eyebrow">Carga del recibo</span>
+              <h2>Datos de liquidaci&oacute;n</h2>
+              <p>Segu&iacute; los pasos para generar la liquidaci&oacute;n</p>
+            </div>
+          </div>
+
+          <div class="wizard-steps" id="wizardSteps" aria-label="Pasos de liquidacion">
+            <button class="wizard-step-btn active" data-step="1" type="button">
+              <span>1</span>
+              <strong>Convenio</strong>
+            </button>
+            <button class="wizard-step-btn" data-step="2" type="button">
+              <span>2</span>
+              <strong>Base</strong>
+            </button>
+            <button class="wizard-step-btn" data-step="3" type="button">
+              <span>3</span>
+              <strong>Conceptos</strong>
+            </button>
+            <button class="wizard-step-btn" data-step="4" type="button">
+              <span>4</span>
+              <strong>Revisi&oacute;n</strong>
+            </button>
+          </div>
+
+          <select id="convention" class="hidden-control" aria-hidden="true" tabindex="-1"></select>
+
+          <section class="form-step active" data-step="1">
+            <div class="step-copy">
+              <h3>Elegir convenio</h3>
+              <p>Seleccion&aacute; la calculadora que vas a usar para cargar escalas, categor&iacute;as y conceptos.</p>
+            </div>
+
+            <div class="convention-grid" id="conventionCards"></div>
+          </section>
+
+          <section class="form-step" data-step="2">
+            <div class="step-copy">
+              <h3>Base de la liquidacion</h3>
+              <p>Confirmar periodo, categoria, zona y fecha de ingreso.</p>
+            </div>
+
+            <div class="grid three">
+              <label class="field">
+                <span>Periodo</span>
+                <select id="period"></select>
+              </label>
+              <label class="field">
+                <span>Categoria</span>
+                <select id="category"></select>
+              </label>
+              <label class="field" id="modalityField" hidden>
+                <span>Modalidad</span>
+                <select id="modality"></select>
+              </label>
+              <label class="field">
+                <span>Zona</span>
+                <select id="zone"></select>
+              </label>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="grid three">
+              <label class="field">
+                <span>Fecha de ingreso</span>
+                <input id="entryDate" type="date">
+              </label>
+            </div>
+
+            <div id="step2ValidationError" class="step-validation-error" role="alert" aria-live="polite">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>Completá la <strong>Fecha de ingreso</strong> antes de continuar.</span>
+            </div>
+          </section>
+
+          <section class="form-step" data-step="3">
+            <div class="step-copy">
+              <h3>Conceptos del convenio</h3>
+              <p>Cargar horas, adicionales y conceptos manuales. Nada se calcula hasta finalizar.</p>
+            </div>
+
+            <div id="dynamicFields"></div>
+
+          </section>
+
+          <section class="form-step" data-step="4">
+            <div class="step-copy">
+              <h3>Revision final</h3>
+              <p>Revisar la seleccion antes de emitir el recibo. El resultado se genera solo al liquidar.</p>
+            </div>
+
+            <div class="review-box" id="reviewBox"></div>
+
+            <button class="primary-action" id="liquidateBtn" type="button">Liquidar</button>
+          </section>
+
+          <div class="wizard-nav">
+            <div class="convention-support">
+              <span class="support-icon" aria-hidden="true">i</span>
+              <span>&iquest;No encontr&aacute;s tu convenio? Pod&eacute;s solicitar la incorporaci&oacute;n desde Soporte.</span>
+              <button class="support-action" type="button">Solicitar convenio <span aria-hidden="true">→</span></button>
+            </div>
+            <button class="nav-action" id="prevStepBtn" type="button">Anterior</button>
+            <span id="stepStatus">Paso 1 de 4</span>
+            <button class="nav-action" id="nextStepBtn" type="button">Siguiente</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="results" aria-label="Resultado de liquidacion">
+      <div class="sgrid">
+        <div class="sc" data-receipt-highlight="remunerative" role="button" tabindex="0" style="cursor:pointer">
+          <div class="scl">Remunerativo</div>
+          <div class="scv" style="color:var(--azul)" id="metricRem">$0</div>
+        </div>
+        <div class="sc" data-receipt-highlight="nonremunerative" role="button" tabindex="0" style="cursor:pointer">
+          <div class="scl">No remunerativo</div>
+          <div class="scv" style="color:var(--ok)" id="metricNoRem">$0</div>
+        </div>
+        <div class="sc" data-receipt-highlight="deductions" role="button" tabindex="0" style="cursor:pointer">
+          <div class="scl">Deducciones</div>
+          <div class="scv" style="color:var(--err)" id="metricDed">$0</div>
+        </div>
+        <div class="sc" data-receipt-highlight="net" role="button" tabindex="0" style="cursor:pointer; background:var(--azul-lt); border-color:var(--azul-mid)">
+          <div class="scl" style="color:var(--azul-dk)">Neto a cobrar</div>
+          <div class="scv" style="color:var(--azul-xdk)" id="metricNet">$0</div>
+        </div>
+      </div>
+
+      <div class="panel result-panel">
+        <div class="tabs" role="tablist">
+          <button class="tab" data-tab="receipt" type="button">Recibo</button>
+          <button class="tab" data-tab="calculation" type="button">C&aacute;lculo</button>
+          <button class="tab" data-tab="details" type="button">Detalle</button>
+          <button class="tab" data-tab="scales" type="button">Escalas</button>
+          <button class="tab tab-wide" data-tab="summary" type="button">Resumen convenio</button>
+          <button class="tab active" data-tab="audit" type="button">Auditor&iacute;a</button>
+        </div>
+
+        <div class="tab-pane" id="receiptPane">
+          <div id="receipt" class="empty-state">Completa los pasos y presiona Liquidar para generar el recibo.</div>
+        </div>
+        <div class="tab-pane" id="calculationPane">
+          <div id="calculation" class="empty-state">El c&aacute;lculo aparecera despues de liquidar.</div>
+        </div>
+        <div class="tab-pane" id="detailsPane">
+          <div id="details" class="empty-state">El detalle aparecera despues de liquidar.</div>
+        </div>
+        <div class="tab-pane" id="scalesPane">
+          <div id="scales" class="empty-state">Las escalas se muestran con la liquidacion emitida.</div>
+        </div>
+        <div class="tab-pane" id="summaryPane">
+          <div id="conventionSummary" class="empty-state">Eleg&iacute; un convenio para ver el resumen t&eacute;cnico.</div>
+        </div>
+        <div class="tab-pane active" id="auditPane">
+          <div id="auditResult" class="audit-empty">
+            <div class="audit-empty-visual" aria-hidden="true">⌕</div>
+            <h3>No se pudo auditar la liquidaci&oacute;n.</h3>
+            <p>Ejecut&aacute; la auditor&iacute;a con leIA para detectar inconsistencias y validar el c&aacute;lculo autom&aacute;ticamente.</p>
+            <button class="primary-action audit-inline-action" type="button" data-run-audit>Auditar con leIA &#10024;</button>
+          </div>
+        </div>
+      </div>
+      </section>
+    </div>
+  </main>
+
+  <section class="leia-widget" id="leiaWidget" aria-label="Asistente leIA">
+    <aside class="leia-panel" id="leiaPanel" hidden>
+      <div class="leia-panel-head">
+        <div class="leia-avatar-img-container" aria-hidden="true">
+          <img src="assets/leia-full.png" class="leia-avatar-img" alt="leIA">
+          <div class="leia-avatar-glow"></div>
+        </div>
+        <div>
+          <strong>leIA</strong>
+          <span id="leiaContext">Experta multiconvenio</span>
+        </div>
+        <button class="leia-close" id="leiaClose" type="button" aria-label="Cerrar leIA">&times;</button>
+      </div>
+      <div class="leia-messages" id="leiaMessages" aria-live="polite"></div>
+      <form class="leia-form" id="leiaForm">
+        <input id="leiaInput" type="text" autocomplete="off" placeholder="Preguntale a leIA sobre el convenio...">
+        <button type="submit">Enviar</button>
+      </form>
+    </aside>
+
+    <button class="leia-launcher" id="leiaToggle" type="button" aria-controls="leiaPanel" aria-expanded="false">
+      <div class="leia-launcher-avatar" aria-hidden="true">
+        <img src="assets/leia-head.png" class="leia-launcher-img" alt="leIA">
+        <div class="leia-launcher-glow"></div>
+      </div>
+      <span class="leia-launch-text">
+        <strong>leIA</strong>
+        <small>Tu asistente IA de confianza</small>
+        <em>En l&iacute;nea</em>
+      </span>
+      <span class="leia-launch-prompt">Preguntame algo...</span>
+    </button>
+  </section>
+
+  <!-- Global Settings Modal -->
+  <dialog id="globalSettingsModal" class="modal">
+    <div class="modal-content" style="max-width: 500px; background: #fff;">
+      <div class="modal-header">
+        <h3 class="modal-title">Configuración Global del Sistema</h3>
+        <button class="modal-close-btn" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <h4 style="margin-bottom: 8px; font-size: 14px;">Contexto Legal para IA (Ley de Trabajo)</h4>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            Sube un documento PDF con la Ley de Contrato de Trabajo u otra normativa general aplicable. La IA lo leerá e inyectará como contexto base al estructurar todos los convenios futuros.
+          </p>
+          
+          <div id="globalLaborLawStatus" style="padding: 12px; border: 1px solid var(--line); border-radius: 6px; background-color: var(--surface-1); margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="globalLaborLawIcon" style="font-size: 18px;">📄</span>
+                <span id="globalLaborLawLabel" style="font-size: 13px; font-weight: 500;">Comprobando estado...</span>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" id="previewGlobalLaborLawBtn" class="icon-btn" aria-label="Ver extracción" style="padding: 4px 8px; font-size: 12px; display: none;">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px;">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+                <button type="button" id="deleteGlobalLaborLawBtn" class="destructive-action" style="padding: 4px 8px; font-size: 12px; display: none;">Eliminar</button>
+              </div>
+            </div>
+          </div>
+          <form id="globalSettingsForm">
+            <label class="field">
+              <span>Subir nuevo documento (PDF)</span>
+              <input type="file" id="globalLaborLawUpload" accept="application/pdf" style="margin-bottom: 8px;">
+            </label>
+            <button type="submit" id="saveGlobalSettingsBtn" class="primary-action" style="width: 100%;">Guardar Documento</button>
+          </form>
+          <div id="globalSettingsFeedback" style="margin-top: 8px; font-size: 13px;"></div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="laborLawEditorModal" class="modal labor-law-editor-modal">
+    <div class="labor-law-editor-shell">
+      <header class="labor-law-editor-head">
+        <div>
+          <span class="eyebrow">Contexto legal global</span>
+          <h2>Ley de Trabajo</h2>
+          <p id="laborLawEditorSource">Ley de Trabajo Aplicable</p>
+        </div>
+        <div class="labor-law-editor-head-actions">
+          <span id="laborLawEditorMode" class="labor-law-editor-mode">Texto original</span>
+          <button class="modal-close-btn" id="closeLaborLawEditorBtn" type="button" aria-label="Cerrar editor">&times;</button>
+        </div>
+      </header>
+      <div class="labor-law-editor-toolbar">
+        <label>
+          <span>Buscar en el documento</span>
+          <input id="laborLawEditorSearch" type="search" placeholder="Ej: vacaciones, jornada, indemnizaci&oacute;n">
+        </label>
+        <button class="icon-btn" id="findNextLaborLawBtn" type="button">Buscar siguiente</button>
+        <span id="laborLawSearchStatus" aria-live="polite"></span>
+      </div>
+      <main class="labor-law-editor-body">
+        <div class="labor-law-editor-tabs" role="tablist" aria-label="Vista de Ley de Trabajo">
+          <button id="laborLawTableTab" class="labor-law-editor-tab is-active" type="button" data-labor-law-view="table">Vista estructurada</button>
+          <button id="laborLawTextTab" class="labor-law-editor-tab" type="button" data-labor-law-view="text">Texto para leIA</button>
+        </div>
+        <section id="laborLawTablePanel" class="labor-law-editor-panel is-active" aria-label="Vista estructurada de la ley">
+          <div class="labor-law-document-card">
+            <div class="labor-law-document-card-head">
+              <div>
+                <span>Contenido detectado</span>
+                <strong id="laborLawRowsCount">0 bloques</strong>
+              </div>
+              <span class="labor-law-source-pill">LCT</span>
+            </div>
+            <div class="labor-law-table-wrap">
+              <table class="labor-law-table">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th>Regla / detalle</th>
+                    <th>Origen</th>
+                    <th>P&aacute;gina</th>
+                  </tr>
+                </thead>
+                <tbody id="laborLawRowsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section id="laborLawTextPanel" class="labor-law-editor-panel" aria-label="Texto editable utilizado por leIA">
+          <label for="laborLawEditorText">Contenido utilizado por leIA</label>
+          <textarea id="laborLawEditorText" spellcheck="true" aria-describedby="laborLawEditorHelp"></textarea>
+          <p id="laborLawEditorHelp">Pod&eacute;s corregir errores de extracci&oacute;n. El PDF original se conserva como respaldo.</p>
+        </section>
+      </main>
+      <footer class="labor-law-editor-footer">
+        <span id="laborLawEditorCount">0 caracteres</span>
+        <div>
+          <button class="icon-btn" id="cancelLaborLawEditorBtn" type="button">Cancelar</button>
+          <button class="primary-action" id="saveLaborLawEditorBtn" type="button">Guardar versi&oacute;n corregida</button>
+        </div>
+      </footer>
+    </div>
+  </dialog>
+
+  <div id="conventionThinkingOverlay" class="convention-thinking-overlay" aria-hidden="true">
+    <div class="convention-thinking-card" role="status" aria-live="polite">
+      <div class="convention-brain" aria-hidden="true">
+        <span class="convention-brain-symbol">&#129504;</span>
+        <i class="convention-brain-ring convention-brain-ring-one"></i>
+        <i class="convention-brain-ring convention-brain-ring-two"></i>
+      </div>
+      <strong>leIA est&aacute; pensando</strong>
+      <span>Analizando documentos, escalas y reglas de liquidaci&oacute;n</span>
+      <div class="convention-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  </div>
+
+  <script src="data.js?v=8"></script>
+  <script src="modules/api-client.js?v=1"></script>
+  <script src="modules/ui-utils.js?v=1"></script>
+  
+  <script src="app.js?v=9"></script>
+</body>
+</html>

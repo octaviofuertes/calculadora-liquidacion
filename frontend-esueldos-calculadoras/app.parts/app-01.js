@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   let DATA = window.PAYROLL_DATA;
   let dataOrigin = "local";
   const API_BASE = getApiBase();
@@ -258,6 +258,23 @@
       const catalog = await response.json();
       if (!catalog || !catalog.constants || !catalog.conventions) {
         throw new Error("Respuesta de catalogo invalida");
+      }
+      // Merge: use backend for convention list, but preserve local scales/rules/additionals
+      const localSnapshot = DATA;
+      if (localSnapshot && localSnapshot.conventions) {
+        Object.keys(catalog.conventions).forEach(id => {
+          const local = localSnapshot.conventions[id];
+          if (local) {
+            catalog.conventions[id] = {
+              ...catalog.conventions[id],
+              scales: local.scales ?? catalog.conventions[id].scales,
+              nonRem: local.nonRem ?? catalog.conventions[id].nonRem,
+              additionals: local.additionals ?? catalog.conventions[id].additionals,
+              rules: local.rules ?? catalog.conventions[id].rules,
+              deductions: local.deductions ?? catalog.conventions[id].deductions,
+            };
+          }
+        });
       }
       DATA = catalog;
       window.PAYROLL_DATA = catalog;

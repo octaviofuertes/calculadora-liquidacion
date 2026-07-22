@@ -237,6 +237,31 @@
     });
   }
 
+  function normalizeTableKey(value) {
+    return String(value ?? "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  }
+
+  function uniqueTableRows(rows, keySelector = null) {
+    const seen = new Set();
+    return (rows || []).filter((row) => {
+      if (!row) return false;
+      const rawKey = typeof keySelector === "function"
+        ? keySelector(row)
+        : Array.isArray(row)
+          ? row[0]
+          : row.label || row.id || row.name || row.concept || row.title || "";
+      const key = normalizeTableKey(rawKey);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function highlightReceiptSection(section) {
     if (!lastResult) return;
     const target = document.querySelector(`[data-receipt-section="${section}"]`);
@@ -320,16 +345,18 @@
   }
 
   function tableRows(rows) {
-    if (!rows.length) return `<div class="empty">Sin conceptos para mostrar.</div>`;
+    const cleanRows = uniqueTableRows(rows);
+    if (!cleanRows.length) return `<div class="empty">Sin conceptos para mostrar.</div>`;
     return `<table><colgroup><col style="width:38%"><col style="width:37%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Detalle</th><th class="num">Monto</th></tr></thead><tbody>
-      ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.detail || "")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
+      ${cleanRows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.detail || "")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
     </tbody></table>`;
   }
 
   function calculationRows(rows) {
-    if (!rows.length) return `<div class="empty">Sin calculos para mostrar.</div>`;
+    const cleanRows = uniqueTableRows(rows);
+    if (!cleanRows.length) return `<div class="empty">Sin calculos para mostrar.</div>`;
     return `<table><colgroup><col style="width:34%"><col style="width:41%"><col style="width:25%"></colgroup><thead><tr><th>Concepto</th><th>Cuenta</th><th class="num">Resultado</th></tr></thead><tbody>
-      ${rows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.formula || row.detail || "Importe informado")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
+      ${cleanRows.map((row) => `<tr><td>${escapeHtml(row.label)}</td><td><small>${escapeHtml(row.formula || row.detail || "Importe informado")}</small></td><td class="num">${fmt(row.amount)}</td></tr>`).join("")}
     </tbody></table>`;
   }
 

@@ -45,15 +45,21 @@
   async function fetchJson(path, options = {}) {
     if (window.eSueldosApiClient?.json) return window.eSueldosApiClient.json(path, options);
     const headers = new Headers(options.headers || {});
-    const response = await fetch(apiUrl(path), { ...options, headers });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const details = Array.isArray(payload.errores) && payload.errores.length
-        ? payload.errores.slice(0, 3).map((item) => `${item.path ? `${item.path}: ` : ""}${item.message || item}`).join(" | ")
-        : "";
-      throw new Error(payload.error || details || `HTTP ${response.status}`);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(apiUrl(path), { ...options, headers, signal: options.signal || controller.signal });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const details = Array.isArray(payload.errores) && payload.errores.length
+          ? payload.errores.slice(0, 3).map((item) => `${item.path ? `${item.path}: ` : ""}${item.message || item}`).join(" | ")
+          : "";
+        throw new Error(payload.error || details || `HTTP ${response.status}`);
+      }
+      return payload;
+    } finally {
+      window.clearTimeout(timeout);
     }
-    return payload;
   }
 
   async function refreshActiveScaleContext() {
