@@ -1,0 +1,94 @@
+{
+  "id": "comercio",
+  "name": "Empleados de Comercio - CCT 130/75",
+  "shortName": "Comercio (CCT 130/75)",
+  "source": "CCT 130/75 - FAECYS / Camaras de Comercio",
+  "type": "monthly",
+  "periods": [
+    { "id": "abr26", "label": "Abril 2026" },
+    { "id": "may26", "label": "Mayo 2026" },
+    { "id": "jun26", "label": "Junio 2026" }
+  ],
+  "zones": [
+    { "id": "general", "label": "General (Sin adicional de zona)", "coef": 1 },
+    { "id": "rio_negro_neuquen", "label": "Zona Sur - Río Negro / Neuquén (+5%)", "coef": 1.05 },
+    { "id": "sur_extremo", "label": "Zona Sur Extrema - Chubut / Santa Cruz / Tierra del Fuego (+20%)", "coef": 1.20 }
+  ],
+  "categories": [
+    { "id": "maestranzaA", "label": "Maestranza A", "monthly": 750000 },
+    { "id": "maestranzaB", "label": "Maestranza B", "monthly": 753000 },
+    { "id": "maestranzaC", "label": "Maestranza C", "monthly": 760000 },
+    { "id": "administrativoA", "label": "Administrativo A", "monthly": 765000 },
+    { "id": "administrativoB", "label": "Administrativo B", "monthly": 770000 },
+    { "id": "administrativoC", "label": "Administrativo C", "monthly": 775000 },
+    { "id": "administrativoD", "label": "Administrativo D", "monthly": 785000 },
+    { "id": "cajeroA", "label": "Cajero A", "monthly": 768000 },
+    { "id": "cajeroB", "label": "Cajero B", "monthly": 773000 },
+    { "id": "cajeroC", "label": "Cajero C", "monthly": 780000 },
+    { "id": "auxiliarA", "label": "Auxiliar A", "monthly": 768000 },
+    { "id": "auxiliarB", "label": "Auxiliar B", "monthly": 775000 },
+    { "id": "auxiliarC", "label": "Auxiliar C", "monthly": 790000 },
+    { "id": "vendedorA", "label": "Vendedor A", "monthly": 768000 },
+    { "id": "vendedorB", "label": "Vendedor B", "monthly": 780000 },
+    { "id": "vendedorC", "label": "Vendedor C", "monthly": 785000 },
+    { "id": "vendedorD", "label": "Vendedor D", "monthly": 795000 }
+  ],
+  "rules": {
+    "weeklyHours": 48,
+    "dailyHours": 8,
+    "serenoDailyHours": 12,
+    "minorsDailyHours": 6,
+    "dayDivisor": 30,
+    "vacationDivisor": 25,
+    "hourDivisor": 200,
+    "presentismPct": 8.33,
+    "seniorityPct": 1,
+    "zonaSurChubutSantaCruzTdfPct": 20,
+    "zonaSurRioNegroNeuquenPct": 5,
+    "manejoValoresPct": 8,
+    "secSolidarioPct": 2,
+    "faecysPct": 0.5,
+    "osecacAdicionalPct": 0.5,
+    "laEstrellaPct": 3.5,
+    "tradeEmployeeDay": "26 de septiembre",
+    "seniority": {
+      "enabled": true,
+      "percentPerYear": 1,
+      "detail": "1% por cada año de servicio acumulativo (Art. 24 y 25 CCT 130/75)"
+    },
+    "presentism": {
+      "enabled": true,
+      "percent": 8.33,
+      "requiresNoUnjustifiedAbsence": true,
+      "detail": "8,33% (1/12) sobre básico + antigüedad (Art. 40 CCT 130/75)"
+    },
+    "workerDeductions": {
+      "jubilacion":   { "label": "Jubilacion SIPA (11%)",         "percent": 11,   "base": "ss"  },
+      "pami":         { "label": "PAMI (Ley 19.032) (3%)",        "percent": 3,    "base": "ss"  },
+      "obraSocial":   { "label": "Obra Social OSECAC (3%)",       "percent": 3,    "base": "os"  },
+      "sec":          { "label": "Aporte Solidario Sindical (2%)","percent": 2,    "base": "rem" },
+      "faecys":       { "label": "Aporte FAECYS (0,5%)",          "percent": 0.5,  "base": "rem" }
+    },
+    "employerContributions": {
+      "osecacAdicional": { "label": "Aporte Adicional OSECAC (0,5%)", "percent": 0.5, "base": "rem" },
+      "laEstrella":      { "label": "Seguro Retiro La Estrella (3,5%)", "percent": 3.5, "base": "rem" }
+    },
+    "licencias": [
+      { "motivo": "Casamiento",                                   "dias": 12, "tipo": "corridos", "pago": true, "articulo": "Art. 77 CCT 130/75" },
+      { "motivo": "Trámites prematrimoniales",                     "dias": 1,  "tipo": "corridos", "pago": true, "articulo": "Art. 77 CCT 130/75" },
+      { "motivo": "Casamiento de hijos",                          "dias": 1,  "tipo": "corridos", "pago": true, "articulo": "Art. 77 CCT 130/75" },
+      { "motivo": "Enfermedad de cónyuge, padres o hijos",        "dias": 30, "tipo": "corridos", "pago": false,"articulo": "Art. 78 CCT 130/75", "nota": "sin goce de sueldo, sin pérdida de presentismo" },
+      { "motivo": "Fallecimiento padre, hijos, cónyuge, hermanos", "dias": 4,  "tipo": "corridos", "pago": true, "articulo": "Art. 79 CCT 130/75", "nota": "+2 días si supera los 500 km" },
+      { "motivo": "Fallecimiento abuelos, suegros, hijos del cónyuge", "dias": 2, "tipo": "corridos", "pago": true, "articulo": "Art. 80 CCT 130/75" },
+      { "motivo": "Nacimiento de hijos",                          "dias": 2,  "tipo": "hábiles",  "pago": true, "articulo": "Art. 81 CCT 130/75" },
+      { "motivo": "Donación de sangre",                           "dias": 1,  "tipo": "hábiles",  "pago": true, "articulo": "Art. 82 CCT 130/75" },
+      { "motivo": "Mudanza de vivienda",                          "dias": 2,  "tipo": "corridos", "pago": true, "articulo": "Art. 83 CCT 130/75" },
+      { "motivo": "Carga pública ante reparticiones",             "dias": 1,  "tipo": "según requerimiento", "pago": true, "articulo": "Art. 84 CCT 130/75" },
+      { "motivo": "Exámenes secundarios",                         "dias": 10, "tipo": "corridos", "pago": true, "articulo": "Art. 85 CCT 130/75", "nota": "máximo anual" },
+      { "motivo": "Exámenes universitarios",                      "dias": 20, "tipo": "corridos", "pago": true, "articulo": "Art. 86 CCT 130/75", "nota": "máx. 4 días por examen" },
+      { "motivo": "Revisación médica militar",                    "dias": 2,  "tipo": "corridos", "pago": true, "articulo": "Art. 87 CCT 130/75" },
+      { "motivo": "Horario para compras personales",              "dias": 0.12,"tipo": "1 hora mensual", "pago": true, "articulo": "Art. 90 CCT 130/75" },
+      { "motivo": "Día del Empleado de Comercio (26 sep.)",       "dias": 1,  "tipo": "feriado",  "pago": true, "articulo": "Art. 76 CCT 130/75" }
+    ]
+  }
+}

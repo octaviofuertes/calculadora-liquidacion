@@ -251,5 +251,33 @@
         "sereno": 197000
       }
     }
+  },
+  "rules": {
+    "ceseLaboral": [
+      { "concepto": "Fondo de Cese Laboral (1º año)", "detalle": "12% mensual sobre remuneración (Ley 22.250)" },
+      { "concepto": "Fondo de Cese Laboral (2º año en adelante)", "detalle": "8% mensual sobre remuneración (Ley 22.250)" }
+    ],
+    "weeklyHours": 44,
+    "dailyHoursMax": 8,
+    "dayDivisor": 30,
+    "hourDivisor": 8,
+    "vacationDivisor": 25,
+    "seniorityPctPerYear": 1,
+    "extra50Multiplier": 1.5,
+    "extra100Multiplier": 2,
+    "sacFormula": "Mejor remuneración semestral / 2",
+    "vacationDays": {
+      "hasta5":  14,
+      "hasta10": 21,
+      "hasta20": 28,
+      "mas20":   35
+    },
+    "licencias": [
+      { "motivo": "Nacimiento de hijos",                 "dias": 2,  "articulo": "LCT Art. 158" },
+      { "motivo": "Matrimonio",                          "dias": 10, "articulo": "LCT Art. 158" },
+      { "motivo": "Fallecimiento cónyuge/hijos/padres",  "dias": 3,  "articulo": "LCT Art. 158" },
+      { "motivo": "Fallecimiento hermano",               "dias": 1,  "articulo": "LCT Art. 158" },
+      { "motivo": "Examen (máx. 10 días/año)",           "dias": 2,  "articulo": "LCT Art. 158" }
+    ]
   }
 }

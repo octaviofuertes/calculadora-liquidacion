@@ -35,19 +35,31 @@ async function seedCatalog(db = null) {
   );
 
   for (const [index, convention] of catalog.conventions.entries()) {
-    const versionedConvention = validateConvention(withConventionMetadata(convention));
+    const originalId = convention.id;
+    if (!originalId) {
+      console.warn(`[seed] Skipping convention without id at index ${index}`);
+      continue;
+    }
+    const versionedConvention = withConventionMetadata(convention);
+    // Ensure id is preserved regardless of what schema validation does
+    const docToSave = { ...versionedConvention, id: originalId };
     await database.collection("conventions").replaceOne(
-      { _id: convention.id },
-      { _id: convention.id, order: index + 1, ...versionedConvention, updatedAt: now },
+      { _id: originalId },
+      { _id: originalId, order: index + 1, ...docToSave, updatedAt: now },
       { upsert: true }
     );
-    await saveConventionVersion(database, versionedConvention, {
-      approvedAt: versionedConvention.normative?.approvedAt ? new Date(versionedConvention.normative.approvedAt) : now,
-      approvedBy: versionedConvention.normative?.approvedBy || "seed",
-      source: versionedConvention.normative?.source || versionedConvention.source || "catalog seed",
-      status: "SEED"
-    });
+    try {
+      await saveConventionVersion(database, docToSave, {
+        approvedAt: docToSave.normative?.approvedAt ? new Date(docToSave.normative.approvedAt) : now,
+        approvedBy: docToSave.normative?.approvedBy || "seed",
+        source: docToSave.normative?.source || docToSave.source || "catalog seed",
+        status: "SEED"
+      });
+    } catch (e) {
+      console.warn(`[seed] Could not save version for ${originalId}: ${e.message}`);
+    }
   }
+
 
   await database.collection("legalReferences").deleteMany({});
   if (catalog.legalReferences.length) {

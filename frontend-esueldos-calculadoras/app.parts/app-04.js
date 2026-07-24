@@ -228,13 +228,20 @@
     return buildResult(conv, remRows, noRemRows, deductionRows, employerRows, details);
   }
 
-  function farmaciaAntiquityPct(years) {
+  function farmaciaAntiquityPct(years, brackets) {
+    if (Array.isArray(brackets) && brackets.length > 0) {
+      for (let i = brackets.length - 1; i >= 0; i--) {
+        if (years >= brackets[i].fromYears) return Number(brackets[i].percent) || 0;
+      }
+      return 0;
+    }
+    // Fallback: CCT 429/2005 (Art. 13)
     if (years >= 20) return 35;
     if (years >= 15) return 30;
     if (years >= 10) return 25;
-    if (years >= 5) return 20;
-    if (years >= 2) return 10;
-    if (years >= 1) return 5;
+    if (years >= 5)  return 20;
+    if (years >= 2)  return 10;
+    if (years >= 1)  return 5;
     return 0;
   }
 
@@ -244,9 +251,10 @@
     const zone = getZone(conv);
     const activeCatRow = scaleCategoryRow(conv, cat, zone);
     const years = yearsFromEntry();
-    const pctAnt = farmaciaAntiquityPct(years);
-    const weeklyHours = Math.min(45, Math.max(0, num("farmWeeklyHours", 45)));
-    const proportion = (weeklyHours / 45) * (num("farmMonthPct", 100) / 100);
+    const rules = conv.rules || {};
+    const pctAnt = farmaciaAntiquityPct(years, rules.seniority?.brackets);
+    const weeklyHours = Math.min(Number(rules.weeklyHours || 45), Math.max(0, num("farmWeeklyHours", Number(rules.weeklyHours || 45))));
+    const proportion = (weeklyHours / Number(rules.weeklyHours || 45)) * (num("farmMonthPct", 100) / 100);
     // Inasistencias: dias habiles del mes y dias ausentes
     const workingDays = Math.max(1, num("farmWorkingDays", 25));
     const absentDaysUnjust = Math.max(0, num("farmAbsentDays", 0));
@@ -270,22 +278,22 @@
     addRow(remRows, "Escalafon por antiguedad", antiquity, `${pctAnt}% de ${fmt(base)} (Art. 13)`);
     const basicPlusAntiquity = base + antiquity;
 
-    if (on("farmCajero")) addRow(remRows, "Adicional cajero", basicPlusAntiquity * 0.10, `10% de ${fmt(basicPlusAntiquity)} (Basico + Ant.)`);
-    if (on("farmAdminTitle")) addRow(remRows, "Adicional tareas administrativas", basicPlusAntiquity * 0.05, `5% de ${fmt(basicPlusAntiquity)} (Basico + Ant.)`);
-    if (on("farmAdminTenure")) addRow(remRows, "Adicional administrativo por antiguedad", basicPlusAntiquity * 0.05, `5% de ${fmt(basicPlusAntiquity)} (Basico + Ant.)`);
-    if (on("farmPerfumeria")) addRow(remRows, "Adicional perfumeria", basicPlusAntiquity * 0.10, `10% de ${fmt(basicPlusAntiquity)} (Basico + Ant.)`);
-    if (on("farmBike")) addRow(remRows, "Adicional bici/ciclomotor/moto", basicPlusAntiquity * 0.10, `10% de ${fmt(basicPlusAntiquity)} (Basico + Ant.)`);
+    if (on("farmCajero"))      addRow(remRows, "Adicional cajero",                         basicPlusAntiquity * ((rules.cajeroPct || 10) / 100),                `${rules.cajeroPct || 10}% de ${fmt(basicPlusAntiquity)} (Basico + Ant.) - Art. 18 inc. c`);
+    if (on("farmAdminTitle"))   addRow(remRows, "Adicional tareas administrativas",          basicPlusAntiquity * ((rules.tareasAdministrativasPct || 5) / 100),  `${rules.tareasAdministrativasPct || 5}% de ${fmt(basicPlusAntiquity)} (Basico + Ant.) - Art. 18 inc. d`);
+    if (on("farmAdminTenure"))  addRow(remRows, "Adicional administrativo por antiguedad",   basicPlusAntiquity * ((years >= 2 ? (rules.adminTenurePctOver2Years || 10) : (rules.adminTenurePctInitial || 5)) / 100), `${years >= 2 ? (rules.adminTenurePctOver2Years || 10) : (rules.adminTenurePctInitial || 5)}% de ${fmt(basicPlusAntiquity)} (Basico + Ant.) - Art. 18 inc. d`);
+    if (on("farmPerfumeria"))   addRow(remRows, "Adicional perfumeria",                      basicPlusAntiquity * ((rules.perfumeriaPct || 10) / 100),             `${rules.perfumeriaPct || 10}% de ${fmt(basicPlusAntiquity)} (Basico + Ant.) - Art. 18 inc. e`);
+    if (on("farmBike"))         addRow(remRows, "Adicional bici/ciclomotor/moto",            basicPlusAntiquity * ((rules.bikePct || 10) / 100),                  `${rules.bikePct || 10}% de ${fmt(basicPlusAntiquity)} (Basico + Ant.) - Art. 18 inc. g`);
 
     const initialABaseWithAnt = (initialAMonthly * proportion) * (1 + pctAnt / 100);
-    addRow(remRows, "Adicional idioma", initialABaseWithAnt * 0.10 * num("farmLanguages", 0), `10% de ${fmt(initialABaseWithAnt)} x ${num("farmLanguages", 0)}`);
+    addRow(remRows, "Adicional idioma", initialABaseWithAnt * ((rules.languagePct || 10) / 100) * num("farmLanguages", 0), `${rules.languagePct || 10}% de ${fmt(initialABaseWithAnt)} x ${num("farmLanguages", 0)} idioma(s) - Art. 18 inc. f`);
 
     const employeeFirstWithAnt = (empleadoFarmaciaMonthly * proportion) * (1 + pctAnt / 100);
     if (on("farmAuxTitle")) {
-      addRow(remRows, "Titulo auxiliar de farmacia", employeeFirstWithAnt * 0.20, `20% de ${fmt(employeeFirstWithAnt)}`);
+      addRow(remRows, "Titulo auxiliar de farmacia", employeeFirstWithAnt * ((rules.auxTitlePct || 20) / 100), `${rules.auxTitlePct || 20}% de ${fmt(employeeFirstWithAnt)} - Art. 18 inc. h`);
     }
 
     if (on("farmFallaCaja")) {
-      addRow(noRemRows, "Fondo falla de caja", basicPlusAntiquity * 0.10, `10% de ${fmt(basicPlusAntiquity)} (Art. 19)`);
+      addRow(noRemRows, "Fondo falla de caja", basicPlusAntiquity * ((rules.fallaCajaPct || 10) / 100), `${rules.fallaCajaPct || 10}% de ${fmt(basicPlusAntiquity)} (Art. 19)`);
     }
 
     ["tituloFarmaceutico", "adscripcion", "bloqueo"].forEach((key) => {
@@ -299,7 +307,7 @@
       }
     });
 
-    const hourDivisor = 45 * 52 / 12;
+    const hourDivisor = Number(rules.hourDivisor || (Number(rules.weeklyHours || 45) * 52 / 12));
     const hourValue = basicPlusAntiquity / hourDivisor;
     addRow(remRows, "Horas extra 50%", hourValue * num("farmExtra50", 0) * 1.5, `${num("farmExtra50", 0)} hs x ${fmt(hourValue)} x 1,5`);
     addRow(remRows, "Horas extra 100%", hourValue * num("farmExtra100", 0) * 2, `${num("farmExtra100", 0)} hs x ${fmt(hourValue)} x 2`);
@@ -334,7 +342,8 @@
     applyWorkerDeductions(deductionRows, remTotal, osBase, conv);
 
     if (isSocialMonth) {
-      addRow(deductionRows, "Aporte asistencia social ADEF 1%", remTotal * 0.01, `1% de ${fmt(remTotal)} (Art. 46 - Jun/Dic)`);
+      const adefSocialPct = rules.cajaCompensadoraPct != null ? Number(rules.cajaCompensadoraPct) : 1;
+      addRow(deductionRows, `Aporte asistencia social ADEF ${adefSocialPct}%`, remTotal * (adefSocialPct / 100), `${adefSocialPct}% de ${fmt(remTotal)} (Art. 46 - Jun/Dic)`);
     }
 
     applyEmployerContribs(employerRows, remTotal, osBase, conv, base);
@@ -356,7 +365,7 @@
     const activeCatRow = scaleCategoryRow(conv, cat, zone);
     const rules = conv.rules || {};
     const years = yearsFromEntry();
-    const pctAnt = farmaciaAntiquityPct(years);
+    const pctAnt = farmaciaAntiquityPct(years, rules.seniority?.brackets);
     const fullWeeklyHours = Number(rules.weeklyHours || 45);
     const actualWeeklyHours = Math.min(fullWeeklyHours, Math.max(0, num("farmWeeklyHours", fullWeeklyHours)));
     const insalubreLimit = Number(rules.insalubreWeeklyHours || 33);

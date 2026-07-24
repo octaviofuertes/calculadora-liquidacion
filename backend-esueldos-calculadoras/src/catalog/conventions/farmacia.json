@@ -2,28 +2,15 @@
   "id": "farmacia",
   "name": "Farmacia Mendoza - CCT 429/2005",
   "shortName": "Farmacia Mendoza",
-  "source": "CON-CCT-429-2005-A y Escala Abril 2026",
+  "source": "CCT 429/2005 - Asociacion Empleados de Farmacia de Mendoza - Escala 1ro Abril 2026",
   "type": "monthly",
   "periods": [
-    {
-      "id": "abr26",
-      "label": "Abril 2026"
-    },
-    {
-      "id": "may26",
-      "label": "Mayo 2026"
-    },
-    {
-      "id": "jun26",
-      "label": "Junio 2026"
-    }
+    { "id": "abr26", "label": "Abril 2026" },
+    { "id": "may26", "label": "Mayo 2026" },
+    { "id": "jun26", "label": "Junio 2026" }
   ],
   "zones": [
-    {
-      "id": "mendoza",
-      "label": "Ambito Mendoza",
-      "coef": 1
-    }
+    { "id": "mendoza", "label": "Ambito Mendoza", "coef": 1 }
   ],
   "categories": [
     {
@@ -61,7 +48,7 @@
       "label": "Empleado de farmacia",
       "monthly": 1377859.74,
       "nonRem": {
-        "abr26": 20667.9,
+        "abr26": 20667.90,
         "may26": 48225.09,
         "jun26": 75782.29
       }
@@ -89,7 +76,8 @@
   ],
   "additionals": {
     "tituloFarmaceutico": {
-      "label": "Adicional titulo farmaceutico",
+      "label": "Adicional titulo farmaceutico (35%)",
+      "detail": "35% sobre sueldo basico de Cat. Inicial A + escalafon por antiguedad. Requiere titulo de Farmaceutico. (Art. 18 inc. a)",
       "monthly": 556167.39,
       "nonRem": {
         "abr26": 8342.51,
@@ -98,7 +86,8 @@
       }
     },
     "adscripcion": {
-      "label": "Adicional adscripcion",
+      "label": "Adicional adscripcion (23%)",
+      "detail": "23% sobre sueldo basico de Cat. Inicial A + escalafon por antiguedad. Requiere titulo de Farmaceutico con adscripcion. (Art. 18 inc. a)",
       "monthly": 383137.54,
       "nonRem": {
         "abr26": 5747.06,
@@ -107,7 +96,8 @@
       }
     },
     "bloqueo": {
-      "label": "Adicional bloqueo direccion tecnica",
+      "label": "Adicional bloqueo direccion tecnica (54%)",
+      "detail": "54% sobre sueldo basico de Cat. Inicial A + escalafon por antiguedad. Para quien ejerce la Direccion Tecnica con bloqueo de titulo. (Art. 18 inc. b)",
       "monthly": 988742.04,
       "nonRem": {
         "abr26": 14831.13,
@@ -120,6 +110,7 @@
     "weeklyHours": 45,
     "insalubreWeeklyHours": 33,
     "insalubrePaidWeeklyHours": 45,
+    "insalubreDailyHours": 6,
     "dayDivisor": 30,
     "vacationDivisor": 25,
     "hourDivisor": 200,
@@ -133,15 +124,57 @@
     "languagePct": 10,
     "auxTitlePct": 20,
     "fallaCajaPct": 10,
+    "tituloFarmaceuticoPct": 35,
+    "adscripcionPct": 23,
+    "bloqueoTituloPct": 54,
     "adefSolidarityPct": 2,
     "unionPct": 2,
     "cajaCompensadoraPct": 1,
     "proEdificioPct": 1,
-    "pharmacyEmployeeDay": "6 de septiembre"
+    "pharmacyEmployeeDay": "6 de septiembre",
+    "seniority": {
+      "enabled": true,
+      "detail": "Art. 13 CCT 429/2005",
+      "brackets": [
+        { "fromYears": 1,  "toYears": 1,  "percent": 5  },
+        { "fromYears": 2,  "toYears": 4,  "percent": 10 },
+        { "fromYears": 5,  "toYears": 9,  "percent": 20 },
+        { "fromYears": 10, "toYears": 14, "percent": 25 },
+        { "fromYears": 15, "toYears": 19, "percent": 30 },
+        { "fromYears": 20, "toYears": 999,"percent": 35 }
+      ]
+    },
+    "vacationDays": {
+      "hasta5":  14,
+      "hasta10": 21,
+      "hasta20": 28,
+      "mas20":   35
+    },
+    "sacFormula": "Mejor remuneracion semestral / 2 (Ley 23.041)",
+    "workerDeductions": {
+      "jubilacion":        { "label": "Jubilacion SIPA",         "percent": 11, "base": "ss"     },
+      "pami":              { "label": "PAMI (Ley 19.032)",        "percent": 3,  "base": "ss"     },
+      "obraSocial":        { "label": "Obra social",              "percent": 3,  "base": "os"     },
+      "sindicato":         { "label": "Cuota sindical ADEF",      "percent": 2,  "base": "rem"    },
+      "solidario":         { "label": "Aporte solidario ADEF",    "percent": 2,  "base": "rem"    }
+    },
+    "licencias": [
+      { "motivo": "Matrimonio (mas de 1 ano antiguedad)",         "dias": 15, "tipo": "corridos", "pago": true, "articulo": "Art. 25 inc. a CCT 429/2005" },
+      { "motivo": "Matrimonio (menos de 1 ano antiguedad)",       "dias": 12, "tipo": "corridos", "pago": true, "articulo": "Art. 25 inc. a CCT 429/2005" },
+      { "motivo": "Nacimiento o adopcion de hijos",               "dias": 2,  "tipo": "habiles",  "pago": true, "articulo": "Art. 25 inc. b CCT 429/2005" },
+      { "motivo": "Enfermedad de hijo",                           "dias": 6,  "tipo": "habiles",  "pago": true, "articulo": "Art. 25 inc. c CCT 429/2005", "nota": "por ano calendario" },
+      { "motivo": "Enfermedad de padres y/o conyuge",             "dias": 4,  "tipo": "habiles",  "pago": true, "articulo": "Art. 25 inc. c CCT 429/2005", "nota": "por ano calendario" },
+      { "motivo": "Fallecimiento familiar (hijos/conyuge/padres/hermanos/abuelos/suegros/nueras/yernos)", "dias": 4, "tipo": "habiles", "pago": true, "articulo": "Art. 25 inc. d CCT 429/2005", "nota": "6 dias si reside a mas de 500 km" },
+      { "motivo": "Examen (maximo 10 dias por ano)",              "dias": 2,  "tipo": "corridos", "pago": true, "articulo": "Art. 25 inc. e CCT 429/2005" },
+      { "motivo": "Donacion de sangre",                           "dias": 1,  "tipo": "habiles",  "pago": true, "articulo": "Art. 25 inc. f CCT 429/2005" },
+      { "motivo": "Mudanza",                                      "dias": 1,  "tipo": "habiles",  "pago": true, "articulo": "Art. 25 inc. g CCT 429/2005" },
+      { "motivo": "Capacitacion sindical",                        "dias": 21, "tipo": "corridos", "pago": true, "articulo": "Art. 25 inc. h CCT 429/2005", "nota": "anuales" },
+      { "motivo": "Dia del Empleado de Farmacia (6 sep.)",        "dias": 1,  "tipo": "habiles",  "pago": true, "articulo": "Art. 41 inc. b CCT 429/2005" }
+    ]
   },
   "extraordinaryContribution": {
     "abr26": 7479.52,
-    "may26": 7626.9,
+    "may26": 7626.90,
     "jun26": 7774.28
   }
 }

@@ -2,315 +2,139 @@
   "id": "camioneros",
   "name": "Camioneros - CCT 40/89",
   "shortName": "Camioneros",
-  "source": "CCT-40-89 y planilla mayo 2026",
-  "type": "monthly",
+  "source": "CCT 40/89 - Planilla N° 243 vigente 01/06/2026",
+  "type": "daily",
+  "calculationMode": "camioneros",
   "periods": [
-    {
-      "id": "may26",
-      "label": "Mayo 2026"
-    }
+    { "id": "jun26", "label": "Junio 2026", "isoMonth": "2026-06" }
   ],
   "zones": [
-    {
-      "id": "base",
-      "label": "General",
-      "coef": 1
-    },
-    {
-      "id": "surColorado",
-      "label": "Sur Rio Colorado / coef. 1,20",
-      "coef": 1.2
-    },
-    {
-      "id": "surSantaCruz",
-      "label": "Sur Santa Cruz / coef. 1,40",
-      "coef": 1.4
-    }
+    { "id": "base",         "label": "Zona General",               "coef": 1    },
+    { "id": "surColorado",  "label": "Sur Río Colorado (coef. 1,20)", "coef": 1.2 },
+    { "id": "surSantaCruz", "label": "Sur Santa Cruz (coef. 1,40)",   "coef": 1.4 }
   ],
+  "rules": {
+    "dayDivisor":          24,
+    "hourDivisor":         8,
+    "vacationDivisor":     25,
+    "seniorityPctPerYear": 1,
+    "presentismoPct":      8.33,
+    "extra50Multiplier":   1.5,
+    "extra100Multiplier":  2,
+    "weeklyHours":         44,
+    "dailyHoursMax":       8,
+    "nightHours":          7,
+    "sacFormula":          "bestRemunerationSemester / 2",
+    "absenceDiscount":     "valorDia * diasAusentes",
+    "holidayWorked":       "valorDia * 2",
+    "vacationDays": {
+      "hasta5":     14,
+      "hasta10":    21,
+      "hasta20":    28,
+      "mas20":      35
+    },
+    "licencias": [
+      { "motivo": "Nacimiento de hijos",           "dias": 2,  "articulo": "Art. 6.2.6" },
+      { "motivo": "Matrimonio",                    "dias": 10, "articulo": "Art. 6.2.8" },
+      { "motivo": "Fallecimiento cónyuge/hijos",   "dias": 3,  "articulo": "Art. 6.2.5" },
+      { "motivo": "Fallecimiento padres/hermanos", "dias": 2,  "articulo": "Art. 6.2.5" },
+      { "motivo": "Fallecimiento abuelos/suegros", "dias": 2,  "articulo": "Art. 6.2.5" },
+      { "motivo": "Dador de sangre",               "dias": 1,  "articulo": "Art. 6.2.9" },
+      { "motivo": "Renovación de registro",        "dias": 1,  "articulo": "Art. 6.2.11" }
+    ]
+  },
   "categories": [
-    {
-      "id": "conductor1",
-      "label": "Conductor de primera categoria",
-      "monthly": 1001071.98,
-      "day": 41711.3325
-    },
-    {
-      "id": "conductor2",
-      "label": "Conductor de segunda categoria",
-      "monthly": 983232.49,
-      "day": 40968.020416666666
-    },
-    {
-      "id": "conductor3",
-      "label": "Conductor de tercera categoria - fletes al instante",
-      "monthly": 965374.95,
-      "day": 40223.956249999996
-    },
-    {
-      "id": "grua10",
-      "label": "Conductor de gruas hasta 10 tn / autoelevadores",
-      "monthly": 1018918.96,
-      "day": 42454.956666666665
-    },
-    {
-      "id": "grua20",
-      "label": "Conductor de gruas mas de 10 y hasta 20 tn",
-      "monthly": 1120810.86,
-      "day": 46700.45250000001
-    },
-    {
-      "id": "grua35",
-      "label": "Conductor de gruas mas de 20 y hasta 35 tn",
-      "monthly": 1165643.29,
-      "day": 48568.47041666667
-    },
-    {
-      "id": "grua45",
-      "label": "Conductor de gruas mas de 35 y hasta 45 tn",
-      "monthly": 1212269.02,
-      "day": 50511.20916666667
-    },
-    {
-      "id": "grua55",
-      "label": "Conductor de gruas mas de 45 y hasta 55 tn",
-      "monthly": 1260759.78,
-      "day": 52531.6575
-    },
-    {
-      "id": "grua70",
-      "label": "Conductor de gruas mas de 55 y hasta 70 tn",
-      "monthly": 1323797.77,
-      "day": 55158.24041666667
-    },
-    {
-      "id": "grua90",
-      "label": "Conductor de gruas mas de 70 y hasta 90 tn",
-      "monthly": 1389987.66,
-      "day": 57916.1525
-    },
-    {
-      "id": "grua110",
-      "label": "Conductor de gruas mas de 90 y hasta 110 tn",
-      "monthly": 1459487.04,
-      "day": 60811.96
-    },
-    {
-      "id": "grua140",
-      "label": "Conductor de gruas mas de 110 y hasta 140 tn",
-      "monthly": 1532461.39,
-      "day": 63852.557916666665
-    },
-    {
-      "id": "grua170",
-      "label": "Conductor de gruas mas de 140 y hasta 170 tn",
-      "monthly": 1609084.46,
-      "day": 67045.18583333334
-    },
-    {
-      "id": "grua300",
-      "label": "Conductor de gruas mas de 170 y hasta 300 tn",
-      "monthly": 1689538.68,
-      "day": 70397.44499999999
-    },
-    {
-      "id": "gruaMas300",
-      "label": "Conductor de gruas mas de 300 tn",
-      "monthly": 1824701.77,
-      "day": 76029.24041666667
-    },
-    {
-      "id": "encargado",
-      "label": "Encargado",
-      "monthly": 940866.38,
-      "day": 39202.76583333333
-    },
-    {
-      "id": "recibidor",
-      "label": "Recibidor y/o clasificador de guias",
-      "monthly": 931891.94,
-      "day": 38828.83083333333
-    },
-    {
-      "id": "operarioEsp",
-      "label": "Operarios especializados",
-      "monthly": 923101.01,
-      "day": 38462.542083333334
-    },
-    {
-      "id": "recolector",
-      "label": "Recolectores de residuo y limpieza",
-      "monthly": 923101.01,
-      "day": 38462.542083333334
-    },
-    {
-      "id": "peon",
-      "label": "Peones",
-      "monthly": 914291.07,
-      "day": 38095.46125
-    },
-    {
-      "id": "peonBarrido",
-      "label": "Peones generales de barrido y limpieza",
-      "monthly": 914291.07,
-      "day": 38095.46125
-    },
-    {
-      "id": "operadorServicios",
-      "label": "Operador de servicios",
-      "monthly": 1065180.22,
-      "day": 44382.50916666666
-    },
-    {
-      "id": "distribuidor",
-      "label": "Distribuidor domiciliario",
-      "monthly": 969519.98,
-      "day": 40396.66583333333
-    },
-    {
-      "id": "ayudante18",
-      "label": "Ayudantes mayores de 18 años",
-      "monthly": 896768.85,
-      "day": 37365.36875
-    },
-    {
-      "id": "choferBlindado",
-      "label": "Chofer de camion blindado",
-      "monthly": 1076279.39,
-      "day": 44844.97458333333
-    },
-    {
-      "id": "choferFirma",
-      "label": "Chofer con firma",
-      "monthly": 1155899.2,
-      "day": 48162.46666666667
-    },
-    {
-      "id": "custodia",
-      "label": "Custodia de camion de caudales",
-      "monthly": 933124.69,
-      "day": 38880.19541666666
-    },
-    {
-      "id": "auxOp1",
-      "label": "Auxiliar operativo de primera",
-      "monthly": 1375644.41,
-      "day": 57318.51708333333
-    },
-    {
-      "id": "auxOp2",
-      "label": "Auxiliar operativo de segunda",
-      "monthly": 958260.84,
-      "day": 39927.534999999996
-    },
-    {
-      "id": "oficialPrimera",
-      "label": "Oficial de primera",
-      "monthly": 1114923.7,
-      "day": 46455.15416666667
-    },
-    {
-      "id": "oficialCompleto",
-      "label": "Oficial completo de taller",
-      "monthly": 1057158.76,
-      "day": 44048.28166666667
-    },
-    {
-      "id": "oficial",
-      "label": "Oficial",
-      "monthly": 1005085.13,
-      "day": 41878.54708333333
-    },
-    {
-      "id": "medioOficial",
-      "label": "Medio oficial",
-      "monthly": 949464.23,
-      "day": 39561.00958333333
-    },
-    {
-      "id": "oficialGomero",
-      "label": "Oficial gomero",
-      "monthly": 1005085.13,
-      "day": 41878.54708333333
-    },
-    {
-      "id": "medioOficialGomero",
-      "label": "Medio oficial gomero",
-      "monthly": 949464.23,
-      "day": 39561.00958333333
-    },
-    {
-      "id": "lavador",
-      "label": "Lavadores, engrasadores y ayudantes de taller",
-      "monthly": 949464.23,
-      "day": 39561.00958333333
-    },
-    {
-      "id": "admin1",
-      "label": "Personal administrativo - primera categoria",
-      "monthly": 996199.21,
-      "day": 41508.300416666665
-    },
-    {
-      "id": "admin2",
-      "label": "Personal administrativo - segunda categoria",
-      "monthly": 958260.84,
-      "day": 39927.534999999996
-    },
-    {
-      "id": "admin3",
-      "label": "Personal administrativo - tercera categoria",
-      "monthly": 923101.01,
-      "day": 38462.542083333334
-    },
-    {
-      "id": "admin4",
-      "label": "Personal administrativo - cuarta categoria",
-      "monthly": 905538.31,
-      "day": 37730.76291666667
-    },
-    {
-      "id": "maestranza",
-      "label": "Maestranza y/o serenos",
-      "monthly": 905538.31,
-      "day": 37730.76291666667
-    },
-    {
-      "id": "clearing1",
-      "label": "Auxiliar operativo de primera de clearing y correo privado",
-      "monthly": 998029.39,
-      "day": 41584.557916666665
-    },
-    {
-      "id": "clearing2",
-      "label": "Auxiliar operativo de segunda de clearing y correo privado",
-      "monthly": 949869.3,
-      "day": 39577.887500000004
-    }
+    { "id": "conductor1",       "label": "Conductor de Primera Categoría",                      "monthly": 1017089.13, "day": 42378.71 },
+    { "id": "conductor2",       "label": "Conductor de Segunda Categoría",                     "monthly": 998964.21,  "day": 41623.51 },
+    { "id": "conductor3",       "label": "Conductor de Tercera Categoría",                     "monthly": 980820.95,  "day": 40867.54 },
+    { "id": "grua10",           "label": "Grúa h/ 10 T y autoelevadores",                      "monthly": 1035221.66, "day": 43134.24 },
+    { "id": "grua20",           "label": "Grúa más de 10 y h/ 20 T",                           "monthly": 1138743.83, "day": 47447.66 },
+    { "id": "grua35",           "label": "Grúa más de 20 y h/ 35 T",                           "monthly": 1184293.58, "day": 49345.57 },
+    { "id": "grua45",           "label": "Grúa más de 35 y h/ 45 T",                           "monthly": 1231665.32, "day": 51319.39 },
+    { "id": "grua55",           "label": "Grúa más de 45 y h/ 55 T",                           "monthly": 1280931.93, "day": 53372.16 },
+    { "id": "grua70",           "label": "Grúa más de 55 y h/ 70 T",                           "monthly": 1344978.53, "day": 56040.77 },
+    { "id": "grua90",           "label": "Grúa más de 70 y h/ 90 T",                           "monthly": 1412227.46, "day": 58842.81 },
+    { "id": "grua110",          "label": "Grúa más de 90 y h/ 110 T",                          "monthly": 1482838.83, "day": 61784.95 },
+    { "id": "grua140",          "label": "Grúa más de 110 y h/ 140 T",                         "monthly": 1556980.77, "day": 64874.20 },
+    { "id": "grua170",          "label": "Grúa más de 140 y h/ 170 T",                         "monthly": 1634829.81, "day": 68117.91 },
+    { "id": "grua300",          "label": "Grúa más de 170 y h/ 300 T",                         "monthly": 1716571.30, "day": 71523.80 },
+    { "id": "gruaMas300",       "label": "Grúa más de 300 T",                                  "monthly": 1853897.00, "day": 77245.71 },
+    { "id": "encargado",        "label": "Encargado",                                           "monthly": 955920.24,  "day": 39830.01 },
+    { "id": "recibidor",        "label": "Recibidor y/o Clasificador de guías",                 "monthly": 946802.21,  "day": 39450.09 },
+    { "id": "operarioEsp",      "label": "Operarios especializados / Peones mudanza y reparto", "monthly": 937870.63,  "day": 39077.94 },
+    { "id": "recolector",       "label": "Recolectores de residuos y limpieza",                 "monthly": 937870.63,  "day": 39077.94 },
+    { "id": "peon",             "label": "Peones",                                              "monthly": 928919.73,  "day": 38704.99 },
+    { "id": "peonBarrido",      "label": "Peones generales de Barrido y Limpieza",              "monthly": 928919.73,  "day": 38704.99 },
+    { "id": "ayudante18",       "label": "Ayudantes mayores de 18 años",                       "monthly": 911117.15,  "day": 37963.21 },
+    { "id": "operadorServ",     "label": "Operador de Servicios (Clearing/Correo Privado)",     "monthly": 1082223.10, "day": 45092.63 },
+    { "id": "distribuidor",     "label": "Distribuidor domiciliario (Clearing/Correo Privado)", "monthly": 985032.30,  "day": 41043.01 },
+    { "id": "clearing1",        "label": "Auxiliar Operativo 1ª (Clearing/Correo Privado)",    "monthly": 1013997.86, "day": 42249.91 },
+    { "id": "clearing2",        "label": "Auxiliar Operativo 2ª (Clearing/Correo Privado)",    "monthly": 965067.21,  "day": 40211.13 },
+    { "id": "choferBlindado",   "label": "Chofer de camión blindado (Caudales)",                "monthly": 1093499.86, "day": 45562.49 },
+    { "id": "choferFirma",      "label": "Chofer con firma (Caudales)",                         "monthly": 1174393.59, "day": 48933.07 },
+    { "id": "custodia",         "label": "Custodia de unidad blindada (Caudales)",              "monthly": 948054.69,  "day": 39502.28 },
+    { "id": "auxCaudales1",     "label": "Auxiliar Operativo 1ª (Caudales)",                    "monthly": 1397654.72, "day": 58235.61 },
+    { "id": "auxCaudales2",     "label": "Auxiliar Operativo 2ª (Caudales)",                    "monthly": 973593.01,  "day": 40566.38 },
+    { "id": "oficialPrimera",   "label": "Oficial de Primera (Taller)",                         "monthly": 1132762.48, "day": 47198.44 },
+    { "id": "oficialCompleto",  "label": "Oficial completo de taller",                          "monthly": 1074073.30, "day": 44753.05 },
+    { "id": "oficial",          "label": "Oficial (Taller)",                                    "monthly": 1021166.49, "day": 42548.60 },
+    { "id": "medioOficial",     "label": "Medio Oficial (Taller)",                              "monthly": 964655.66,  "day": 40193.99 },
+    { "id": "oficialGomero",    "label": "Oficial Gomero",                                      "monthly": 1021166.49, "day": 42548.60 },
+    { "id": "medioOficialGomero","label": "Medio Oficial Gomero",                               "monthly": 964655.66,  "day": 40193.99 },
+    { "id": "lavador",          "label": "Lavadores, Engrasadores y Ayudantes de Taller",       "monthly": 964655.66,  "day": 40193.99 },
+    { "id": "admin1",           "label": "Administrativo de Primera Categoría",                 "monthly": 1012138.40, "day": 42172.43 },
+    { "id": "admin2",           "label": "Administrativo de Segunda Categoría",                 "monthly": 973593.01,  "day": 40566.38 },
+    { "id": "admin3",           "label": "Administrativo de Tercera Categoría",                 "monthly": 937870.63,  "day": 39077.94 },
+    { "id": "admin4",           "label": "Administrativo de Cuarta Categoría",                  "monthly": 920026.92,  "day": 38334.46 },
+    { "id": "maestranza",       "label": "Maestranza y/o Serenos",                              "monthly": 920026.92,  "day": 38334.46 }
+  ],
+  "additionals": [
+    { "id": "antiguedad",       "label": "Antigüedad",                    "rowType": "remunerative", "calculation": "percent", "percent": 1,  "base": "basic",       "detail": "1% por año de antigüedad en la empresa (Art. 6.1.5)" },
+    { "id": "presentismo",      "label": "Presentismo",                   "rowType": "remunerative", "calculation": "percent", "percent": 8.33,"base": "basic",      "detail": "8,33% del básico si no registra inasistencias injustificadas" },
+    { "id": "lacteo",           "label": "Adicional conductor lácteo",    "rowType": "remunerative", "calculation": "percent", "percent": 15, "base": "basic",       "detail": "Recolección materia prima láctea (Art. 3.1.3)" },
+    { "id": "auxilio",          "label": "Adicional grúas/autogrúas",     "rowType": "remunerative", "calculation": "percent", "percent": 10, "base": "basic",       "detail": "Conducción de camiones de auxilio (Art. 3.1.4)" },
+    { "id": "pluralidadI",      "label": "Plus pluralidad taller I/III",  "rowType": "remunerative", "calculation": "percent", "percent": 25, "base": "basic",       "detail": "Tareas múltiples en taller - Oficial (Art. 3.1.13)" },
+    { "id": "pluralidadII",     "label": "Plus pluralidad taller II",     "rowType": "remunerative", "calculation": "percent", "percent": 18, "base": "basic",       "detail": "Tareas múltiples en taller - Medio Oficial (Art. 3.1.13)" },
+    { "id": "blindados",        "label": "Adicional unidades blindadas",  "rowType": "remunerative", "calculation": "percent", "percent": 20, "base": "basic",       "detail": "Personal operativo en unidades blindadas (Art. 5.1.13)" },
+    { "id": "peligrosas",       "label": "Materiales peligrosos",         "rowType": "remunerative", "calculation": "percent", "percent": 20, "base": "basic",       "detail": "Transporte sustancias inflamables/explosivas/peligrosas (Art. 5.6.2)" },
+    { "id": "recoleccionResiduos","label":"Recolección de residuos",      "rowType": "remunerative", "calculation": "percent", "percent": 15, "base": "basic",       "detail": "Tareas de recolección, barrido y conductores de rama (Art. 5.3.3/5.3.6/5.3.8)" },
+    { "id": "diaGremio",        "label": "Día del gremio (15 dic)",       "rowType": "remunerative", "calculation": "percent", "percent": 100,"base": "basic",       "detail": "Recargo 100% por trabajo en día gremial (Art. 3.3.3)" }
+  ],
+  "deductions": [
+    { "id": "cuotaSindical",    "label": "Cuota sindical",                "rowType": "deduction", "calculation": "percent", "percent": 2,   "base": "remunerative", "detail": "% estatutario sobre total remunerativo (FATAP/SICHOCA)" },
+    { "id": "solidaria",        "label": "Contribución solidaria",        "rowType": "deduction", "calculation": "percent", "percent": 3,   "base": "remunerative", "detail": "Contribución solidaria convencional (3% total remunerativo)" },
+    { "id": "sepelio",          "label": "Seguro de sepelio",             "rowType": "deduction", "calculation": "percent", "percent": 1.5, "base": "remunerative", "detail": "Seguro de sepelio convencional obligatorio (1,5% total remunerativo)" }
+  ],
+  "employerContributions": [
+    { "id": "actSociales",      "label": "Aporte actividades sociales",           "rowType": "employer", "calculation": "percent", "percent": 2,   "base": "basic", "detail": "2% sobre salarios básicos" },
+    { "id": "actCulturales",    "label": "Aporte actividades culturales",         "rowType": "employer", "calculation": "percent", "percent": 0.5, "base": "basic", "detail": "0,5% sobre salarios básicos" },
+    { "id": "profesionalizacion","label": "Aporte profesionalización del sector", "rowType": "employer", "calculation": "percent", "percent": 2,   "base": "basic", "detail": "2% sobre salarios básicos" },
+    { "id": "sepelioEmpleador", "label": "Aporte seguro de sepelio (empleador)", "rowType": "employer", "calculation": "percent", "percent": 1.5, "base": "remunerative", "detail": "1,5% sobre total remuneraciones" }
   ],
   "items": {
-    "comida": 15318,
-    "viaticoEspecial": 7686.55,
-    "pernoctada": 17841.22,
-    "kmExtra": 80.08748,
-    "kmViatico": 80.08748,
-    "permanencia": 54059.44,
-    "simplePresencia": 28336.23,
-    "cruceFrontera": 37228.67,
-    "ingresoIsla": 42450.58,
-    "plusVacacionalDia": 23384.27,
-    "bitrenes": 646892.71,
-    "presentismoPct": 8.33,
+    "comida":              15318,
+    "viaticoEspecial":     7686.55,
+    "pernoctada":          17841.22,
+    "kmExtra":             80.09,
+    "kmViatico":           80.09,
+    "permanencia":         54059.44,
+    "simplePresencia":     28336.23,
+    "cruceFrontera":       37228.67,
+    "ingresoIsla":         42450.58,
+    "plusVacacionalDia":   23384.27,
+    "bitrenes":            646892.71,
+    "presentismoPct":      8.33,
     "choferLargaDistanciaPct": 10,
-    "lacteaPct": 15,
-    "auxilioPct": 10,
-    "blindadoPct": 20,
-    "combustiblesPct": 15,
-    "peligrosasPct": 20,
-    "pozosPetroliferosPct": 40,
+    "lacteaPct":           15,
+    "auxilioPct":          10,
+    "blindadoPct":         20,
+    "combustiblesPct":     15,
+    "peligrosasPct":       20,
+    "pozosPetroliferosPct":40,
     "pluralidadGrupoIPct": 25,
-    "pluralidadGrupoIIPct": 18,
-    "diariosRevistasPct": 12,
-    "logisticaPct": 18,
-    "camaraFrioPct": 20
+    "pluralidadGrupoIIPct":18,
+    "diariosRevistasPct":  12,
+    "logisticaPct":        18,
+    "camaraFrioPct":       20
   }
 }

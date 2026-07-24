@@ -16,6 +16,11 @@ function currentPeriod() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function idVariants(value) {
+  const raw = String(value || "").trim();
+  return [...new Set([raw, raw.replace(/_/g, "-"), raw.replace(/-/g, "_")].filter(Boolean))];
+}
+
 async function findActiveScale(db, conventionId, period) {
   const [first] = await findActiveScales(db, conventionId, period);
   return first || null;
@@ -25,7 +30,7 @@ async function findActiveScales(db, conventionId, period) {
   const normalized = normalizePeriod(period) || currentPeriod();
   return db.collection("salaryScales").find(
     {
-      conventionId,
+      conventionId: { $in: idVariants(conventionId) },
       status: "APROBADA",
       period: { $lte: normalized }
     },

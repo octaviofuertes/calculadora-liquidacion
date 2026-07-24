@@ -72,9 +72,18 @@ async function normalizeStoredConvention(db, doc) {
 }
 
 async function findConventionDoc(db, convenioId) {
-  return await collection(db).findOne({ "convenio.convenio_id": convenioId })
-    || await collection(db).findOne({ convenio_id: convenioId })
-    || await collection(db).findOne({ id: convenioId });
+  const variants = [...new Set([
+    convenioId,
+    String(convenioId || '').replace(/_/g, '-'),
+    String(convenioId || '').replace(/-/g, '_')
+  ].filter(Boolean))];
+  for (const variant of variants) {
+    const doc = await collection(db).findOne({ "convenio.convenio_id": variant })
+      || await collection(db).findOne({ convenio_id: variant })
+      || await collection(db).findOne({ id: variant });
+    if (doc) return doc;
+  }
+  return null;
 }
 
 async function createConvenio(db, payload) {
@@ -232,11 +241,17 @@ function selectScale(scales = [], period) {
 
 function selectScales(scales = [], period) {
   const normalizedPeriod = normalizePeriod(period) || period;
-  return [...scales].filter((scale) => {
+  const sorted = [...scales].sort((a, b) => String(periodOf(b)).localeCompare(String(periodOf(a))));
+  const matching = sorted.filter((scale) => {
     const from = periodOf(scale);
     const to = normalizePeriod(scale.periodo_hasta) || scale.periodo_hasta || "";
     return (!from || from <= normalizedPeriod) && (!to || to >= normalizedPeriod);
-  }).sort((a, b) => String(periodOf(b)).localeCompare(String(periodOf(a))));
+  });
+  if (matching.length > 0) return matching;
+  // Fallback: use the most recent scale available (no exact period match)
+  const withFrom = sorted.filter((scale) => periodOf(scale));
+  if (withFrom.length > 0) return [withFrom[0]];
+  return sorted.slice(0, 1);
 }
 
 function conceptMap(convenio) {
@@ -355,6 +370,48 @@ function buildActiveScale(convenio, scale) {
   };
 }
 
+function buildFallbackActiveScale(convenio, period) {
+  const periodLabel = (convenio.periods || []).find((item) => item.id === period)?.label || period;
+  const categories = (convenio.categorias || []).map((category) => {
+    const monthly = numberValue(category.monthlyByPeriod?.[period] ?? category.monthly ?? 0);
+    const day = numberValue(category.dayByPeriod?.[period] ?? category.day ?? 0);
+    const hourly = numberValue(category.hourlyByPeriod?.[period] ?? category.hourly ?? 0);
+    const nonRemunerative = numberValue(
+      category.nonRemunerativeByPeriod?.[period]
+      ?? category.nonRem?.[period]
+      ?? category.nonRemunerative
+      ?? category.noRemunerative
+      ?? 0
+    );
+    return {
+      id: category.categoria_id,
+      label: category.categoria_nombre || category.label || category.categoria_id,
+      group: category.grupo_nombre || category.group || category.rama || "",
+      zone: "general",
+      modality: category.modalidad_aplicable || category.modalidad || "",
+      modalidad: category.modalidad_aplicable || category.modalidad || "",
+      monthly,
+      day,
+      hourly,
+      nonRemunerative
+    };
+  }).filter((row) => row.monthly || row.day || row.hourly || row.nonRemunerative);
+  if (!categories.length) return null;
+  return {
+    id: convenio.convenio?.convenio_id || convenio.id,
+    conventionId: convenio.convenio?.convenio_id || convenio.id,
+    period,
+    periodLabel,
+    status: "APROBADA",
+    parsedScale: {
+      categories,
+      additionals: [],
+      nonRemunerativeRules: {}
+    },
+    availableScales: []
+  };
+}
+
 function buildPayrollConvention(convenio, period) {
   const runtime = toRuntimeConvention(convenio);
   const extractedRules = extractRules(convenio.conceptos || []);
@@ -401,7 +458,7 @@ async function buildPayrollDataForConvenio(db, convenioId, period, baseCatalog =
       categories: mergedCategories
     },
     zone: activeScales.map((scale) => scale.parsedScale?.categories || []).flatMap((rows) => rows.map((row) => row.zone)).filter(Boolean)
-  } : null;
+  } : buildFallbackActiveScale(convenio, period);
   if (!activeScale?.parsedScale?.categories?.length) {
     const error = new Error(`No existe una escala salarial vigente para ${period}`);
     error.status = 422;

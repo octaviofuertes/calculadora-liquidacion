@@ -515,13 +515,21 @@ function calcGeneric(ctx) {
   return buildResult(ctx, rows, warnings);
 }
 
-function farmaciaAntiquityPct(years) {
+function farmaciaAntiquityPct(years, brackets) {
+  // If dynamic brackets provided (from rules.seniority.brackets), use them
+  if (Array.isArray(brackets) && brackets.length > 0) {
+    for (let i = brackets.length - 1; i >= 0; i--) {
+      if (years >= brackets[i].fromYears) return Number(brackets[i].percent) || 0;
+    }
+    return 0;
+  }
+  // Fallback: CCT 429/2005 hardcoded brackets (Art. 13)
   if (years >= 20) return 35;
   if (years >= 15) return 30;
   if (years >= 10) return 25;
-  if (years >= 5) return 20;
-  if (years >= 2) return 10;
-  if (years >= 1) return 5;
+  if (years >= 5)  return 20;
+  if (years >= 2)  return 10;
+  if (years >= 1)  return 5;
   return 0;
 }
 
@@ -576,51 +584,161 @@ function calcFarmacia(ctx) {
   const period = ctx.payloadPeriod;
   const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality);
   const rules = ctx.convention.rules || {};
-  const weeklyHours = Math.min(Number(rules.weeklyHours || 45), Math.max(0, inputValue(ctx.inputs, "farmWeeklyHours", Number(rules.weeklyHours || 45))));
-  const proportion = (weeklyHours / Number(rules.weeklyHours || 45)) * (inputValue(ctx.inputs, "farmMonthPct", 100) / 100);
-  const base = (firstFinite(activeRow?.monthly, ctx.category.monthly) || 0) * proportion;
-  const pctAnt = farmaciaAntiquityPct(ctx.employee.years);
-  addRow(rows.remRows, "Basico", base, `${weeklyHours} hs semanales`);
-  const seniority = inputBool(ctx.inputs, "farmSeniority", true) ? base * (pctAnt / 100) : 0;
-  addRow(rows.remRows, "Escalafon por antiguedad", seniority, `${pctAnt}%`);
-  const basePlus = base + seniority;
-  const percentAdds = [
-    ["farmCajero", "Adicional cajero", rules.cajeroPct || 10],
-    ["farmAdminTitle", "Adicional tareas administrativas", rules.tareasAdministrativasPct || 5],
-    ["farmAdminTenure", "Adicional administrativo por antiguedad", ctx.employee.years >= 2 ? (rules.adminTenurePctOver2Years || 10) : (rules.adminTenurePctInitial || 5)],
-    ["farmPerfumeria", "Adicional perfumeria", rules.perfumeriaPct || 10],
-    ["farmBike", "Adicional bici/ciclomotor/moto", rules.bikePct || 10]
-  ];
-  percentAdds.forEach(([key, label, pct]) => {
-    if (inputBool(ctx.inputs, key, false)) addRow(rows.remRows, label, basePlus * (pct / 100), `${pct}%`);
-  });
+  const years = ctx.employee.years || 0;
+  const fullWeeklyHours = Number(rules.weeklyHours || 45);
+  const actualWeeklyHours = Math.min(fullWeeklyHours, Math.max(0, inputValue(ctx.inputs, "farmWeeklyHours", fullWeeklyHours)));
+  const insalubreLimit = Number(rules.insalubreWeeklyHours || 33);
+  const insalubrePaidHours = Number(rules.insalubrePaidWeeklyHours || fullWeeklyHours);
+  const isInsalubre = inputBool(ctx.inputs, "farmInsalubre", false);
+  const paidWeeklyHours = isInsalubre && actualWeeklyHours > 0 && actualWeeklyHours <= insalubreLimit
+    ? Math.min(fullWeeklyHours, insalubrePaidHours)
+    : actualWeeklyHours;
+  const weeklyFactor = fullWeeklyHours > 0 ? paidWeeklyHours / fullWeeklyHours : 1;
+  const monthPct = Math.max(0, Math.min(100, inputValue(ctx.inputs, "farmMonthPct", 100)));
+  const proportion = weeklyFactor * (monthPct / 100);
+  const workingDays = Math.max(1, inputValue(ctx.inputs, "farmWorkingDays", 30));
+  const absentDaysUnjust = Math.max(0, inputValue(ctx.inputs, "farmAbsentDays", 0));
+  const noRemInput = inputString(ctx.inputs, "farmNoRemDays", "").trim();
+  const parsedNoRemDays = noRemInput ? amount(noRemInput.replace(",", ".")) : Math.max(0, workingDays - absentDaysUnjust);
+  const noRemDays = Math.max(0, Math.min(workingDays, Number.isFinite(parsedNoRemDays) ? parsedNoRemDays : workingDays));
+  const noRemProportion = proportion * (inputBool(ctx.inputs, "farmProrateNonRem", true) ? noRemDays / workingDays : 1);
+  const dayDivisor = Number(rules.dayDivisor || 30);
+  const vacationDivisor = Number(rules.vacationDivisor || 25);
+  const hourDivisor = Number(rules.hourDivisor || 200);
+
+  const catMonthly = firstFinite(activeRow?.monthly, ctx.category.monthly) || 0;
+  const base = catMonthly * proportion;
+
+  // Reference categories for additionals
+  const findCat = (id) => (ctx.convention.categories || []).find(c => c.id === id) || null;
+  const initialA = findCat("inicialA");
+  const empleadoFarm = findCat("empleadoFarmacia");
+  const initialARow = initialA ? scaleCategoryRow(ctx.activeScale, initialA, ctx.zone, ctx.modality) : null;
+  const empleadoFarmRow = empleadoFarm ? scaleCategoryRow(ctx.activeScale, empleadoFarm, ctx.zone, ctx.modality) : null;
+  const initialAMonthly = (firstFinite(initialARow?.monthly, initialA?.monthly) || 0) * proportion;
+  const empleadoFarmMonthly = (firstFinite(empleadoFarmRow?.monthly, empleadoFarm?.monthly) || 0) * proportion;
+
+  addRow(rows.remRows, "Basico", base, `${paidWeeklyHours}/${fullWeeklyHours} hs; ${monthPct}% del mes`);
+
+  // Track seniority base (can include fixed additionals)
+  let seniorityBase = base;
+  const includeFixedInSeniority = inputBool(ctx.inputs, "farmSeniorityOnFixedAdditions", true);
+  const addRem = (label, val, detail) => {
+    addRow(rows.remRows, label, val, detail);
+    if (includeFixedInSeniority) seniorityBase += val;
+  };
+
+  // Additionals from scale (titulo, adscripcion, bloqueo)
   ["tituloFarmaceutico", "adscripcion", "bloqueo"].forEach((key) => {
     if (!inputBool(ctx.inputs, `farm_${key}`, false)) return;
     const additional = ctx.convention.additionals?.[key];
     const scaleRow = scaleAdditionalRow(ctx.activeScale, key, additional);
-    addRow(rows.remRows, additional?.label || key, (firstFinite(scaleRow?.monthly, additional?.monthly) || 0) * proportion, "Escala");
-    if (inputBool(ctx.inputs, "farmNonRem", true)) addRow(rows.noRemRows, `${additional?.label || key} - no remunerativo`, (firstFinite(scaleRow?.nonRemunerative, additional?.nonRem?.[period]) || 0) * proportion, "Escala");
+    const val = (firstFinite(scaleRow?.monthly, additional?.monthly) || 0) * proportion;
+    addRem(additional?.label || key, val, "Escala");
+    if (inputBool(ctx.inputs, "farmNonRem", true)) {
+      addRow(rows.noRemRows, `${additional?.label || key} - no remunerativo`, (firstFinite(scaleRow?.nonRemunerative, additional?.nonRem?.[period]) || 0) * noRemProportion, "Escala");
+    }
   });
-  const hourDivisor = Number(rules.hourDivisor || 200);
-  const hourValue = (sumRows(rows.remRows) || basePlus) / hourDivisor;
-  addRow(rows.remRows, "Horas extra 50%", hourValue * inputValue(ctx.inputs, "farmExtra50", 0) * 1.5, "x1,5");
-  addRow(rows.remRows, "Horas extra 100%", hourValue * inputValue(ctx.inputs, "farmExtra100", 0) * 2, "x2");
-  if (inputBool(ctx.inputs, "farmFallaCaja", false)) addRow(rows.noRemRows, "Fondo falla de caja", basePlus * ((rules.fallaCajaPct || 10) / 100), "Art. 19");
-  if (inputBool(ctx.inputs, "farmNonRem", true)) addRow(rows.noRemRows, "Suma no remunerativa escala", (firstFinite(activeRow?.nonRemunerative, ctx.category.nonRem?.[period]) || 0) * proportion, "Escala");
+
+  // Percent additionals on base
+  if (inputBool(ctx.inputs, "farmCajero", false))     addRem("Adicional cajero",                   base * ((rules.cajeroPct || 10) / 100),                `${rules.cajeroPct || 10}%`);
+  if (inputBool(ctx.inputs, "farmAdminTitle", false))  addRem("Adicional tareas administrativas",    base * ((rules.tareasAdministrativasPct || 5) / 100),  `${rules.tareasAdministrativasPct || 5}%`);
+  if (inputBool(ctx.inputs, "farmAdminTenure", false)) {
+    const pct = years >= 2 ? (rules.adminTenurePctOver2Years || 10) : (rules.adminTenurePctInitial || 5);
+    addRem("Adicional administrativo por antiguedad", base * (pct / 100), `${pct}%`);
+  }
+  if (inputBool(ctx.inputs, "farmPerfumeria", false))  addRem("Adicional perfumeria",               base * ((rules.perfumeriaPct || 10) / 100),             `${rules.perfumeriaPct || 10}%`);
+  if (inputBool(ctx.inputs, "farmBike", false))        addRem("Adicional bici/ciclomotor/moto",      base * ((rules.bikePct || 10) / 100),                  `${rules.bikePct || 10}%`);
+
+  // Idioma (base Cat. Inicial A)
+  const farmLanguages = inputValue(ctx.inputs, "farmLanguages", 0);
+  if (farmLanguages > 0) addRem("Adicional idioma", initialAMonthly * ((rules.languagePct || 10) / 100) * farmLanguages, `${rules.languagePct || 10}% x ${farmLanguages} idioma(s)`);
+
+  // Titulo auxiliar (base Empleado de Farmacia)
+  if (inputBool(ctx.inputs, "farmAuxTitle", false)) addRem("Titulo auxiliar de farmacia", empleadoFarmMonthly * ((rules.auxTitlePct || 20) / 100), `${rules.auxTitlePct || 20}%`);
+
+  // Antiguedad sobre seniorityBase
+  const pctAnt = farmaciaAntiquityPct(years, rules.seniority?.brackets);
+  const seniorityAmount = inputBool(ctx.inputs, "farmSeniority", true) ? seniorityBase * (pctAnt / 100) : 0;
+  addRow(rows.remRows, "Escalafon por antiguedad", seniorityAmount, `${pctAnt}% de base`);
+  const basePlus = base + seniorityAmount;
+
+  // Hour value after all base remunerativos
+  const regularRem = sumRows(rows.remRows);
+  const standardDayValue = regularRem / dayDivisor;
+  const vacationDayValue = regularRem / vacationDivisor;
+  const hourValue = regularRem / hourDivisor;
+
+  // Extras y nocturnos
+  const nightPct = Number(rules.nightPct || 100);
+  addRow(rows.remRows, "Horas extra 50%",            hourValue * inputValue(ctx.inputs, "farmExtra50", 0) * 1.5,            `x1,5`);
+  addRow(rows.remRows, "Horas extra 100%",           hourValue * inputValue(ctx.inputs, "farmExtra100", 0) * 2,             `x2`);
+  addRow(rows.remRows, "Adicional nocturno voluntario", hourValue * inputValue(ctx.inputs, "farmNightHours", 0) * (nightPct / 100), `${nightPct}%`);
+
+  // Feriados y día de la farmacia
+  const holidayNotWorkedPlus = Math.max(0, vacationDayValue - standardDayValue);
+  addRow(rows.remRows, "Feriado trabajado",           vacationDayValue * inputValue(ctx.inputs, "farmHolidayWorkedDays", 0),    `÷${vacationDivisor}`);
+  addRow(rows.remRows, "Feriado no trabajado",        holidayNotWorkedPlus * inputValue(ctx.inputs, "farmHolidayNotWorkedDays", 0), `÷${vacationDivisor} - ÷${dayDivisor}`);
+  addRow(rows.remRows, "Dia empleado farmacia trab.", vacationDayValue * inputValue(ctx.inputs, "farmPharmacyDayWorked", 0),    `${rules.pharmacyEmployeeDay || "6 sep"}`);
+  addRow(rows.remRows, "Dia empleado farmacia no trab.", holidayNotWorkedPlus * inputValue(ctx.inputs, "farmPharmacyDayNotWorked", 0), `${rules.pharmacyEmployeeDay || "6 sep"}`);
+
+  // Vacaciones
+  const vacationDays = Math.max(0, inputValue(ctx.inputs, "farmVacationDays", 0));
+  if (vacationDays > 0) {
+    addRow(rows.remRows, "Vacaciones", vacationDayValue * vacationDays, `÷${vacationDivisor} x ${vacationDays} dias`);
+    if (inputBool(ctx.inputs, "farmDiscountVacationDays", true)) {
+      addRow(rows.remRows, "Descuento dias vacaciones", -standardDayValue * vacationDays, `-÷${dayDivisor} x ${vacationDays} dias`);
+    }
+  }
+
+  // SAC proporcional
+  if (inputBool(ctx.inputs, "farmSac", false)) {
+    const sacDays = Math.max(0, Math.min(180, inputValue(ctx.inputs, "farmSacDays", 180)));
+    const currentForSac = sumRows(rows.remRows);
+    const sacBase = Math.max(inputValue(ctx.inputs, "farmSacBestRem", 0), currentForSac);
+    addRow(rows.remRows, "SAC proporcional", (sacBase / 2 / 180) * sacDays, `Base ${sacBase} / 2 / 180 x ${sacDays}`);
+  }
+
+  // Fondo falla de caja (No Rem)
+  if (inputBool(ctx.inputs, "farmFallaCaja", false)) {
+    addRow(rows.noRemRows, "Fondo falla de caja", basePlus * ((rules.fallaCajaPct || 10) / 100), `${rules.fallaCajaPct || 10}% - Art. 19`);
+  }
+
+  // Suma no remunerativa escala
+  if (inputBool(ctx.inputs, "farmNonRem", true)) {
+    addRow(rows.noRemRows, "Suma no remunerativa escala", (firstFinite(activeRow?.nonRemunerative, ctx.category.nonRem?.[period]) || 0) * noRemProportion, "Escala");
+  }
+
   applyManualRows(ctx, rows);
-  addRow(rows.remRows, "Inasistencia injustificada", -(sumRows(rows.remRows) / Number(rules.dayDivisor || 30)) * inputValue(ctx.inputs, "farmAbsentDays", 0), "Descuento");
+
+  // Inasistencias injustificadas
+  const remBeforeAbsence = sumRows(rows.remRows);
+  addRow(rows.remRows, "Inasistencia injustificada", -(remBeforeAbsence / dayDivisor) * absentDaysUnjust, `${absentDaysUnjust} dias`);
+
   const remTotal = sumRows(rows.remRows);
   const osRelevantNoRem = sumRows(rows.noRemRows.filter((row) => !row.label.includes("Fondo falla de caja")));
-  const osBase = remTotal + osRelevantNoRem;
+  let osBase = remTotal + osRelevantNoRem;
+  // OS base mínima jornada completa si jornada reducida
+  if (inputBool(ctx.inputs, "farmOsFullTimeBase", true) && weeklyFactor > 0 && weeklyFactor < 1) {
+    osBase = Math.max(osBase, osBase / weeklyFactor);
+  }
+
   applyWorkerDeductions(ctx, rows, remTotal, osBase);
   if (inputBool(ctx.inputs, "farmSocialJuneDec", true) && (period === "jun26" || period === "dic26" || /(^|-)06$/.test(period) || /(^|-)12$/.test(period))) {
-    addRow(rows.deductionRows, "Aporte asistencia social ADEF 1%", remTotal * 0.01, "Art. 46 - Jun/Dic");
+    const adefSocialPct = rules.cajaCompensadoraPct != null ? Number(rules.cajaCompensadoraPct) : 1;
+    addRow(rows.deductionRows, `Aporte asistencia social ADEF ${adefSocialPct}%`, remTotal * (adefSocialPct / 100), "Art. 46 - Jun/Dic");
   }
   applyEmployerContribs(ctx, rows, remTotal, osBase, base);
-  addRow(rows.details, "Basico de escala", firstFinite(activeRow?.monthly, ctx.category.monthly) || 0, ctx.activeScale ? "Escala aprobada" : "Escala base");
+  addRow(rows.details, "Basico de escala", catMonthly, ctx.activeScale ? "Escala aprobada" : "Escala base");
+  addRow(rows.details, "Proporcion de jornada", proportion * 100, `${paidWeeklyHours}/${fullWeeklyHours} hs; ${monthPct}% del mes`);
+  addRow(rows.details, "Valor dia", standardDayValue, `Remunerativo / ${dayDivisor}`);
+  addRow(rows.details, "Valor hora", hourValue, `Remunerativo / ${hourDivisor}`);
+  addRow(rows.details, "Dias no remunerativos", noRemDays, `Prorrateo ${inputBool(ctx.inputs, "farmProrateNonRem", true) ? "activo" : "desactivado"}`);
+  addRow(rows.details, "Base antiguedad", seniorityBase, includeFixedInSeniority ? "Basico + adicionales fijos" : "Solo basico");
   addRow(rows.details, "Base obra social", osBase, "Remunerativo + no remunerativo sujeto a OS");
   return buildResult(ctx, rows);
 }
+
 
 function calcCamioneros(ctx) {
   const rows = emptyRows();
@@ -695,10 +813,15 @@ const payrollCalculationStrategies = {
 function calcKnown(ctx) {
   // 1. Try to use generated specific calculator
   try {
-    const calcPath = require("path").join(__dirname, "..", "calculators", `${ctx.convention.id}.js`);
     const fs = require("fs");
-    if (fs.existsSync(calcPath)) {
-      const calcModule = require(calcPath);
+    const { getCalculatorCandidates } = require("../services/calculator-registry");
+    const id = ctx.convention.id;
+    const calcPath = getCalculatorCandidates(id).find((candidate) => fs.existsSync(candidate));
+    if (calcPath) {
+      const { loadCalculatorModule } = require("../services/calculator-loader");
+      const loaded = loadCalculatorModule(id);
+      const calcModule = loaded?.module;
+      if (!calcModule) throw new Error(`Calculadora no encontrada para ${id}`);
       
       // Adapt ctx for the generated calculator
       const specificCtx = {

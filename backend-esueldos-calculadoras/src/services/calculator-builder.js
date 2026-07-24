@@ -1,19 +1,95 @@
 const fs = require('fs/promises');
 const path = require('path');
+const { SKIP_GENERATION_IDS } = require('./calculator-registry');
 
 /**
  * Builds a JS calculator file for a given convention JSON
  */
 async function buildCalculator(rawConvenio) {
+  // Static conventions have dedicated calculation engines — don't override them
+  if (SKIP_GENERATION_IDS.has(rawConvenio.id)) return;
+
   const { buildPayrollConvention } = require('./convenio-service');
   const convenio = buildPayrollConvention(rawConvenio, "");
   const model = convenio.liquidationModel || {};
   const rules = model.rules || convenio.rules || {};
-  const concepts = [...(model.concepts || []), ...(model.nonRemunerative || [])];
-  if (concepts.length === 0 && convenio.concepts) {
-    concepts.push(...convenio.concepts);
+  const cleanNorm = (str) => String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+
+  const rawConcepts = [
+    ...(model.concepts || []),
+    ...(model.nonRemunerative || []),
+    ...(convenio.concepts || [])
+  ];
+
+  if (convenio.additionals || model.additionals) {
+    const addsSrc = convenio.additionals || model.additionals;
+    const adds = Array.isArray(addsSrc) ? addsSrc : Object.values(addsSrc);
+    adds.forEach(a => {
+      if (!a) return;
+      rawConcepts.push({
+        id: a.id || a.label,
+        label: a.label || a.id,
+        rowType: (a.type === 'non_remunerative' || a.nonRemunerative) ? 'non_remunerative' : 'remunerative',
+        calculation: a.percent ? 'percent' : (a.monthly || a.amount ? 'fixed' : 'scaleValue'),
+        percent: a.percent,
+        amount: a.monthly || a.amount
+      });
+    });
   }
-  const deductions = model.deductions || convenio.deductions || convenio.retentions || model.retentions || [];
+
+  const seenConcepts = new Set();
+  const concepts = [];
+  rawConcepts.forEach(c => {
+    if (!c) return;
+    const key = cleanNorm(c.label || c.concepto || c.id);
+    if (!key || seenConcepts.has(key)) return;
+    seenConcepts.add(key);
+    concepts.push(c);
+  });
+
+  const rawDeductions = [
+    ...(model.deductions || []),
+    ...(model.retentions || []),
+    ...(model.employerContributions || [])
+  ];
+
+  if (convenio.deductions) {
+    const deds = Array.isArray(convenio.deductions) ? convenio.deductions : Object.values(convenio.deductions);
+    deds.forEach(d => {
+      if (!d) return;
+      rawDeductions.push({
+        id: d.id || d.label,
+        label: d.label || d.id,
+        rowType: 'deduction',
+        percent: d.percent,
+        amount: d.amount
+      });
+    });
+  }
+  if (convenio.retentions) {
+    const rets = Array.isArray(convenio.retentions) ? convenio.retentions : Object.values(convenio.retentions);
+    rets.forEach(r => {
+      if (!r) return;
+      rawDeductions.push({
+        id: r.id || r.label,
+        label: r.label || r.id,
+        rowType: 'deduction',
+        percent: r.percent,
+        amount: r.amount
+      });
+    });
+  }
+
+  const seenDeductions = new Set();
+  const deductions = [];
+  rawDeductions.forEach(d => {
+    if (!d) return;
+    const key = cleanNorm(d.label || d.concepto || d.id);
+    if (!key || seenDeductions.has(key)) return;
+    seenDeductions.add(key);
+    deductions.push(d);
+  });
+
   const presentismRule = rules.presentism || {};
   const seniorityRule = rules.seniority || {};
 
@@ -43,7 +119,7 @@ module.exports = {
         if (c.calculation === 'amountPerUnit') {
           inputType = "number";
           calcDesc = `Calculo: Valor Unidad x Cantidad`;
-        } else if (c.calculation === 'fixed' || (!c.percent && !c.calculation)) {
+        } else if (c.calculation === 'fixed' || c.calculationType === 'fixed_amount' || (c.amount && !c.percent)) {
           if (c.amount) {
             inputType = "checkbox";
             calcDesc = `Calculo: $${c.amount} (Fijo)`;
@@ -51,15 +127,18 @@ module.exports = {
             inputType = "number";
             calcDesc = `Calculo: Monto ingresado manualmente`;
           }
-        } else {
+        } else if (c.percent && Number(c.percent) > 0) {
           inputType = "checkbox";
           const baseName = c.base && !String(c.base).includes('revision_manual') ? String(c.base).replace(/_/g, ' ') : 'Sueldo Básico';
-          calcDesc = `Calculo: ${baseName} x ${c.percent || 0}%`;
+          calcDesc = `Calculo: ${baseName} x ${c.percent}%`;
+        } else {
+          inputType = "number";
+          calcDesc = `Calculo: Monto / valor según convenio o escala`;
         }
         
         const textDetail = (c.detail || c.description || '').replace(/"/g, '\\"').replace(/\n/g, ' ');
         const finalDetail = textDetail ? `${textDetail}<br><br><b>${calcDesc}</b>` : `<b>${calcDesc}</b>`;
-        return `{ id: "concept_${c.id}", label: "${c.label || c.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'non_remunerative' : 'remunerative'}" }`;
+        return `{ id: "gen_${c.id}", label: "${c.label || c.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'non_remunerative' : 'remunerative'}" }`;
       }).join(',\n      ')}${deductions.length > 0 ? ',' : ''}
       ${deductions.map((d, i) => {
         const dId = d.id || ('ded_' + i);
@@ -67,7 +146,7 @@ module.exports = {
         const textDetail = (d.detail || d.description || '').replace(/"/g, '\\"').replace(/\n/g, ' ');
         const finalDetail = textDetail ? `${textDetail}<br><br><b>${calcDesc}</b>` : `<b>${calcDesc}</b>`;
         const inputType = (d.percent || d.amount) ? 'checkbox' : 'number';
-        return `{ id: "concept_${dId}", label: "${d.label || d.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "deduction" }`;
+        return `{ id: "gen_${dId}", label: "${d.label || d.concepto}", type: "${inputType}", defaultValue: ${inputType === 'number' ? '0' : 'true'}, detail: "${finalDetail}", group: "deduction" }`;
       }).join(',\n      ')}
     ].filter(Boolean);
   },
@@ -140,15 +219,21 @@ module.exports = {
     if (extra50 > 0) addRow(rows.remRows, "Horas extra 50%", hourValue * extra50 * 1.5, extra50 + " hs");
     if (extra100 > 0) addRow(rows.remRows, "Horas extra 100%", hourValue * extra100 * 2, extra100 + " hs");
 
+    // Helper to read inputs with any prefix
+    const readVal = (k) => inputs["gen_" + k] ?? inputs["concept_" + k] ?? inputs[k];
+    const isAct = (k) => { const v = readVal(k); return v !== undefined && v !== false && String(v) !== "false" && String(v) !== "0" && String(v) !== ""; };
+
     // Additional Concepts
     ${concepts.map((c, i) => {
       const cId = c.id || ('c_' + i);
+      const hasPct = c.percent && Number(c.percent) > 0;
       return `
-    if (inputs["concept_${cId}"] !== false && String(inputs["concept_${cId}"]) !== "false" && inputs["concept_${cId}"] !== "0") {
-      const val = ${c.calculationType === 'fixed_amount' || (!c.percent && !c.calculation) ? `Number(inputs["concept_${cId}"] || ${c.amount || 0})` : `(sumRows(rows.remRows) * ${c.percent || 0} / 100)`};
+    if (isAct("${cId}")) {
+      const rawV = readVal("${cId}");
+      const val = ${hasPct ? `(sumRows(rows.remRows) * ${c.percent} / 100)` : `(rawV === true || String(rawV) === "true" ? ${c.amount || 0} : Number(rawV || 0))`};
       if (val !== 0) {
         const isNoRem = ${(c.rowType === 'non_remunerative' || c.rowType === 'no_remunerativo' || String(c.naturaleza).toLowerCase().includes('no rem')) ? 'true' : 'false'};
-        addRow(isNoRem ? rows.noRemRows : rows.remRows, "${c.label || c.concepto}", val, "${c.calculationType === 'fixed_amount' ? '' : `${c.percent || 0}%`}");
+        addRow(isNoRem ? rows.noRemRows : rows.remRows, "${c.label || c.concepto}", val, "${hasPct ? `${c.percent}%` : ''}");
       }
     }
     `;
@@ -159,8 +244,9 @@ module.exports = {
     ${deductions.map((d, i) => {
       const dId = d.id || ('ded_' + i);
       return `
-    if (inputs["concept_${dId}"] !== false && String(inputs["concept_${dId}"]) !== "false" && inputs["concept_${dId}"] !== "0") {
-      const val = ${d.amount ? `Number(inputs["concept_${dId}"] || ${d.amount})` : (d.percent ? `(remTotal * ${d.percent} / 100)` : `Number(inputs["concept_${dId}"] || 0)`)};
+    if (isAct("${dId}")) {
+      const rawV = readVal("${dId}");
+      const val = ${d.amount ? `(rawV === true || String(rawV) === "true" ? ${d.amount} : Number(rawV || 0))` : (d.percent ? `(remTotal * ${d.percent} / 100)` : `Number(rawV || 0)`)};
       addRow(rows.deductionRows, "${d.label || d.concepto}", val, "${d.percent ? d.percent + '%' : ''}");
     }
       `;

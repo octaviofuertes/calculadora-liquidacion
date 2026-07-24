@@ -141,13 +141,15 @@
   async function renderDynamicFields(conv) {
     if (isGenericConvention(conv)) {
       let metadata = [];
-      try {
-        const res = await fetch(apiUrl(`/api/calculators/${encodeURIComponent(conv.id)}/metadata`));
-        if (res.ok) {
-          metadata = await res.json();
+      if (!["camioneros", "farmacia", "uocra"].includes(conv.id)) {
+        try {
+          const res = await fetch(apiUrl(`/api/calculators/${encodeURIComponent(conv.id)}/metadata`));
+          if (res.ok) {
+            metadata = await res.json();
+          }
+        } catch (e) {
+          console.warn("No se pudo cargar la metadata de la calculadora generada:", e);
         }
-      } catch (e) {
-        console.warn("No se pudo cargar la metadata de la calculadora generada:", e);
       }
       
       const category = getCategory(conv);
@@ -170,11 +172,46 @@
       const workUnitsField = salaryType === "monthly" ? "" : `
           <label class="field"><span>${salaryType === "hourly" ? "Horas trabajadas" : "Jornales trabajados"}</span><input id="genWorkUnits" type="number" min="0" step="0.01" value="${escapeHtml(defaultWorkUnits)}"></label>`;
           
+      function formatConceptFormulaDetail(field) {
+        let text = field.description || field.detail || "";
+        const label = field.label || field.id || "";
+        const norm = (label).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+        if (norm.includes("zonadesfavorable20") || (norm.includes("zonadesfavorable") && norm.includes("20"))) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: Sueldo Básico x 20%</b>";
+        }
+        if (norm.includes("zonadesfavorable5") || (norm.includes("zonadesfavorable") && norm.includes("5"))) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: Sueldo Básico x 5%</b>";
+        }
+        if (norm.includes("manejodevalores") || norm.includes("fallacaja")) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: Monto de escala o Fijo anual en cuotas (Art. 30)</b>";
+        }
+        if (norm.includes("noremunerativo") || norm.includes("incrementonoremunerativo")) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: Suma fija de escala salarial vigente</b>";
+        }
+        if (norm.includes("kilometraje") || norm.includes("largadistancia")) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: Valor por km x Cantidad (Art. 36)</b>";
+        }
+        if (norm.includes("presentis")) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: (Sueldo Básico + Antigüedad) x 8.33%</b>";
+        }
+        if (norm.includes("antiguedad")) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + "<br><br><b>Calculo: Sueldo Básico x 1% x Años de servicio</b>";
+        }
+        
+        const pctMatch = label.match(/(\d+(?:[.,]\d+)?)\s*%/);
+        if (pctMatch && (text.includes("x 0%") || text.includes("Monto de escala"))) {
+          return text.replace(/<b>Calculo:.*<\/b>/gi, "").replace(/Calculo:.*$/gi, "").trim() + `<br><br><b>Calculo: Sueldo Básico x ${pctMatch[1]}%</b>`;
+        }
+
+        return text.replace(/Calculo:\s*[^<]*?\bx\s*0%/gi, "Calculo: Monto según escala salarial vigente").replace(/x\s*0%/gi, "");
+      }
+
       const groups = { remunerative: { checks: [], numbers: [] }, non_remunerative: { checks: [], numbers: [] }, deduction: { checks: [], numbers: [] } };
       metadata.forEach(field => {
         const targetGroup = field.group === 'non_remunerative' ? groups.non_remunerative : field.group === 'deduction' ? groups.deduction : groups.remunerative;
         if (field.type === "checkbox") {
-          let descText = field.description || field.detail || "";
+          let descText = formatConceptFormulaDetail(field);
           let infoBtn = descText ? `
             <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);">
@@ -203,7 +240,7 @@
              badge = `<span class="concept-badge">+${match[1]}%</span>`;
              label = label.replace(match[0], "").replace(/\(\s*\)/g, "").trim();
           }
-          let descText = field.description || field.detail || "";
+          let descText = formatConceptFormulaDetail(field);
           let infoBtn = descText ? `
             <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);">
@@ -390,72 +427,155 @@
     }
 
     if (conv.id === "farmacia") {
-      $("dynamicFields").innerHTML = `<div class="dynamic-card">
-        <h2 class="dynamic-title">Parametros Farmacia Mendoza</h2>
-        <div class="farmacia-section-title">Base, jornada y ausencias</div>
-        <div class="grid three">
-          <label class="field"><span>Horas semanales</span><input id="farmWeeklyHours" type="number" min="0" max="45" step="0.01" value="45"></label>
+      const r = conv.rules || {};
+      const infoBtn = (desc) => desc ? `
+        <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      ` : "";
+      const descHtml = (desc) => desc ? `<div class="check-desc" style="display: none; padding-top: 6px; margin-top: 6px; border-top: 1px solid var(--line); width: 100%; color: var(--muted); font-size: 0.88em; line-height: 1.4;">${desc}</div>` : "";
+      const chk = (id, label, desc, checked) => `
+        <label class="check-row ${desc ? 'has-desc' : ''}" style="flex-wrap: wrap; align-self: flex-start;">
+          <div style="display: flex; align-items: center; width: 100%; gap: 9px;">
+            <input id="${id}" type="checkbox" ${checked ? "checked" : ""}>
+            <div class="check-label-wrap" style="flex: 1;"><span>${label}</span></div>
+            ${infoBtn(desc)}
+          </div>
+          ${descHtml(desc)}
+        </label>`;
+      const numRow = (id, label, badge, desc, defaultVal = "0") => `
+        <div class="concept-table-row">
+          <div class="concept-table-label">
+            <div style="display: flex; align-items: center; gap: 4px;"><strong>${label}</strong>${infoBtn(desc)}</div>
+            ${descHtml(desc)}
+          </div>
+          <div class="concept-table-badge">${badge ? `<span class="concept-badge">${badge}</span>` : ""}</div>
+          <div class="concept-table-input"><input id="${id}" type="number" min="0" step="0.01" value="${defaultVal}" placeholder="0"></div>
+        </div>`;
+
+      const wkHrs  = r.weeklyHours  || 45;
+      const insHrs = r.insalubreWeeklyHours || 33;
+      const cajPct  = r.cajeroPct  || 10;
+      const admPct  = r.tareasAdministrativasPct || 5;
+      const admTen  = r.adminTenurePctOver2Years || 10;
+      const perfPct = r.perfumeriaPct || 10;
+      const bikePct = r.bikePct || 10;
+      const langPct = r.languagePct || 10;
+      const auxPct  = r.auxTitlePct || 20;
+      const titPct  = r.tituloFarmaceuticoPct || 35;
+      const adsPct  = r.adscripcionPct || 23;
+      const bloqPct = r.bloqueoTituloPct || 54;
+      const cajFnd  = r.fallaCajaPct || 10;
+      const adefPct = r.adefSolidarityPct || 2;
+      const unionPct = r.unionPct || 2;
+      const cajaCompPct = r.cajaCompensadoraPct || 1;
+      const proEdifPct  = r.proEdificioPct || 1;
+      const nightPct = r.nightPct || 100;
+
+      $("dynamicFields").innerHTML = `<div class="dynamic-card generic-convention-card" style="background: transparent; border: none; padding: 0; box-shadow: none; margin-top: 0;">
+        <div class="grid three" style="margin-bottom: 24px;">
+          <label class="field"><span>Horas semanales</span><input id="farmWeeklyHours" type="number" min="0" max="${wkHrs}" step="0.01" value="${wkHrs}"></label>
           <label class="field"><span>% del mes</span><input id="farmMonthPct" type="number" min="0" max="100" step="0.01" value="100"></label>
           <label class="field"><span>Dias del mes</span><input id="farmWorkingDays" type="number" min="1" step="1" value="30"></label>
           <label class="field"><span>Dias ausentes injust.</span><input id="farmAbsentDays" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Dias ausentes just.</span><input id="farmAbsentDaysJust" type="number" min="0" step="1" value="0"></label>
           <label class="field"><span>Dias no rem. <small>(auto si vacio)</small></span><input id="farmNoRemDays" type="number" min="0" step="1" placeholder="Auto"></label>
+          <label class="field"><span>Idiomas extranjeros</span><input id="farmLanguages" type="number" min="0" step="1" value="0"></label>
         </div>
 
-        <div class="farmacia-section-title">Adicionales de convenio</div>
-        <div class="grid three">
-          <label class="field"><span>Idiomas</span><input id="farmLanguages" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Hs extra 50%</span><input id="farmExtra50" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs extra 100%</span><input id="farmExtra100" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs nocturnas volunt.</span><input id="farmNightHours" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Feriados trabajados</span><input id="farmHolidayWorkedDays" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Feriados no trab.</span><input id="farmHolidayNotWorkedDays" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Dia farmacia trab.</span><input id="farmPharmacyDayWorked" type="number" min="0" max="1" step="1" value="0"></label>
-          <label class="field"><span>Dia farmacia no trab.</span><input id="farmPharmacyDayNotWorked" type="number" min="0" max="1" step="1" value="0"></label>
-          <label class="field"><span>Dias vacaciones</span><input id="farmVacationDays" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Dias SAC</span><input id="farmSacDays" type="number" min="0" max="180" step="1" value="180"></label>
-          <label class="field"><span>Mejor rem. SAC</span><input id="farmSacBestRem" type="number" min="0" step="0.01" value="0"></label>
+        <div class="step-copy" style="margin-top: 32px;"><h3>Haberes Remunerativos</h3></div>
+        <div class="concept-table">
+          <div class="concept-table-head">
+            <div class="concept-table-th-label">CONCEPTO</div>
+            <div class="concept-table-th-badge"></div>
+            <div class="concept-table-th-input">CANTIDAD</div>
+          </div>
+          ${numRow("farmExtra50",  "Horas extra 50%",  "x1,5", "Horas extraordinarias en días hábiles. Cálculo: Valor hora x 1.5 x Horas (Art. 14)")}
+          ${numRow("farmExtra100", "Horas extra 100%", "x2",   "Horas extraordinarias en fines de semana o feriados. Cálculo: Valor hora x 2 x Horas (Art. 14)")}
+          ${numRow("farmNightHours", "Hs nocturnas voluntarias", "+${nightPct}%", "Recargo ${nightPct}% por jornada nocturna voluntaria (Art. 16-17)")}
+          ${numRow("farmHolidayWorkedDays",    "Feriados trabajados",    "Doble rem.", "Feriados trabajados — se liquidan como doble remuneración")}
+          ${numRow("farmHolidayNotWorkedDays", "Feriados no trabajados", "Diferencia", "Feriados no trabajados — diferencia vacacional/30")}
+          ${numRow("farmPharmacyDayWorked",    "Dia farmacia trabajado (6 sep.)", "Doble rem.", "Día del Empleado de Farmacia trabajado (6 de septiembre) — Art. 41 inc. b")}
+          ${numRow("farmPharmacyDayNotWorked", "Dia farmacia no trab.",  "Diferencia", "Día del Empleado de Farmacia no trabajado — Art. 41 inc. b")}
+          ${numRow("farmVacationDays", "Dias vacaciones", "÷25", "Licencia anual paga — Cálculo: Sueldo / 25 x Días (Art. 155 LCT)")}
+          ${numRow("farmSacDays", "Dias SAC", "÷180", "SAC proporcional — Cálculo: Mejor rem. / 2 / 180 x Días", "180")}
+          <div class="concept-table-row">
+            <div class="concept-table-label"><div style="display:flex;align-items:center;gap:4px;"><strong>Mejor rem. SAC</strong></div></div>
+            <div class="concept-table-badge"></div>
+            <div class="concept-table-input"><input id="farmSacBestRem" type="number" min="0" step="0.01" value="0" placeholder="0"></div>
+          </div>
         </div>
-        <div class="check-grid farmacia-checks">
-          <label class="check-row"><input id="farmSeniority" type="checkbox" checked><span>Escalafon antiguedad</span></label>
-          <label class="check-row"><input id="farmSeniorityOnFixedAdditions" type="checkbox" checked><span>Antiguedad sobre basico + adicionales fijos</span></label>
-          <label class="check-row"><input id="farmInsalubre" type="checkbox"><span>Jornada insalubre 33 hs pagadas como 45 hs</span></label>
-          <label class="check-row"><input id="farmNonRem" type="checkbox" checked><span>No remunerativo escala</span></label>
-          <label class="check-row"><input id="farmProrateNonRem" type="checkbox" checked><span>Prorratear no rem. por dias</span></label>
-          <label class="check-row"><input id="farmCajero" type="checkbox"><span>Adicional cajero 10%</span></label>
-          <label class="check-row"><input id="farmFallaCaja" type="checkbox"><span>Fondo falla caja 10%</span></label>
-          <label class="check-row"><input id="farmAdminTitle" type="checkbox"><span>Admin titulo 5%</span></label>
-          <label class="check-row"><input id="farmAdminTenure" type="checkbox"><span>Admin antig. tarea 5/10%</span></label>
-          <label class="check-row"><input id="farmPerfumeria" type="checkbox"><span>Perfumeria 10%</span></label>
-          <label class="check-row"><input id="farmBike" type="checkbox"><span>Bici/moto 10%</span></label>
-          <label class="check-row"><input id="farmAuxTitle" type="checkbox"><span>Titulo auxiliar 20%</span></label>
-          <label class="check-row"><input id="farm_tituloFarmaceutico" type="checkbox"><span>Titulo farmaceutico</span></label>
-          <label class="check-row"><input id="farm_adscripcion" type="checkbox"><span>Adscripcion</span></label>
-          <label class="check-row"><input id="farm_bloqueo" type="checkbox"><span>Bloqueo direccion tecnica</span></label>
-          <label class="check-row"><input id="farmDiscountVacationDays" type="checkbox" checked><span>Descontar dias normales por vacaciones</span></label>
-          <label class="check-row"><input id="farmSac" type="checkbox"><span>Liquidar SAC proporcional</span></label>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chk("farmSeniority",              `Escalafon por antiguedad`,                  "Art. 13 CCT 429/2005: tramos 5%-10%-20%-25%-30%-35% según años de servicio", true)}
+          ${chk("farmSeniorityOnFixedAdditions", "Antiguedad sobre basico + adicionales fijos", "Incluye adicionales fijos (título, cajero, etc.) en la base de cálculo de antigüedad", true)}
+          ${chk("farmInsalubre",              `Jornada insalubre ${insHrs} hs pagadas como ${wkHrs} hs`, `Jornada insalubre Art. 15: ${insHrs} hs se abonan como ${wkHrs} hs semanales`, false)}
+          ${chk("farmSac",                    "Liquidar SAC proporcional",                 "Agrega SAC proporcional al recibo del período. Ley 23.041", false)}
+          ${chk("farmDiscountVacationDays",   "Descontar dias normales por vacaciones",    "Descuenta días a valor normal cuando hay vacaciones en el período", true)}
         </div>
 
-        <div class="farmacia-section-title">Aportes y bases</div>
-        <div class="check-grid farmacia-checks">
-          <label class="check-row"><input id="farmAdefSolidarity" type="checkbox" checked><span>Aporte solidario ADEF 2%</span></label>
-          <label class="check-row"><input id="farmContribution" type="checkbox" checked><span>Contrib. extraordinaria escala</span></label>
-          <label class="check-row"><input id="farmSocialJuneDec" type="checkbox" checked><span>Aporte asistencia social 1% jun/dic</span></label>
-          <label class="check-row"><input id="farmOsFullTimeBase" type="checkbox" checked><span>Obra social base jornada completa si reducida</span></label>
-          <label class="check-row"><input id="farmUnionContribution" type="checkbox"><span>Cuota sindical afiliado</span></label>
-          <label class="check-row"><input id="farmCajaCompensadora" type="checkbox"><span>Caja compensadora 1%</span></label>
-          <label class="check-row"><input id="farmProEdificio" type="checkbox"><span>Pro edificio 1%</span></label>
+        <div class="step-copy" style="margin-top: 32px;"><h3>Adicionales CCT 429/2005 (Art. 18)</h3></div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chk("farmCajero",      `Adicional cajero ${cajPct}%`,                       `${cajPct}% sobre básico + antigüedad. Cumplir tareas de cajero (Art. 18 inc. c)`, false)}
+          ${chk("farmAdminTitle",  `Tareas administrativas ${admPct}%`,                 `${admPct}% sobre básico + antigüedad. Requiere título habilitante (Art. 18 inc. d)`, false)}
+          ${chk("farmAdminTenure", `Adicional administrativo por antiguedad (${admPct}-${admTen}%)`, `${admPct}% inicial, ${admTen}% con 2+ años en la tarea. Art. 18 inc. d`, false)}
+          ${chk("farmPerfumeria",  `Adicional perfumeria ${perfPct}%`,                  `${perfPct}% sobre básico + antigüedad. Requiere 3 años empresa + título terciario (Art. 18 inc. e)`, false)}
+          ${chk("farmBike",        `Uso bici/ciclomotor/moto ${bikePct}%`,              `${bikePct}% sobre básico + antigüedad. Uso de vehículo propio para tareas (Art. 18 inc. g)`, false)}
+          ${chk("farmAuxTitle",    `Titulo auxiliar de farmacia ${auxPct}%`,            `${auxPct}% sobre Empleado de Farmacia + antigüedad. Requiere título de auxiliar (Art. 18 inc. h)`, false)}
+          ${chk("farm_tituloFarmaceutico", `Titulo farmaceutico ${titPct}% (escala)`,   `${titPct}% sobre Cat. Inicial A + antigüedad. Requiere título universitario de Farmacéutico (Art. 18 inc. a)`, false)}
+          ${chk("farm_adscripcion",        `Adscripcion ${adsPct}% (escala)`,           `${adsPct}% adicional sobre Cat. Inicial A + antigüedad. Para farmacéuticos con adscripción (Art. 18 inc. a)`, false)}
+          ${chk("farm_bloqueo",            `Bloqueo direccion tecnica ${bloqPct}% (escala)`, `${bloqPct}% sobre Cat. Inicial A + antigüedad. Para quien ejerce Dirección Técnica con bloqueo de título (Art. 18 inc. b)`, false)}
+          ${chk("farmFallaCaja",   `Fondo compensador falla de caja ${cajFnd}%`,        `${cajFnd}% sobre básico. Para cajeros — no remunerativo (Art. 19)`, false)}
         </div>
-        <p class="farmacia-note">
-          <strong>CCT 429/2005 Mendoza:</strong> horas extra por divisor 200, vacaciones por divisor 25, inasistencias por divisor 30, no remunerativos por periodo y base de obra social controlada para jornada reducida.
-        </p>
+
+        <div class="step-copy" style="margin-top: 32px;"><h3>No Remunerativos</h3></div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chk("farmNonRem",       "Suma no remunerativa escala",  "Agrega el no remunerativo de escala vigente del período", true)}
+          ${chk("farmProrateNonRem","Prorratear no rem. por dias",  "Prorratear el no remunerativo en función de los días no remunerativos del período", true)}
+        </div>
+
+        <div class="step-copy" style="margin-top: 32px;"><h3>Aportes del Trabajador</h3></div>
+        <div class="check-grid generic-checks" style="margin-top: 16px;">
+          ${chk("farmAdefSolidarity",  `Aporte solidario ADEF ${adefPct}%`,          `Aporte solidario convencional ADEF: ${adefPct}% sobre total remunerativo (Art. 46 CCT)`, true)}
+          ${chk("farmSocialJuneDec",   `Aporte asistencia social ${cajaCompPct}% (jun/dic)`, `${cajaCompPct}% adicional en junio y diciembre sobre total remunerativo (Art. 46 CCT)`, true)}
+          ${chk("farmContribution",    "Contribucion extraordinaria escala",          "Contribución extraordinaria según escala vigente del período", true)}
+          ${chk("farmOsFullTimeBase",  "OS base jornada completa si jornada reducida","Garantiza base mínima de obra social equivalente a jornada completa", true)}
+          ${chk("farmUnionContribution", `Cuota sindical afiliado ADEF ${unionPct}%`, `Retención cuota sindical: ${unionPct}% sobre total remunerativo — solo afiliados`, false)}
+          ${chk("farmCajaCompensadora",  `Caja compensadora ${cajaCompPct}%`,         `${cajaCompPct}% sobre remunerativo. Aporte a caja compensadora CCT 429/2005`, false)}
+          ${chk("farmProEdificio",       `Pro edificio ${proEdifPct}%`,               `${proEdifPct}% sobre remunerativo. Aporte pro edificio CCT 429/2005`, false)}
+        </div>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));
     }
 
+
     if (conv.id === "camioneros") {
+      const infoBtn = (desc) => desc ? `
+        <button type="button" class="concept-info-toggle" aria-label="Ver detalles" onclick="event.preventDefault(); let desc = this.parentElement.parentElement.querySelector('.check-desc') || this.parentElement.parentElement.parentElement.querySelector('.check-desc'); let isHidden = desc.style.display === 'none'; desc.style.display = isHidden ? 'block' : 'none'; this.querySelector('svg').style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; border-radius:4px; display:flex; align-items:center; justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(0deg);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      ` : "";
+      const descHtml = (desc) => desc ? `<div class="check-desc" style="display: none; padding-top: 6px; margin-top: 6px; border-top: 1px solid var(--line); width: 100%; color: var(--muted); font-size: 0.88em; line-height: 1.4;">${desc}</div>` : "";
+      const numRow = (id, label, badge, desc, defaultVal = "0") => `
+        <div class="concept-table-row" style="flex-wrap: wrap;">
+          <div class="concept-table-label" style="flex: 1; min-width: 180px;">
+            <div style="display: flex; align-items: center; gap: 6px;"><strong>${label}</strong>${infoBtn(desc)}</div>
+          </div>
+          <div class="concept-table-badge">${badge ? `<span class="concept-badge">${badge}</span>` : ""}</div>
+          <div class="concept-table-input"><input id="${id}" type="number" min="0" step="0.01" value="${defaultVal}" placeholder="0"></div>
+          ${descHtml(desc)}
+        </div>`;
+      const chkRow = (id, label, desc, checked) => `
+        <label class="check-row ${desc ? 'has-desc' : ''}" style="flex-wrap: wrap; align-self: flex-start;">
+          <div style="display: flex; align-items: center; width: 100%; gap: 9px;">
+            <input id="${id}" type="checkbox" ${checked ? "checked" : ""}>
+            <div class="check-label-wrap" style="flex: 1;"><span>${label}</span></div>
+            ${infoBtn(desc)}
+          </div>
+          ${descHtml(desc)}
+        </label>`;
+
       $("dynamicFields").innerHTML = `<div class="dynamic-card">
-        <h2 class="dynamic-title">Parametros Camioneros</h2>
+        <h2 class="dynamic-title">Parametros Camioneros - CCT 40/89</h2>
         <div class="camioneros-section-title">Base mensual y dias</div>
         <div class="grid three">
           <label class="field"><span>Divisor jornales</span><input id="camPeriodDays" type="number" min="1" step="1" value="24"></label>
@@ -466,58 +586,74 @@
           <label class="field"><span>Dia camionero trab.</span><input id="camDriverDay" type="number" min="0" max="1" step="1" value="0"></label>
         </div>
 
-        <div class="camioneros-section-title">Viaticos Art. 4.2.11 y kilometraje</div>
-        <div class="grid three">
-          <label class="field"><span>Pernoctadas <small>(no rem.)</small></span><input id="camPernoctadaDays" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Km larga distancia</span><input id="camKmExtra" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Km sab/dom/feriado</span><input id="camKmWeekend" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Dias viaje km</span><input id="camKmTravelDays" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Km viatico manual</span><input id="camKmViatico" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Permanencias <small>(no rem.)</small></span><input id="camPermanencia" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Simple presencia <small>(no rem.)</small></span><input id="camSimplePresence" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Cruces frontera <small>(no rem.)</small></span><input id="camCruces" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Ingresos isla <small>(no rem.)</small></span><input id="camIsla" type="number" min="0" step="1" value="0"></label>
+        <div class="step-copy" style="margin-top: 24px;">
+          <h3>Viaticos Art. 4.2.11 y Kilometraje</h3>
         </div>
-        <div class="check-grid camioneros-checks">
-          <label class="check-row"><input id="camComida" type="checkbox" checked><span>Comida</span></label>
-          <label class="check-row"><input id="camViaticoEspecial" type="checkbox" checked><span>Viatico especial</span></label>
-          <label class="check-row"><input id="camApplyKmMin" type="checkbox"><span>Aplicar minimo 350 km/dia al viatico</span></label>
-          <label class="check-row"><input id="camPresentism" type="checkbox" checked><span>Presentismo 8,33% si no hay injustificadas</span></label>
+        <div class="concept-table">
+          <div class="concept-table-head">
+            <div class="concept-table-th-label">CONCEPTO VIATICO</div>
+            <div class="concept-table-th-badge">VALOR</div>
+            <div class="concept-table-th-input">CANTIDAD</div>
+          </div>
+          ${numRow("camPernoctadaDays", "Pernoctadas (no rem.)", "$17.841,22", "Pernoctadas fuera de residencia Art. 4.1.14 / 4.2.11 ($17.841,22 por día). Cálculo: $17.841,22 x Días x Coeficiente de zona")}
+          ${numRow("camKmExtra", "Km larga distancia", "$80,09/km", "Horas extraordinarias por kilometraje Art. 4.2.3 ($80,09 por km). Cálculo: $80,09 x Km x Coeficiente de zona")}
+          ${numRow("camKmWeekend", "Km sab/dom/feriado", "$160,17/km", "Kilometraje en fines de semana o feriados con recargo 100% Art. 4.2.3. Cálculo: $80,09 x 2 x Km x Coeficiente de zona")}
+          ${numRow("camKmTravelDays", "Dias viaje km", "350 km/dia", "Días de viaje para cómputo de mínimo de viático por kilometraje (garantiza 350 km/día)")}
+          ${numRow("camKmViatico", "Km viatico manual", "$80,09/km", "Viático por kilometraje adicional manual Art. 4.2.4 ($80,09 por km)")}
+          ${numRow("camPermanencia", "Permanencias (no rem.)", "$54.059,44", "Permanencia fuera de residencia Art. 4.2.11 ($54.059,44 por día no remunerativo)")}
+          ${numRow("camSimplePresence", "Simple presencia (no rem.)", "$28.336,23", "Simple presencia Art. 4.2.11 ($28.336,23 por día no remunerativo)")}
+          ${numRow("camCruces", "Cruces frontera (no rem.)", "$37.228,67", "Cruce de frontera Art. 4.2.11 ($37.228,67 por cruce no remunerativo)")}
+          ${numRow("camIsla", "Ingresos isla (no rem.)", "$42.450,58", "Ingreso/egreso Tierra del Fuego Art. 4.2.11 ($42.450,58 por viaje no remunerativo)")}
         </div>
-
-        <div class="camioneros-section-title">Adicionales remunerativos</div>
-        <div class="grid three">
-          <label class="field"><span>Bitrenes</span><input id="camBitrenes" type="number" min="0" step="1" value="0"></label>
-          <label class="field"><span>Adicional rama %</span><input id="camAdditionalPct" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Otros rem. convenio</span><input id="camOtherRem" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs extra 50%</span><input id="camExtra50" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs extra 100%</span><input id="camExtra100" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Hs nocturnas 100%</span><input id="camNightHours" type="number" min="0" step="0.01" value="0"></label>
-        </div>
-        <div class="check-grid camioneros-checks">
-          <label class="check-row"><input id="camSeniority" type="checkbox" checked><span>Antiguedad 1% por año</span></label>
-          <label class="check-row"><input id="camLongDistanceDriver" type="checkbox"><span>Chofer larga distancia 10%</span></label>
-          <label class="check-row"><input id="camLactea" type="checkbox"><span>Materia prima lactea 15%</span></label>
-          <label class="check-row"><input id="camAuxilio" type="checkbox"><span>Conductor auxilio 10%</span></label>
-          <label class="check-row"><input id="camBlindado" type="checkbox"><span>Unidades blindadas 20%</span></label>
-          <label class="check-row"><input id="camCombustibles" type="checkbox"><span>Combustibles 15%</span></label>
-          <label class="check-row"><input id="camPeligrosas" type="checkbox"><span>Sustancias peligrosas 20%</span></label>
-          <label class="check-row"><input id="camPozos" type="checkbox"><span>Pozos petroliferos 40%</span></label>
-          <label class="check-row"><input id="camPluralidadI" type="checkbox"><span>Pluralidad taller I/III 25%</span></label>
-          <label class="check-row"><input id="camPluralidadII" type="checkbox"><span>Pluralidad taller II 18%</span></label>
-          <label class="check-row"><input id="camDiariosRevistas" type="checkbox"><span>Diarios y revistas 12%</span></label>
-          <label class="check-row"><input id="camLogistica" type="checkbox"><span>Logistica 18%</span></label>
-          <label class="check-row"><input id="camCamaraFrio" type="checkbox"><span>Camara frio 20%</span></label>
+        <div class="check-grid camioneros-checks" style="margin-top: 16px;">
+          ${chkRow("camComida", "Comida ($15.318/día)", "Viático de comida Art. 4.1.12 ($15.318 por día no remunerativo). Cálculo: $15.318 x Días x Coeficiente", true)}
+          ${chkRow("camViaticoEspecial", "Viatico especial ($7.686,55/día)", "Viático especial Art. 4.1.13 ($7.686,55 por día no remunerativo). Cálculo: $7.686,55 x Días x Coeficiente", true)}
+          ${chkRow("camApplyKmMin", "Aplicar minimo 350 km/dia al viatico", "Garantiza un mínimo de 350 km/día de viático por cada día de viaje informado", false)}
+          ${chkRow("camPresentism", "Presentismo 8,33% si no hay injustificadas", "Premio presentismo Art. 4.1.7: 8.33% del sueldo básico si no registra inasistencias injustificadas", true)}
         </div>
 
-        <div class="camioneros-section-title">Aportes del trabajador</div>
-        <div class="check-grid camioneros-checks">
-          <label class="check-row"><input id="camUnionFee" type="checkbox" checked><span>Cuota sindical 2%</span></label>
-          <label class="check-row"><input id="camSolidarityContribution" type="checkbox" checked><span>Contribucion solidaria 3%</span></label>
-          <label class="check-row"><input id="camFuneralInsurance" type="checkbox" checked><span>Seguro sepelio 1,5%</span></label>
+        <div class="step-copy" style="margin-top: 24px;">
+          <h3>Adicionales Remunerativos</h3>
         </div>
-        <p class="camioneros-note">
-          <strong>CCT 40/89:</strong> usa divisor 24 para jornal, antiguedad 1% por año sobre remunerativos, y separa los viaticos del Art. 4.2.11 fuera de las bases de aportes.
+        <div class="concept-table">
+          <div class="concept-table-head">
+            <div class="concept-table-th-label">ADICIONAL</div>
+            <div class="concept-table-th-badge">MONTO/RECARGO</div>
+            <div class="concept-table-th-input">CANTIDAD</div>
+          </div>
+          ${numRow("camBitrenes", "Bitrenes", "$646.892,71", "Adicional especial por transporte en unidades bitrenes ($646.892,71)")}
+          ${numRow("camAdditionalPct", "Adicional rama %", "% manual", "Porcentaje manual de adicional por rama o tarea específica sobre básico")}
+          ${numRow("camOtherRem", "Otros rem. convenio", "Monto $", "Importe remunerativo manual propio del convenio")}
+          ${numRow("camExtra50", "Hs extra 50%", "x1,5", "Horas extras en días hábiles. Cálculo: Valor hora x 1.5 x Horas")}
+          ${numRow("camExtra100", "Hs extra 100%", "x2", "Horas extras en fines de semana o feriados. Cálculo: Valor hora x 2 x Horas")}
+          ${numRow("camNightHours", "Hs nocturnas 100%", "x2", "Horas nocturnas con recargo 100%. Cálculo: Valor hora x 2 x Horas")}
+        </div>
+        <div class="check-grid camioneros-checks" style="margin-top: 16px;">
+          ${chkRow("camSeniority", "Antiguedad 1% por año", "Antigüedad Art. 6.1.5: 1% por año de servicio sobre la suma de remunerativos fijos sin tope", true)}
+          ${chkRow("camLongDistanceDriver", "Chofer larga distancia 10%", "Adicional chofer larga distancia Art. 4.2: 10% del sueldo básico", false)}
+          ${chkRow("camLactea", "Materia prima lactea 15%", "Adicional transporte materia prima láctea Art. 3.1.3: 15% del sueldo básico", false)}
+          ${chkRow("camAuxilio", "Conductor auxilio 10%", "Adicional conductor de auxilio Art. 3.1.4: 10% del sueldo básico", false)}
+          ${chkRow("camBlindado", "Unidades blindadas 20%", "Adicional transporte caudales unidades blindadas Art. 5.1.13: 20% del sueldo básico", false)}
+          ${chkRow("camCombustibles", "Combustibles 15%", "Adicional transporte de combustibles Art. 5.5.1: 15% del básico Chofer 1ra categoría", false)}
+          ${chkRow("camPeligrosas", "Sustancias peligrosas 20%", "Adicional transporte sustancias peligrosas Art. 5.6.2: 20% del básico Chofer 1ra categoría", false)}
+          ${chkRow("camPozos", "Pozos petroliferos 40%", "Adicional operaciones en pozos petrolíferos Art. 5.7.4: 40% del sueldo básico", false)}
+          ${chkRow("camPluralidadI", "Pluralidad taller I/III 25%", "Adicional pluralidad de tareas en taller Grupo I y III Art. 3.1.13: 25% del sueldo básico", false)}
+          ${chkRow("camPluralidadII", "Pluralidad taller II 18%", "Adicional pluralidad de tareas en taller Grupo II Art. 3.1.13: 18% del sueldo básico", false)}
+          ${chkRow("camDiariosRevistas", "Diarios y revistas 12%", "Adicional distribución de diarios y revistas Art. 5.4.1: 12% del sueldo básico", false)}
+          ${chkRow("camLogistica", "Logistica 18%", "Adicional rama logística y almacenamiento Art. 5.12: 18% del sueldo básico", false)}
+          ${chkRow("camCamaraFrio", "Camara frio 20%", "Adicional trabajo en cámara de frío: 20% del sueldo básico", false)}
+        </div>
+
+        <div class="step-copy" style="margin-top: 24px;">
+          <h3>Aportes del Trabajador</h3>
+        </div>
+        <div class="check-grid camioneros-checks" style="margin-top: 16px;">
+          ${chkRow("camUnionFee", "Cuota sindical 2%", "Aporte retención cuota sindical FATAP/SICHOCA: 2% de total haberes remunerativos", true)}
+          ${chkRow("camSolidarityContribution", "Contribucion solidaria 3%", "Contribución solidaria convencional: 3% de total haberes remunerativos", true)}
+          ${chkRow("camFuneralInsurance", "Seguro sepelio 1,5%", "Seguro de sepelio convencional obligatorio: 1,5% de total haberes remunerativos", true)}
+        </div>
+        <p class="camioneros-note" style="margin-top: 20px;">
+          <strong>CCT 40/89:</strong> usa divisor 24 para jornal, antigüedad 1% por año sobre remunerativos, y separa los viáticos del Art. 4.2.11 fuera de las bases de aportes.
         </p>
       </div>`;
       enhanceFieldHelp($("payrollFormPanel"));

@@ -24,6 +24,10 @@ function mergeActiveScaleList(scales = []) {
   };
 }
 
+// Conventions with fully hardcoded calculators in payroll-engine.js
+// They don't require a MongoDB convention document or scales
+const STATIC_CALCULATOR_IDS = new Set(["camioneros", "farmacia", "uocra"]);
+
 async function calculateLiquidation(db, body, serializeScale) {
   const payload = parseOrThrow(calculationInputSchema, body, "Datos de liquidacion invalidos");
   const catalog = await catalogService.getCatalog(db);
@@ -31,7 +35,8 @@ async function calculateLiquidation(db, body, serializeScale) {
   const activeScales = (await scaleRepository.findActiveScales(db, payload.conventionId, payload.period)).map(serializeScale);
   let activeScale = mergeActiveScaleList(activeScales);
   const catalogConvention = catalog.conventions?.[payload.conventionId];
-  if (!catalogConvention || catalogConvention.excelConvention || catalogConvention.structuredFromConvention) {
+  const isStatic = STATIC_CALCULATOR_IDS.has(payload.conventionId);
+  if (!isStatic && (!catalogConvention || catalogConvention.excelConvention || catalogConvention.structuredFromConvention)) {
     const runtime = await convenioService.buildPayrollDataForConvenio(db, payload.conventionId, payload.period, catalog);
     runtimeCatalog = runtime.catalog;
     activeScale = runtime.activeScale || mergeActiveScaleList(runtime.activeScales || []);

@@ -69,6 +69,77 @@
       concept.formula_base
     ].filter(Boolean).join(" "));
     return /(cantidad|valor_unitario|por_unidad|por_dia|diario|valor_dia|por_hora|valor_hora|kilometr|_km|viaje|traslado|viatic|pernoct|comida)/.test(raw);
+const labelKey = summaryKey(item.label || item.name || item.nombre || item.concepto || "");
+    const idKey = summaryKey(item.id || item.concepto_id || "");
+    const key = summaryKey([
+      item.id,
+      item.label,
+      item.name,
+      item.nombre,
+      item.concepto_id,
+      item.concepto,
+      item.detail,
+      item.detalle
+    ].filter(Boolean).join(" "));
+    const has = (...parts) => parts.every((part) => key.includes(part));
+    if (isExtraHoursConcept(item)) return true;
+    if (has("sueldo", "basico") || has("valor", "hora") || has("valor", "dia")) return true;
+    if (labelKey === "no_remunerativo" || idKey === "no_remunerativo" || key.includes("no_remunerativo_de_escala")) return true;
+    if (key.includes("agravamiento_indemnizatorio")) return true;
+    if (key.includes("total_remunerativo") || key.includes("total_no_remunerativo") || key.includes("total_72_horas") || key.includes("total_horas")) return true;
+    // Solo filtramos conceptos de despido/indemnizacion (no son haberes corrientes)
+    // licencia y vacacion pueden ser haberes del CCT (ej: prima vacacional, adicional por licencia)
+    if (key.includes("despido") || key.includes("indemnizacion_por_despido")) return true;
+    if (key.includes("multa") || key.includes("incumplimiento") || key.includes("compensacion_por_interrupcion")) return true;
+    if (key === "sac" || key.includes("aguinaldo") || has("sueldo", "anual", "complementario")) return true;
+    if (has("aporte", "jubilatorio") || key.includes("sipa") || key.includes("pami") || key.includes("ley_19_032")) return true;
+    if (has("aporte", "obra", "social") || has("seguridad", "social") || has("riesgos", "trabajo") || key === "art" || has("art", "variable")) return true;
+    return false;
+  }
+
+  function userFacingConcepts(items = []) {
+    return (items || []).filter((item) => !isSystemPayrollConcept(item));
+  }
+
+  function userFacingGroupName(group = "") {
+    const key = summaryKey(group);
+    if (key === "requiere_revision_manual") return "Adicionales sujetos a revision";
+    if (key === "remunerativo") return "Remunerativos variables";
+    if (key === "no_remunerativo") return "No remunerativos variables";
+    return group || "Adicionales";
+  }
+
+  function conceptQuantityUnit(concept = {}) {
+    const raw = summaryKey([
+      concept.id,
+      concept.label,
+      concept.group,
+      concept.detail,
+      concept.base,
+      concept.calculation,
+      concept.unidad_calculo,
+      concept.formula_base
+    ].filter(Boolean).join(" "));
+    if (raw.includes("km") || raw.includes("kilometr")) return "km";
+    if (raw.includes("hora")) return "horas";
+    if (raw.includes("viaje") || raw.includes("traslado")) return "viajes/dias";
+    if (raw.includes("dia") || raw.includes("diari") || raw.includes("viatic") || raw.includes("comida") || raw.includes("pernoct")) return "dias";
+    return "cantidad";
+  }
+
+  function conceptUsesQuantity(concept = {}) {
+    if (concept.calculation === "amountPerUnit") return true;
+    const raw = summaryKey([
+      concept.id,
+      concept.label,
+      concept.group,
+      concept.detail,
+      concept.base,
+      concept.calculation,
+      concept.unidad_calculo,
+      concept.formula_base
+    ].filter(Boolean).join(" "));
+    return /(cantidad|valor_unitario|por_unidad|por_dia|diario|valor_dia|por_hora|valor_hora|kilometr|_km|viaje|traslado|viatic|pernoct|comida)/.test(raw);
   }
 
   function conceptUsesNumberInput(concept = {}) {
@@ -76,9 +147,10 @@
   }
 
   function conceptInputNumber(concept, suffix = "", fallback = 0) {
-    const direct = $(`gen_${concept.id}${suffix}`);
+    const id = concept.id || "";
+    const direct = $(`gen_${id}${suffix}`) || $(`concept_${id}${suffix}`) || $(`${id}${suffix}`);
     const field = direct || Array.from(document.querySelectorAll("[data-concept-id]"))
-      .find((item) => item.dataset.conceptId === String(concept.id) && item.dataset.conceptSuffix === suffix);
+      .find((item) => item.dataset.conceptId === String(id) && item.dataset.conceptSuffix === suffix);
     if (!field) return fallback;
     const value = Number(String(field.value).replace(",", "."));
     return Number.isFinite(value) ? value : fallback;
@@ -92,10 +164,12 @@
   }
 
   function genericConceptInputValue(concept) {
-    const inputId = `gen_${concept.id}`;
-    return conceptUsesNumberInput(concept)
-      ? Math.max(0, conceptInputNumber(concept, "", 0))
-      : (checked(inputId, !!concept.defaultValue) ? 1 : 0);
+    const id = concept.id || "";
+    if (conceptUsesNumberInput(concept)) {
+      return Math.max(0, conceptInputNumber(concept, "", 0));
+    }
+    const isChk = checked(`gen_${id}`) || checked(`concept_${id}`) || checked(id);
+    return isChk ? 1 : (concept.defaultValue && $(`gen_${id}`) == null && $(`concept_${id}`) == null && $(id) == null ? 1 : 0);
   }
 
   function genericConceptUnitAmount(concept, period) {
@@ -325,7 +399,7 @@
     return scale ? `Escala vigente aprobada ${scale.periodLabel || monthLabel(scale.period)}` : "Escala base cargada";
   }
 
-  const STATIC_CATALOG_IDS = new Set(["camioneros", "uocra", "farmacia", "afa-553-09"]);
+  const STATIC_CATALOG_IDS = new Set(["camioneros", "uocra", "farmacia"]);
 
   function isGenericConvention(conv) {
     if (!conv) return false;

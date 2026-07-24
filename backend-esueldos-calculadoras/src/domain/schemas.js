@@ -154,6 +154,7 @@ const legacyConventionSchema = z.object({
   zones: z.array(zoneSchema).optional().default([{ id: "general", label: "General", coef: 1 }]),
   categories: z.array(categorySchema).min(1),
   rules: z.record(z.any()).optional().default({}),
+  items: z.record(z.any()).optional().default({}),
   liquidationModel: z.object({
     rules: z.record(z.any()).optional().default({}),
     concepts: z.array(conceptSchema).optional().default([])
