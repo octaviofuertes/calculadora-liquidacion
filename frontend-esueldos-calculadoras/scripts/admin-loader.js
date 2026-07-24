@@ -1,20 +1,20 @@
 (async function () {
   const chunks = [
-    "app.parts/app-01.js",
-    "app.parts/app-02.js",
-    "app.parts/app-03.js",
-    "app.parts/app-04.js",
-    "app.parts/app-05.js",
-    "app.parts/app-06.js",
-    "app.parts/app-07.js",
-    "app.parts/app-08.js",
-    "app.parts/app-09.js",
-    "app.parts/app-10.js",
-    "app.parts/app-11.js",
-    "app.parts/app-12.js",
-    "app.parts/app-13.js",
-    "app.parts/app-14.js",
-    "app.parts/app-15.js"
+    "modules/pages/app-01.js",
+    "modules/pages/app-02.js",
+    "modules/pages/app-03.js",
+    "modules/pages/app-04.js",
+    "modules/pages/app-05.js",
+    "modules/pages/app-06.js",
+    "modules/pages/app-07.js",
+    "modules/pages/app-08.js",
+    "modules/pages/app-09.js",
+    "modules/pages/app-10.js",
+    "modules/pages/app-11.js",
+    "modules/pages/app-12.js",
+    "modules/pages/app-13.js",
+    "modules/pages/app-14.js",
+    "modules/pages/app-15.js"
   ];
   const source = (await Promise.all(chunks.map(async (path) => {
     const response = await fetch(path, { cache: "no-store" });

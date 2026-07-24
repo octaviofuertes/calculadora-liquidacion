@@ -34,7 +34,7 @@ function buildCss(inputFile, outputFile) {
 
 // Ejecutar build
 console.log('Iniciando empaquetado...');
-buildJs('app.parts', 'app.bundle.js');
+buildJs('modules/pages', 'scripts/pages/app.bundle.js');
 buildCss('styles/styles.css', 'styles.bundle.css');
 buildCss('styles/leia-styles.css', 'leia-styles.bundle.css');
 buildCss('styles/widget.css', 'widget.bundle.css');

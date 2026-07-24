@@ -189,27 +189,21 @@
       setActionButtonsEnabled(true);
       return;
     } catch (error) {
-      console.warn("Calculo backend no disponible; usando motor local.", error);
-      calculateLocal();
+      console.warn("Calculo backend no disponible; sin fallback local.", error);
+      lastResult = null;
+      $("receipt").innerHTML = `<div class="empty-state">No se pudo calcular porque el backend no respondió.</div>`;
+      $("calculation").innerHTML = "";
+      $("details").innerHTML = "";
+      $("scales").innerHTML = "";
+      $("auditResult").innerHTML = "";
+      setActionButtonsEnabled(false);
     } finally {
       window.clearTimeout(timeout);
     }
   }
 
   function calculateLocal() {
-    const conv = getConvention();
-    if (!conv) return;
-    lastAudit = null;
-    const kind = window.eSueldosCatalogSync
-      ? window.eSueldosCatalogSync.resolveConventionKind(conv)
-      : String(conv.id || "").toLowerCase();
-    if (kind === "uocra") lastResult = calcUocra(conv);
-    if (kind === "farmacia") lastResult = calcFarmaciaPlus(conv);
-    if (kind === "camioneros") lastResult = calcCamioneros(conv);
-    if (!lastResult && isGenericConvention(conv)) lastResult = calcGenericConvention(conv);
-    if (!lastResult) lastResult = calcGenericConvention(conv);
-    renderAll(lastResult);
-    setActionButtonsEnabled(true);
+    console.warn("Fallback local deshabilitado.");
   }
 
   function renderAll(result) {

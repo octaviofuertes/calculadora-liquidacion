@@ -831,10 +831,33 @@ function calcCamioneros(ctx) {
   return buildResult(ctx, rows);
 }
 
+const { createUocraStrategy } = require("./strategies/uocra");
+const { createFarmaciaStrategy } = require("./strategies/farmacia");
+const { createCamionerosStrategy } = require("./strategies/camioneros");
+
+const conventionStrategyHelpers = {
+  emptyRows,
+  scaleCategoryRow,
+  scaleAdditionalRow,
+  scaleRowMatchesZone,
+  firstFinite,
+  inputString,
+  inputValue,
+  inputBool,
+  addRow,
+  sumRows,
+  applyManualRows,
+  applyWorkerDeductions,
+  applyEmployerContribs,
+  buildResult,
+  periodAmountValue,
+  resolveUocraScaleValue
+};
+
 const payrollCalculationStrategies = {
-  uocra: calcUocra,
-  farmacia: calcFarmacia,
-  camioneros: calcCamioneros
+  uocra: createUocraStrategy(conventionStrategyHelpers),
+  farmacia: createFarmaciaStrategy(conventionStrategyHelpers),
+  camioneros: createCamionerosStrategy(conventionStrategyHelpers)
 };
 
 function calcKnown(ctx) {
