@@ -1,6 +1,7 @@
 const { EXCEL_SCHEMA_VERSION, normalizeConvenio, parseConvenio, parseEscala, toRuntimeConvention } = require("../models/convenio.model");
 const { normalizePeriod } = require("../repositories/scale-repository");
 const { buildCalculator } = require("./calculator-builder");
+const { findConventionDoc } = require("../shared/convention-lookup");
 
 const COLLECTION = "conventions";
 
@@ -71,25 +72,10 @@ async function normalizeStoredConvention(db, doc) {
   return saved;
 }
 
-async function findConventionDoc(db, convenioId) {
-  const variants = [...new Set([
-    convenioId,
-    String(convenioId || '').replace(/_/g, '-'),
-    String(convenioId || '').replace(/-/g, '_')
-  ].filter(Boolean))];
-  for (const variant of variants) {
-    const doc = await collection(db).findOne({ "convenio.convenio_id": variant })
-      || await collection(db).findOne({ convenio_id: variant })
-      || await collection(db).findOne({ id: variant });
-    if (doc) return doc;
-  }
-  return null;
-}
-
 async function createConvenio(db, payload) {
   const convenio = parseConvenio(payload);
   const convenioId = convenio.convenio.convenio_id;
-  const existing = await findConventionDoc(db, convenioId);
+  const existing = await findConventionDoc(collection(db), convenioId);
   if (existing) {
     const error = new Error("convenio_id ya existe");
     error.status = 409;
@@ -121,13 +107,13 @@ async function listConvenios(db, { limit = 100 } = {}) {
 }
 
 async function getConvenio(db, convenioId) {
-  const doc = await findConventionDoc(db, convenioId);
+  const doc = await findConventionDoc(collection(db), convenioId);
   if (!doc) throw notFound();
   return serialize(await normalizeStoredConvention(db, doc));
 }
 
 async function updateConvenio(db, convenioId, payload) {
-  const current = await findConventionDoc(db, convenioId);
+  const current = await findConventionDoc(collection(db), convenioId);
   if (!current) throw notFound();
   const currentNormalized = await normalizeStoredConvention(db, current);
   const requestedId = payload?.convenio?.convenio_id || payload?.convenio_id || payload?.id;
@@ -160,14 +146,14 @@ async function updateConvenio(db, convenioId, payload) {
 }
 
 async function deleteConvenio(db, convenioId) {
-  const doc = await findConventionDoc(db, convenioId);
+  const doc = await findConventionDoc(collection(db), convenioId);
   if (!doc) throw notFound();
   const result = await collection(db).deleteOne({ _id: doc._id });
   return { ok: true, deletedConvenioId: convenioId, deletedCount: result.deletedCount };
 }
 
 async function saveEscala(db, convenioId, payload) {
-  const stored = await findConventionDoc(db, convenioId);
+  const stored = await findConventionDoc(collection(db), convenioId);
   if (!stored) throw notFound();
   const convenio = await normalizeStoredConvention(db, stored);
   const escala = parseEscala(payload, convenioId);

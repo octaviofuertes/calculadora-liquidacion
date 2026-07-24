@@ -4,9 +4,9 @@
   "private": true,
   "description": "Frontend estatico para eSueldos multiconvenio.",
   "scripts": {
-    "build": "node build.js",
+    "build": "node scripts/build.js",
     "prestart": "npm run build",
-    "start": "node server.js",
+    "start": "node scripts/server.js",
     "dev": "npm start"
   }
 }

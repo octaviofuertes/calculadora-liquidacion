@@ -154,6 +154,33 @@ function periodNonRemValue(source, period) {
   return Number(source.nonRemunerative || 0) || 0;
 }
 
+function variantKeys(value, extra = []) {
+  const raw = String(value || "").trim();
+  return [...new Set([raw, raw.replace(/_/g, "-"), raw.replace(/-/g, "_"), raw.toLowerCase(), raw.toUpperCase(), ...extra].filter(Boolean))];
+}
+
+function resolveUocraScaleValue(source, period, zoneId, categoryId, categoryLabel = "") {
+  const periodVariants = variantKeys(period);
+  const zoneVariants = variantKeys(zoneId, [String(zoneId || "").replace(/^zona\s+/i, "")]);
+  const categoryVariants = variantKeys(categoryId, [categoryLabel]);
+  for (const p of periodVariants) {
+    const periodScale = source?.[p];
+    if (!periodScale) continue;
+    for (const z of zoneVariants) {
+      const zoneScale = periodScale[z];
+      if (!zoneScale) continue;
+      for (const c of categoryVariants) {
+        const value = zoneScale[c];
+        if (Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+      }
+    }
+  }
+  const firstPeriod = Object.values(source || {})[0];
+  const firstZone = firstPeriod && Object.values(firstPeriod)[0];
+  const firstValue = firstZone && Object.values(firstZone)[0];
+  return Number.isFinite(Number(firstValue)) ? Number(firstValue) : 0;
+}
+
 function calculateGanancias(constants, inputs, remunerative, civilStatus) {
   if (!inputBool(inputs, "estimateGanancias", false)) return 0;
   const annual = remunerative * 13;
@@ -537,9 +564,9 @@ function calcUocra(ctx) {
   const rows = emptyRows();
   const period = ctx.payloadPeriod;
   const activeRow = scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality);
-  const staticScale = amount(ctx.convention.scales?.[period]?.[ctx.zone.id]?.[ctx.category.id]);
+  const staticScale = resolveUocraScaleValue(ctx.convention.scales, period, ctx.zone?.id, ctx.category?.id, ctx.category?.label);
   const scale = firstFinite(ctx.category.monthly ? activeRow?.monthly : activeRow?.day, activeRow?.monthly, staticScale) || 0;
-  const snrMonthly = firstFinite(activeRow?.nonRemunerative, ctx.convention.nonRem?.[period]?.[ctx.zone.id]?.[ctx.category.id]) || 0;
+  const snrMonthly = firstFinite(activeRow?.nonRemunerative, resolveUocraScaleValue(ctx.convention.nonRem, period, ctx.zone?.id, ctx.category?.id, ctx.category?.label)) || 0;
   const isMonthly = !!ctx.category.monthly;
   const hourValue = isMonthly ? 0 : scale / 8;
   const quin = inputString(ctx.inputs, "uocraPeriodMode", "1");
@@ -568,7 +595,7 @@ function calcUocra(ctx) {
     if (quin === "2") snr = period === "mar26" ? snrMonthly : snrMonthly * 0.5;
     addRow(rows.noRemRows, "SNR paritaria", snr, quin === "mensual" ? "Mensual" : "Quincenal");
   }
-  if (inputBool(ctx.inputs, "uocraVestimenta", false)) addRow(rows.noRemRows, "Asignacion vestimenta", amount(ctx.convention.scales?.[period]?.[ctx.zone.id]?.oficial) * 2, "Art. 35");
+  if (inputBool(ctx.inputs, "uocraVestimenta", false)) addRow(rows.noRemRows, "Asignacion vestimenta", resolveUocraScaleValue(ctx.convention.scales, period, ctx.zone?.id, "oficial", "Oficial") * 2, "Art. 35");
   applyManualRows(ctx, rows);
   const remTotal = sumRows(rows.remRows);
   const noRemTotal = sumRows(rows.noRemRows);
@@ -811,42 +838,21 @@ const payrollCalculationStrategies = {
 };
 
 function calcKnown(ctx) {
-  // 1. Try to use generated specific calculator
-  try {
-    const fs = require("fs");
-    const { getCalculatorCandidates } = require("../services/calculator-registry");
-    const id = ctx.convention.id;
-    const calcPath = getCalculatorCandidates(id).find((candidate) => fs.existsSync(candidate));
-    if (calcPath) {
-      const { loadCalculatorModule } = require("../services/calculator-loader");
-      const loaded = loadCalculatorModule(id);
-      const calcModule = loaded?.module;
-      if (!calcModule) throw new Error(`Calculadora no encontrada para ${id}`);
-      
-      // Adapt ctx for the generated calculator
-      const specificCtx = {
-        inputs: ctx.inputs || {},
-        employee: ctx.employee || {},
-        activeCatRow: scaleCategoryRow(ctx.activeScale, ctx.category, ctx.zone, ctx.modality) || {
-          valor: periodAmountValue(ctx.category, ctx.payloadPeriod, ["basic", "amount", "salary", "monthly", "monthlyByPeriod", "basicByPeriod"]),
-          valor_diario: periodAmountValue(ctx.category, ctx.payloadPeriod, ["daily", "dailyByPeriod"]),
-          valor_hora: periodAmountValue(ctx.category, ctx.payloadPeriod, ["hourly", "hourlyByPeriod"])
-        },
-        rules: ctx.convention.rules || {}
-      };
-      
-      const rows = calcModule.calculate(specificCtx);
-      
-      // Format the result using the generic buildResult to keep the API contract
-      return buildResult(ctx, rows, []);
+  const { dispatchPayrollCalculation } = require("./payroll-dispatcher");
+  const rowsOrResult = dispatchPayrollCalculation(ctx, {
+    strategies: payrollCalculationStrategies,
+    genericCalculator: calcGeneric,
+    helpers: {
+      scaleCategoryRow,
+      periodAmountValue
     }
-  } catch (err) {
-    console.error("Failed to execute generated calculator:", err);
+  });
+
+  if (Array.isArray(rowsOrResult)) {
+    return buildResult(ctx, rowsOrResult, []);
   }
 
-  // 2. Fallback to generic engine or local strategies
-  const calculate = payrollCalculationStrategies[ctx.convention.id] || calcGeneric;
-  return calculate(ctx);
+  return rowsOrResult;
 }
 
 function calculatePayroll({ catalog, payload, activeScale = null }) {

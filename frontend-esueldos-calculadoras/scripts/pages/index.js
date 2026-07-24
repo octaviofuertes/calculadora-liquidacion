@@ -47,33 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (res.ok) {
         const apiData = await res.json();
         if (apiData && apiData.conventions) {
-          const merged = { ...apiData };
-          merged.conventions = { ...apiData.conventions };
-          // Preserve local scales/additionals/rules for conventions that have them
-          Object.keys(merged.conventions).forEach(id => {
-            const local = localData?.conventions?.[id];
-            if (local) {
-              const backendConv = merged.conventions[id];
-              const backendCatsEmpty = (backendConv.categories || []).every(c =>
-                !c.monthly && !c.day && !c.hourly &&
-                Object.keys(c.monthlyByPeriod || {}).length === 0 &&
-                Object.keys(c.dayByPeriod || {}).length === 0 &&
-                Object.keys(c.hourlyByPeriod || {}).length === 0
-              );
-              const useLocalCats = local.scales || (backendCatsEmpty && local.categories);
-              merged.conventions[id] = {
-                ...backendConv,
-                scales: local.scales ?? backendConv.scales,
-                nonRem: local.nonRem ?? backendConv.nonRem,
-                additionals: local.additionals ?? backendConv.additionals,
-                rules: local.rules ?? backendConv.rules,
-                deductions: local.deductions ?? backendConv.deductions,
-                categories: useLocalCats ? local.categories : backendConv.categories,
-                zones: local.scales ? (local.zones ?? backendConv.zones) : backendConv.zones,
-                periods: local.scales ? (local.periods ?? backendConv.periods) : backendConv.periods,
-              };
-            }
-          });
+          const merged = window.eSueldosCatalogSync
+            ? window.eSueldosCatalogSync.mergeCatalogData(localData, apiData)
+            : apiData;
           data = merged;
           window.PAYROLL_DATA = merged;
           window.DATA = merged;

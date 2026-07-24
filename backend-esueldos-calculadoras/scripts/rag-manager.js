@@ -3,15 +3,15 @@
  * rag-manager.js — Gestor de base de conocimiento RAG para el estructurador de convenios
  *
  * Uso:
- *   node src/scripts/rag-manager.js create   [storeId] [displayName]
- *   node src/scripts/rag-manager.js list
- *   node src/scripts/rag-manager.js upload   <ruta-archivo> [storeId] [--department=X] [--topic=X] [--version=X]
- *   node src/scripts/rag-manager.js listfiles [storeId]
+ *   node scripts/rag-manager.js create   [storeId] [displayName]
+ *   node scripts/rag-manager.js list
+ *   node scripts/rag-manager.js upload   <ruta-archivo> [storeId] [--department=X] [--topic=X] [--version=X]
+ *   node scripts/rag-manager.js listfiles [storeId]
  *
  * Ejemplos:
- *   node src/scripts/rag-manager.js create convenios-arg "Conocimiento Liquidación Argentina"
- *   node src/scripts/rag-manager.js upload docs/ley-contrato-trabajo.pdf convenios-arg --topic=LCT --department=legal
- *   node src/scripts/rag-manager.js list
+ *   node scripts/rag-manager.js create convenios-arg "Conocimiento Liquidación Argentina"
+ *   node scripts/rag-manager.js upload docs/ley-contrato-trabajo.pdf convenios-arg --topic=LCT --department=legal
+ *   node scripts/rag-manager.js list
  */
 
 require("dotenv").config();
@@ -202,9 +202,9 @@ async function main() {
   listfiles [storeId]               — Listar archivos en un almacén
 
 Ejemplos:
-  node src/scripts/rag-manager.js create convenios-arg "Liquidación Argentina"
-  node src/scripts/rag-manager.js upload docs/LCT.pdf convenios-arg --topic=LCT --department=legal
-  node src/scripts/rag-manager.js list
+  node scripts/rag-manager.js create convenios-arg "Liquidación Argentina"
+  node scripts/rag-manager.js upload docs/LCT.pdf convenios-arg --topic=LCT --department=legal
+  node scripts/rag-manager.js list
 `);
   }
 }

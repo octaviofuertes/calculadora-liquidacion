@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "seed": "node src/seed.js",
+    "rag": "node scripts/rag-manager.js",
     "test": "node --test test/payroll-engine.test.js test/api.test.js test/convention-schema.test.js test/convenios-api.test.js test/convention-normalizer.test.js"
   },
   "dependencies": {

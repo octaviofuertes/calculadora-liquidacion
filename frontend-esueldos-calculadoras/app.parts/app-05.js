@@ -200,9 +200,12 @@
     const conv = getConvention();
     if (!conv) return;
     lastAudit = null;
-    if (conv.id === "uocra") lastResult = calcUocra(conv);
-    if (conv.id === "farmacia") lastResult = calcFarmaciaPlus(conv);
-    if (conv.id === "camioneros") lastResult = calcCamioneros(conv);
+    const kind = window.eSueldosCatalogSync
+      ? window.eSueldosCatalogSync.resolveConventionKind(conv)
+      : String(conv.id || "").toLowerCase();
+    if (kind === "uocra") lastResult = calcUocra(conv);
+    if (kind === "farmacia") lastResult = calcFarmaciaPlus(conv);
+    if (kind === "camioneros") lastResult = calcCamioneros(conv);
     if (!lastResult && isGenericConvention(conv)) lastResult = calcGenericConvention(conv);
     if (!lastResult) lastResult = calcGenericConvention(conv);
     renderAll(lastResult);
@@ -303,13 +306,9 @@
     const source = result.activeScale
       ? `<div class="scale-source-note">Liquidacion basada en escala aprobada vigente: ${escapeHtml(result.activeScale.periodLabel || monthLabel(result.activeScale.period))}.</div>`
       : `<div class="scale-source-note">Liquidacion basada en la escala base cargada en el sistema.</div>`;
-    const rendererKey = result.conv?.scaleRenderer
-      || result.conv?.metadata?.scaleRenderer
-      || result.conv?.metadata?.scaleTemplate
-      || result.conv?.summaryRenderer
-      || result.conv?.metadata?.guideRenderer
-      || result.conv?.metadata?.guideTemplate
-      || result.conv?.id;
+    const rendererKey = window.eSueldosCatalogSync
+      ? window.eSueldosCatalogSync.resolveConventionKind(result.conv)
+      : String(result.conv?.id || "").toLowerCase();
     const scaleRenderers = {
       uocra: renderUocraScale,
       farmacia: renderFarmaciaScale,

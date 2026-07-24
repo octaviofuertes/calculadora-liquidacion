@@ -10,37 +10,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(apiClient.url("/api/catalog"));
       if (res.ok) {
         const apiData = await res.json();
-        // Merge: use backend conventions list but preserve local fields (scales, additionals, rules)
-        // that the backend normalization discards
         if (apiData && apiData.conventions) {
-          const merged = { ...apiData };
-          merged.conventions = { ...apiData.conventions };
-          Object.keys(merged.conventions).forEach(id => {
-            const local = localData?.conventions?.[id];
-            if (local) {
-              const backendConv = merged.conventions[id];
-              // Detect if backend categories have empty period data (no actual salary values)
-              const backendCatsEmpty = (backendConv.categories || []).every(c =>
-                !c.monthly && !c.day && !c.hourly &&
-                Object.keys(c.monthlyByPeriod || {}).length === 0 &&
-                Object.keys(c.dayByPeriod || {}).length === 0 &&
-                Object.keys(c.hourlyByPeriod || {}).length === 0
-              );
-              // Use local categories when: local has scales (UOCRA-style) OR backend cats are empty
-              const useLocalCats = local.scales || (backendCatsEmpty && local.categories);
-              merged.conventions[id] = {
-                ...backendConv,
-                scales: local.scales ?? backendConv.scales,
-                nonRem: local.nonRem ?? backendConv.nonRem,
-                additionals: local.additionals ?? backendConv.additionals,
-                rules: local.rules ?? backendConv.rules,
-                deductions: local.deductions ?? backendConv.deductions,
-                categories: useLocalCats ? local.categories : backendConv.categories,
-                zones: local.scales ? (local.zones ?? backendConv.zones) : backendConv.zones,
-                periods: local.scales ? (local.periods ?? backendConv.periods) : backendConv.periods,
-              };
-            }
-          });
+          const merged = window.eSueldosCatalogSync
+            ? window.eSueldosCatalogSync.mergeCatalogData(localData, apiData)
+            : apiData;
           data = merged;
           window.PAYROLL_DATA = merged;
           window.DATA = merged;
@@ -56,7 +29,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const conv = data.conventions[convId];
+  const conv = window.eSueldosCatalogSync
+    ? window.eSueldosCatalogSync.resolveConvention(data.conventions, convId)
+    : data.conventions[convId];
   if (!conv) {
     document.getElementById('articleTitle').textContent = 'Convenio no encontrado';
     document.getElementById('articleBody').innerHTML = '<p>Lo sentimos, el convenio colectivo solicitado no existe o no está disponible en este momento.</p>';
